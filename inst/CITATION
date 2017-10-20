@@ -1,0 +1,29 @@
+citHeader("To cite bnem in publications use:")
+
+citEntry(entry = "Article",
+  title        = "Analyzing synergistic and non-synergistic interactions in signalling pathways using Boolean Nested Effect Models.",
+  author       = "Martin Pirkl, Elisabeth Hand, Dieter Kube, Rainer Spang",
+  journal      = "Bioinformatics",
+  year         = "2016",
+  volume       = "32",
+  number       = "6",
+  pages        = "893-900",
+  url          = "http://bioinformatics.oxfordjournals.org/content/32/6/893",
+
+  textVersion  =
+  paste("Martin Pirkl, Elisabeth Hand, Dieter Kube, Rainer Spang (2016).",
+        "Analyzing synergistic and non-synergistic interactions in signalling pathways using Boolean Nested Effect Model.",
+        "Bioinformatics (2016) 32 (6): 893-900")
+)
+citEntry(entry = "Article",
+  title        = "Indirect inference of synergistic and alternative signalling of intracellular pathways.",
+  author       = "Martin Pirkl",
+  journal      = "University of Regensburg",
+  year         = "2016",
+  url          = "http://epub.uni-regensburg.de/34157/",
+
+  textVersion  =
+  paste("Martin Pirkl (2016).",
+        "Indirect inference of synergistic and alternative signalling of intracellular pathways.",
+        "University of Regensburg")
+)

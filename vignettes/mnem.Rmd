@@ -1,0 +1,590 @@
+```sh
+## module load new r/3.3.0 # euler
+
+## bsub -W 10 -n 4 -R "rusage[mem=100]" "R --slave 'run=1' 'data=1470754487.84787.RData' < example.R > output.txt"
+
+## how to run in batch:
+
+runnames=("MadMax" "BladeRunner" "BatmanReturns" "Leon" "DellamorteDellamore" "VanishingPoint" "DirtyMarryCrazyLarry" "DeadPoetSociety" "TheBurbs" "BachelorParty" "BasketCase" "BrainDamage" "Vincent" "TheGeneral" "GrandHotel" "DetectiveStory" "Genesis" "Alien" "Aliens" "ReservoirDogs" "LethalWeapon" "EvilDead" "BunnyLakeIsMissing" "AccionMutante" "WhatsUpDoc" "DeadByDawn" "ArmyOfDarkness" "DieHard" "Watchmen" "LivingDaylights" "FromRussiaWithLove")
+
+for i in `seq 1 100`; do
+    echo ${runnames[$RANDOM % ${#runnames[@]}]}
+done
+
+for i in `seq 1 100`; do
+    file=${runnames[$RANDOM % ${#runnames[@]}]}$i.sh
+    echo "module load repo/grid" >> $file
+    echo "module load grid/grid" >> $file
+    echo "module load R/3.1.0" >> $file
+    echo "R --slave 'Sgenes=3' 'run=$i' 'noise=1:4' 'nem=1:2' 'hiddenstate=0' < mnem.R" >> $file
+    qsub -q mpi04-ht.q -l mf=500M $file
+    sleep 1
+    rm $file
+done
+
+rm *.sh.e*
+rm *.sh.o*
+
+## exit
+```
+
+# Simulations
+
+source("https://bioconductor.org/biocLite.R")
+biocLite("epiNEM")
+
+
+```r
+##library(flexclust)
+library(cluster)
+library(nem)
+library(bnem)
+library(epiNEM)
+##library(weights)
+library(snowfall)
+library(Rgraphviz)
+source("mnem/R/mnems.r")
+source("mnem/R/mnems_low.r")
+
+## these are simulations to account for the transitive closure and the bias for random networks:
+
+source("~/Documents/mnem/R/mnems.r")
+source("~/Documents/mnem/R/mnems_low.r")
+
+## variable parameters:
+runs <- 10
+noises <- c(0.1, 1, 2.5, 5)
+binoises <- c(0.01, 0.1, 0.2, 0.5)
+redSpace <- NULL
+
+## fixed parameters:
+max_iter <- 100
+initnets <- FALSE
+
+acc <- acc2 <- sens <- spec <- mwcor <- numeric(runs)
+
+Sgenes <- 3
+Egenes <- 10
+nem <- 3
+starts <- 1#Sgenes#*nem#*10
+noise <- 1
+parallel <- 2
+parallel2 <- NULL
+verbose <- TRUE
+affinity <- 0
+evolution <- FALSE
+inference <- "em"
+ratio <- TRUE
+bin <- FALSE
+method <- "llr"
+unitheta <- FALSE
+
+if (inference %in% "greedy") {
+    starts <- 1
+}
+
+doinit <- F
+do <- 1
+docomps <- TRUE
+
+popSize <- 100
+stallMax <- 1
+
+## mixing parameters:
+nCells <- 1000#*Sgenes#*nem
+
+dev.off()
+par(mfrow=c(1,1))
+plot(0, 0, xlim = c(0, length(acc)), ylim = c(0,1))
+abline(h=c(0,(1:9)/10,1), lty = 3)
+
+for (run in 1:length(acc)) {
+    mw <- runif(nem, 0.1, 1)
+    mw <- mw/sum(mw)
+    sim <- simData(Sgenes = Sgenes, Egenes = Egenes, nCells = nCells,
+                   Nems = nem, evolution = evolution, unitheta = unitheta
+                 , uninform = floor(Egenes*Sgenes*0.1), mw = mw)
+    simfull <- NULL
+    fullsim <- sim$Nem[[1]]*0
+    gtn <- list()
+    for (i in 1:length(sim$Nem)) {
+        tmp <- transitive.closure(sim$Nem[[i]], mat = TRUE)
+        simfull <- cbind(simfull, t(tmp))
+        fullsim <- fullsim + transitive.closure(sim$Nem[[i]], mat = TRUE)
+        gtn[[i]] <- list()
+        gtn[[i]]$adj <- sim$Nem[[i]]
+    }
+    fullsim[which(fullsim > 1)] <- 1
+    diag(fullsim) <- 1
+    
+    data <- sim$data
+    if (bin) {
+        fpfn <- sample(1:length(data), floor(length(data)*binoises[noise]))
+        data[fpfn] <- 1 - data[fpfn]
+    }
+    if (ratio) {
+        data <- (data - 0.5)/0.5
+    }
+    if (!bin) {
+        data <- data + rnorm(length(sim$data), 0, noises[noise])
+    }
+    for (i in 1:Sgenes) {
+        colnames(data)[which(colnames(data) == i)] <- letters[i] # paste("Sgene", i, sep = "")
+    }
+
+    init <- list()
+    init[[1]] <- sim$Nem
+    theta <- list()
+    theta[[1]] <- sim$theta
+    p <- matrix(0, nem, ncol(data))
+    for (i in 1:nem) {
+        p[i, which(sim$index == i)] <- 1
+    }
+    p <- log2(p)
+    
+    gtnll <- TRUE
+    if (gtnll) {
+        gtnll <- mnem(data,
+                      inference = "em",
+                      max_iter = 0,
+                      start = init,
+                      p = p,
+                      affinity = affinity,
+                      evolution = evolution,
+                      ratio = ratio,
+                      method = method
+                      )
+        print(paste0("GTN ll: ", gtnll$best$ll))
+    }
+    
+    if (!doinit) {
+        init <- NULL
+        theta <- NULL
+        p <- NULL
+    }
+    ## test:
+    if (FALSE) {
+        ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r");
+        mw2 <- apply(getAffinity(p, affinity = affinity, norm = TRUE, mw = mw), 1, sum) # apply(2^p, 1, sum)
+        mw2 <- mw2/sum(mw2)
+        if (any(is.na(mw2))) { mw2 <- rep(1, k)/k }
+        data2 <- modData(data)
+        subtopoX <- estimateSubtopo(data2)
+        n <- ncol(gtn[[1]]$adj)
+        k <- length(gtn)
+        probs0 <- list()
+        probs0$probs <- matrix(0, k, ncol(data2))
+        for (i in 1:3) { # i == 1 seems to win most of the time
+            if (i == 3) {
+                probs <- p
+            } else {
+                probs <- matrix(i - 1, k, ncol(data2))
+            }
+            probs <- getProbs(probs, k, data2, gtn, method, n, affinity, converged = 10^-16, subtopoX=NULL, ratio)
+            if (getLL(probs$probs) > getLL(probs0$probs)) {
+                probs0 <- probs
+            }
+        }
+        subtopoX <- probs0$subtopoX
+        probs <- probs0$probs
+        p2 <- apply((2^probs)*mw2, 2, function(x) return(x/sum(x)))
+        p3 <- getAffinity(p, affinity = affinity, norm = TRUE, mw = mw2)
+        p4 <- getAffinity(probs, affinity = affinity, norm = TRUE, mw = mw2)
+        print(getLL(probs))
+        HeatmapOP(rbind(sim$index,
+                        2^p,
+                        p2,
+                        p3,
+                        p4),
+                        Colv = F, Rowv = F, breaks = seq(min(p3),max(p3), length.out=100))
+        i <- 5
+        par(mfrow=c(1,2))
+        plot.adj(sim$Nem[[i]])
+        plot.adj(mynem(data2, weights = p4[i, ], start = gtn[[i]]$adj, parallel = 2)$adj)
+    }
+    ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r"); # parallel <- 2
+    start <- Sys.time()
+    if (do == 1) {
+        ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r"); parallel <- NULL
+        res <- mnem(data, starts = starts,
+                    inference = inference,
+                    max_iter = max_iter,
+                    start = init,
+                    p = p,
+                    verbose = verbose,
+                    parallel = parallel,
+                    parallel2= parallel2,
+                    affinity = affinity,
+                    evolution = evolution,
+                    ratio = ratio,
+                    method = method,
+                    initnets = initnets,
+                    popSize = popSize,
+                    stallMax = stallMax#, k = nem
+                    )
+    } else {
+        ## init <- NULL
+        D <- modData(data)
+        k <- learnk(D)
+        if (docomps) {
+            ps <- initps(D, k$ks, k$k, starts = starts)
+            ll <- -Inf
+            for (i in 1:starts) {
+                tmp <- mnems(D, k = k$k, p = ps[[i]])
+                if (tmp$ll > ll) {
+                    ll <- tmp$ll
+                    res <- tmp
+                }
+            }
+        } else {
+            ## source("~/Documents/mnem/R/mnems.r"); 
+            res <- mnems(D, k = k$k)
+        }
+    }
+    end <- Sys.time()
+    print(end - start)
+    for (i in 1:length(mw)) {
+        lines(run, mw[i], col = 1, type = "b", pch = 1)
+    }
+    for (i in 1:length(res$mw)) {
+        lines(run, res$mw[i], col = 2, type = "b", pch = 2)
+    }
+    resfull <- NULL
+    fullres <- res$comp[[1]]$phi*0
+    for (i in 1:length(res$comp)) { # the -2 accounts for the membership values and mixing weights
+        tmp <- transitive.closure(res$comp[[i]]$phi, mat = TRUE)
+        resfull <- cbind(resfull, t(tmp))
+        fullres <- fullres + transitive.closure(res$comp[[i]]$phi, mat = TRUE)
+    }
+    fullres[which(fullres > 1)] <- 1
+    diag(fullres) <- 1
+    
+    tp <- sum(fullres == 1 & fullsim == 1) - ncol(fullres)
+    tn <- sum(fullres == 0 & fullsim == 0)
+    fp <- sum(fullres == 1 & fullsim == 0)
+    fn <- sum(fullres == 0 & fullsim == 1)
+    sens[run] <- tp/(tp+fn)
+    spec[run] <- tn/(tn+fp)
+    acc[run] <- (tp+tn)/(tp+tn+fp+fn)
+    resadj <- list()
+    for (i in 1:length(res$comp)) {
+        resadj[[i]] <- list()
+        resadj[[i]]$adj <- res$comp[[i]]$phi
+    }
+    acc2[run] <- hamSim(resfull, simfull, symmetric = TRUE)
+    lines(run, acc2[run], col = 10, type = "b", pch = 3)
+    if (length(mw) == length(res$mw)) {
+        mwcor[run] <- cor(sort(res$mw), sort(mw))
+    }
+    if (length(mw) > length(res$mw)) {
+        mwcor[run] <- cor(sort(c(res$mw, rep(0, length(mw) - length(res$mw)))), sort(mw))
+    }
+    if (length(mw) < length(res$mw)) {
+        mwcor[run] <- cor(sort(c(mw, rep(0, length(mw) - length(res$mw)))), sort(res$mw))
+    }
+    for (i in 1:length(res$limits)) {
+         print(res$limits[[i]]$ll)
+    }
+    
+    if ((acc[run] < 1 | acc2[run] < 1) & doinit) { stop() }
+    ## if (accc2[run] < 1 & max(mres$best$ll) >= bestLL & yes) { stop() }
+    ## if ((accc2[run] < 1 | acc2[run] < 1)) { stop() }
+    randfull <- NULL
+    for (i in 1:nem) {
+        tmp <- matrix(sample(c(0,1), Sgenes*Sgenes, replace = TRUE), Sgenes, Sgenes)
+        tmp[lower.tri(tmp)] <- 0
+        rownames(tmp) <- colnames(tmp) <- sample(1:Sgenes, Sgenes)
+        tmp <- tmp[order(rownames(tmp)), order(colnames(tmp))]
+        tmp <- transitive.closure(tmp, mat = TRUE)
+        randfull <- cbind(randfull, t(tmp))
+    }
+    acc[run] <- hamSim(randfull, simfull, symmetric = TRUE)
+    lines(run, acc[run], col = 11, type = "b", pch = 4)
+}
+
+pdf("temp.pdf", width = 30, height = 10)
+    
+plot.mnem(res)
+
+dev.off()
+
+par(mfrow=c(nem+1, 2))
+for (i in 1:nem) {
+    plot.adj(sim$Nem[[i]])
+    plot.adj(mres$unique[[i]]$adj)
+    ## tmp <- mynem(data, weights = p[i, ])
+    ## plot.adj(tmp$adj)
+}
+
+plot.adj(fullsim)
+plot.adj(fullres)
+
+par(mfrow=c(1,1))
+boxplot(cbind(acc, sens, spec, acc2), ylim = c(0.5,1))
+abline(h=c(0.9,0.95,0.975,0.99875), lty = 3)
+
+library(nem)
+library(graph)
+library(e1071)
+source("~/Documents/mnem/R/mnems.r")
+source("~/Documents/mnem/R/mnems_low.r")
+source("~/Documents/mnem/R/mnems_alt.r")
+Sgenes <- 5
+Egenes <- 10
+ratio <- FALSE
+bin <- FALSE
+prior <- simData(Sgenes = Sgenes, Egenes = Egenes, reps = 10, Nems = 1)$Nem[[1]]
+sens <- sens2 <- 0
+spec <- spec2 <- 0
+dev.off()
+par(mfrow=c(1,1))
+plot(0, 0, xlim = c(0, 10), ylim = c(0,1))
+for (i in 1:10) {
+    sim <- simData(Sgenes = Sgenes, Egenes = Egenes, reps = 3, Nems = 1, uninform = floor(Sgenes*Egenes*0.1))
+    ## if (ratio) {
+    ##     data <- sim$data
+    ##     shape <- 1000 - 0 # 0 as noise parameter
+    ##     llr <- data
+    ##     llr[which(data == 1)] <- rbeta(sum(data == 1), shape, 0.1)#/runif(sum(data == 1), 0, 1)
+    ##     llr[which(data == 0)] <- rbeta(sum(data == 0), 0.1, shape)#/runif(sum(data == 0), 0, 1)
+    ##     llr[which(is.na(llr) == TRUE)] <- max(llr)
+    ##     data <- log2(llr)
+    ##     HeatmapOP(data, breaks = 100)
+    ##     ## data <- (data - 0.5)/0.5
+    ##     ## data <- data + rnorm(length(data), 0, 1)
+    ## }
+    data <- sim$data
+    if (bin) {
+        fpfn <- sample(1:length(data), floor(length(data)*binoises[noise]))
+        data[fpfn] <- 1 - data[fpfn]
+    }
+    if (ratio) {
+        data <- (data - 0.5)/0.5
+    }
+    if (!bin) {
+        data <- data + rnorm(length(sim$data), 0, noises[noise])
+    }
+    start <- Sys.time()
+    ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r")
+    init <- modules(data, modulesize = 4, search = "greedy", verbose = TRUE)
+    res <- mynem(data, start = init, search= "greedy", parallel = NULL, ratio = ratio)#, prior = sim$Nem[[1]])
+    ## print(all(res$adj == prior))
+    print(Sys.time() - start)
+    tp <- sum(res$adj == 1 & sim$Nem[[1]] == 1)
+    tn <- sum(res$adj == 0 & sim$Nem[[1]] == 0)
+    fp <- sum(res$adj == 1 & sim$Nem[[1]] == 0)
+    fn <- sum(res$adj == 0 & sim$Nem[[1]] == 1)
+    if (!is.na(tp/(tp+fn))) {
+        sens <- sens + tp/(tp+fn)
+    } else {
+        sens <- sens + 1
+    }
+    spec <- spec + tn/(tn+fp)
+    lines(i, tp/(tp+fn), col = 2, pch = 2, type = "b")
+    lines(i, tn/(tn+fp), col = 3, pch = 3, type = "b")
+    start <- Sys.time()
+    n <- getSgeneN(data)
+    mdata <- matrix(0, nrow(data), n)
+    for (j in 1:n) {
+        mdata[, j] <- apply(data[, which(colnames(data) %in% j)], 1, mean)
+    }
+    colnames(mdata) <- 1:n
+    rownames(mdata) <- rownames(data)
+    options <- set.default.parameters(setdiff(unique(colnames(mdata)),"time"))
+    options$type <-  "CONTmLLMAP"
+    res <- nem(mdata, control = options)#, inference = "ModuleNetwork")
+    print(Sys.time() - start)
+    res$adj <- transitive.reduction(graph2adj(res$graph))
+    tp <- sum(res$adj == 1 & sim$Nem[[1]] == 1)
+    tn <- sum(res$adj == 0 & sim$Nem[[1]] == 0)
+    fp <- sum(res$adj == 1 & sim$Nem[[1]] == 0)
+    fn <- sum(res$adj == 0 & sim$Nem[[1]] == 1)
+    lines(i, tp/(tp+fn), col = 4, pch = 4, type = "b")
+    lines(i, tn/(tn+fp), col = 5, pch = 5, type = "b")
+    if (!is.na(tp/(tp+fn))) {
+        sens2 <- sens2 + tp/(tp+fn)
+    } else {
+        sens2 <- sens2 + 1
+    }
+    spec2 <- spec2 + tn/(tn+fp)
+}
+print(sens)
+print(spec)
+print(sens2)
+print(spec2)
+
+```
+
+Evalution of the simulations follows.
+
+```{r, fig.width = 7, fig.height = 7, fig.cap=fig.cap1}
+
+Sgenes <- 3
+
+noises <- c(0.1, 1, 2.5, 5)
+nems <- 2:10
+runs <- 100
+
+simres2 <- array(0, c(runs, length(noises), length(nems), 4, 6), list(paste("run_", 1:runs, sep = ""), paste("noise_", noises, sep
+                                                                                                             = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing")))
+
+folder <- "temp/"
+folder <- "sim20170908/"
+
+ihaveruns <- ihavenoise <- ihavenems <- NULL
+
+for (run in 1:runs) {
+    for (noise in 1:length(noises)) {
+        
+        for (nem in 1:length(nems)) {
+            file <- paste("~/Mount/Grid/", folder, "simres_mnem", "_", Sgenes, "_", run, "_", noise, "_", nem, ".rda", sep = "")
+            ##file <- paste("simres_mnem", "_", Sgenes, "_", run, "_", noise, "_", nem, ".rda", sep = "")
+            if (file.exists(file)) {
+                ihaveruns <- c(ihaveruns, run)
+                ihavenoise <- c(ihavenoise, noise)
+                ihavenems <- c(ihavenems, nem)
+                load(file)
+                simres2[run,noise,nem,,] <- simres2[run,noise,nem,,] + simres[run,noise,nem,,]
+            }
+            ## } else {
+            ##     print("not")
+            ##     print(run)
+            ##     print(noise)
+            ##     print(nem)
+            ## }
+        }
+    }
+}
+
+ihaveruns <- sort(unique(ihaveruns))
+ihavenoise <- sort(unique(ihavenoise))
+ihavenems <- sort(unique(ihavenems))
+
+simres <- simres2[ihaveruns,,,,] # subset if I don't have all runs...
+   
+noises <- c(0.1, 1, 2.5, 5)
+nems <- 2:10
+nems <- nems[ihavenems]
+
+print(ihaveruns)
+print(ihavenoise)
+print(ihavenems)
+
+## load(paste("mnem_sim/b9cd53a/mnem_sim_", Sgenes, ".rda", sep = "")); simresOld <- simres; load(paste("mnem_sim_", Sgenes, ".rda", sep = ""))
+
+## pdf("temp.pdf", width = 12, height = 12)
+
+random <- TRUE
+
+par(mfrow=c(length(nems), 4))
+for (l in (nems-1)) {
+    ylab <- c("seconds", "inferred/simulated components", "accuracy", "sensitivity", "specificity", "mixture weights residuals")
+    for (k in 1:6) {
+        if (k == 4 | k == 5) { next() }
+        tmp <- NULL
+        for (i in 4:1) {
+            if (i == 3) { next() }
+            if (!random & (i == 3 | i == 4)) { next() }
+            for (j in 1:length(noises)) {
+                restmp <- simres[,j,l,i,k]
+                restmp[which(is.nan(restmp) == TRUE)] <- 1
+                restmp[which(is.na(restmp) == TRUE)] <- 0
+                ## print(x[j])
+                tmp <- cbind(tmp, restmp)
+            }
+        }
+        tmp <- tmp[, rev(1:ncol(tmp))]
+        for (i in 1:3) {
+            tmp[, (i-1)*length(noises)+1:length(noises)] <- tmp[, rev((i-1)*length(noises)+1:length(noises))]
+        }
+        ## if (k == 1) { tmp <- apply(tmp, c(1,2), function(x) return(log(x+1))) }
+        if (k == 2) { tmp <- tmp[, 1:(ncol(tmp)/3)] }
+        if (k == 6 | k == 1) {
+            minylim <- 0
+        } else {
+            minylim <- 0#.5
+        }
+        boxplot(tmp, col = c(rep("grey", length(noises)), rep("lightblue", length(noises)), rep("blue", length(noises))), xaxt = "none", ylim = c(minylim,max(c(1,max(tmp)))), ylab = ylab[k])
+        if (k == 1) { abline(h=0, lty = 3) }
+        if (k == 2) { abline(h=1, lty = 3) }
+        if (k != 1 & k != 2) { abline(h=0.5, lty = 3); abline(h=0.9, lty = 3) }
+        axis(1, 1:(length(noises)*3), rep(noises, 3))
+        axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c("mnem", "nem", "random"), line = 2, tick = FALSE, cex = 2)
+        if (k != 2) { abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2) }
+    }
+}
+
+dev.off()
+
+## simres <- simresOld
+
+save(simres, file = paste("mnem_sim_", Sgenes, ".rda", sep = ""))
+
+## poster ascona:
+
+pdf("temp.pdf", width = 10, height = 6)
+
+par(mfrow=c(2, length(nems)))
+for (k in 2:3) {
+    ylab <- c("seconds", "components/gtns", "accuracy", "sensitivity", "specificity")
+    for (l in 1:length(nems)) {
+        tmp <- NULL
+        for (i in 4:1) {
+            if (i == 3) { next() }
+            if (!random & (i == 3 | i == 4)) { next() }
+            for (j in 1:length(noises)) {
+                restmp <- simres[,j,l,i,k]
+                restmp[which(is.nan(restmp) == TRUE)] <- 1
+                restmp[which(is.na(restmp) == TRUE)] <- 0
+                ## print(x[j])
+                tmp <- cbind(tmp, restmp)
+            }
+        }
+        tmp <- tmp[, rev(1:ncol(tmp))]
+        for (i in 1:3) {
+            tmp[, (i-1)*length(noises)+1:length(noises)] <- tmp[, rev((i-1)*length(noises)+1:length(noises))]
+        }
+        ## if (k == 1) { tmp <- apply(tmp, c(1,2), function(x) return(log(x+1))) }
+        if (k == 2) { tmp <- tmp[, 1:(ncol(tmp)/3)] }
+        boxplot(tmp, col = c(rep("grey", length(noises)), rep("lightblue", length(noises)), rep("blue", length(noises))), xaxt = "none", ylim = c(0,max(c(1,max(tmp)))), ylab = ylab[k])
+        if (k == 2) { abline(h=1, lty = 3) } else { abline(h=0.5, lty = 3) }
+        axis(1, 1:(length(noises)*3), rep(noises, 3))
+        axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c("mnem", "nem", "random"), line = 2, tick = FALSE, cex = 2)
+        if (k != 2) { abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2) }
+    }
+}
+
+dev.off()
+
+```
+
+# Application to single cell data from different sources
+
+## RNA-seq gene expression from single cells for different CrispR knock-outs
+	
+Application to single cell data from Perturb-seq.
+
+```{r}
+
+source("~/Documents/mnem/R/ggm.r")
+
+gdata <- rbind(c(rnorm(1000, 0, 1), rnorm(1000, 0, 4)))
+
+res <- mygmm(gdata, k = 2)
+
+res <- mygmm(x=1, k=4)
+
+```
+# E-gene mixture
+
+```{r}
+
+source("~/Documents/mnem/R/mnems.r")
+
+sim <- simData(Sgenes = 3, Egenes = 10, reps = 3, Nems = 3)
+
+data <- sim2egene(sim)
+
+res <- mnem.egene(data, 3)
+
+```

@@ -1,0 +1,4 @@
+import(CellNOptR,nem,matrixStats,snowfall,latticeExtra,knitr)
+export(absorption,absorptionII,bnem,computeFc,convertGraph,dummyCNOlist,heatmapOP,plotDnf,randomDnf,reduceGraph,simulateStatesRecursive,transClose,transRed,validateGraph,findResiduals)
+
+
