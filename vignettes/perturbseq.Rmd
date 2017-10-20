@@ -1,3 +1,4 @@
+```r
 Head <- function(x, n=10) {
     y <- x[1:n, 1:n]
     return(y)
@@ -7,6 +8,7 @@ Tail <- function(x, n=10) {
     y <- x[(nrow(x)-n+1):nrow(x), (ncol(x)-n+1):ncol(x)]
     return(y)
 }
+
 
 library(data.table)
 
@@ -320,3 +322,4 @@ plot(allres[[i]][[3]])
 dev.off()
 
 
+```

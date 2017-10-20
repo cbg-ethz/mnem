@@ -1,3 +1,4 @@
+```r
 ## getting arguments:
 
 system("rnai-query query --db /cluster/work/bewi/members/simondi/data/tix/database/tix_index.db --gene hspa5 --pathogen salmonella --study infectx --design p --sample 1000 temp.tsv")
@@ -418,3 +419,4 @@ head(x)
 pathways <- unique(sort(x$Description))
 
 viewPathway(pathways[1])
+```

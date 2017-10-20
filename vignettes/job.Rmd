@@ -1,4 +1,4 @@
-
+```r
 ## define dataset
 
 #dataset <- "cropseq"
@@ -284,3 +284,4 @@ hist(as.numeric(fullsample), breaks = 10)
 hist(as.numeric(fullsample2), breaks = 10)
 
 ##
+```

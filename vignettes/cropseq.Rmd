@@ -1,4 +1,4 @@
-
+```r
 data.bulk <- read.csv("data/cropseq/GSE92872_CROP-seq_Jurkat_TCR.count_matrix.csv", stringsAsFactors = FALSE)
 
 data <- read.csv("data/cropseq/GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv", stringsAsFactors = FALSE)
@@ -262,3 +262,4 @@ mtext("B", side = 3, line = 3, outer = FALSE, cex = 2.5, adj = 0,
 dev.off()
 
 
+```
