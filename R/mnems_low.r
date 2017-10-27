@@ -380,6 +380,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
     for (i in 1:Nems) {
         if (i == 1 | !evolution) {
             adj <- matrix(sample(c(0,1), Sgenes^2, replace = T), Sgenes, Sgenes)
+            adj <- adj[order(apply(adj, 1, sum), decreasing = TRUE), order(apply(adj, 2, sum), decreasing = FALSE)]
             adj[lower.tri(adj)] <- 0
             diag(adj) <- 1
             adj <- nem::transitive.closure(adj, mat = TRUE)
@@ -640,7 +641,7 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
         score <- sum(score[cbind(1:nrow(score), subtopo)])#/nrow(D) # I could normalize the effects matrix to 0 1 to make this a normalized score between 0 1
     }
     if (ll %in% "marg") {
-        score <- sum(apply(score, 1, sum))/length(score)
+        score <- log(sum(apply(exp(score), 1, sum))/length(score))
     }
     if (!is.null(prior)) {
         prior <- transitive.reduction(prior)

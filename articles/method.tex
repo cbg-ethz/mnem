@@ -41,7 +41,7 @@ However, cell populations can be very heterogeneous and consist of several sub p
 
 We show that our method performs well in silico under reasonable assumptions and apply it to two different pooled CrispR screens.
 
-The mixture Nested Effects Model (M\&NEM) is available as an R-package at \url{https://bitbucket.org/MartinFXP/mnem/}.
+The mixture Nested Effects Model (M\&NEM) is available as an R-package at \url{https://github.com/cbg-ethz/mnem/}.
 \end{abstract}
 
 \section{Introduction}
@@ -192,7 +192,7 @@ Datlinger, et al. 2017 combine pooled CrispR screening with single-cell RNA sequ
 
 We map each gene to pathways from the KEGG (Kanehisa et al.) database. This leaves us with ten pathways with each containing a subset of the knock-down targets. For each pathway we take the subset of the data set including only those targets which are involved in the pathway. We use M\&NEM to infer the most likely mixture of pathways. We start with number of components $k=2$ and increase $k$ as long as the Bayesian information criteria increases. 
 
-We show the results for all ten pathways in the supplement. Figure~\ref{fig:cropseq} shows the highest scoring (BIC) pathway. It is known that LCK is involved in the activation of ZAP70 (wikipedia). However, our two component mixture is evidence for a feedback loop, which is active in a subpopulation of cells and ZAP70 and LCK are causally influencing each other.
+We show the results for all ten pathways in the supplement. Figure~\ref{fig:cropseq} shows the highest scoring (Bayesian information criteria, BIC) pathway. It is known that LCK is involved in the activation of ZAP70 (wikipedia). However, our two component mixture is evidence for a feedback loop, which is active in a subpopulation of cells and ZAP70 and LCK are causally influencing each other.
 
 \begin{figure}
 \includegraphics[width=1\textwidth]{cropseq_ex.pdf}
@@ -201,11 +201,13 @@ We show the results for all ten pathways in the supplement. Figure~\ref{fig:crop
 
 \section{Discussion}
 
-We have introduced a novel method (M\&NEM) for the identification of heterogeneous sub populations of single cells with a mixture of networks. M\&NEM successfully infers sub populations and the underlaying ground truth mixture of networks in a simulation study under reasonable assumptions. In our application study we investigate two data sets from single cell CrispR experiments combined with full transcriptomic read-outs.
+We have introduced a novel method (M\&NEM) for the identification of heterogeneous sub populations of single cells with a mixture of networks. Instead of the standard approach M\&NEM infers multiple networks from a heterogenous cell population instead of a single one. M\&NEM successfully infers sub populations and the underlaying ground truth mixture of networks in a simulation study under reasonable assumptions. In our application study we investigate two data sets from single cell CrispR experiments combined with full transcriptomic read-outs.
+
+simulations
 
 biology
 
-M\&NEM is available s an R package at \url{https://bitbucket.org/MartinFXP/mnem/}.
+M\&NEM is available s an R package at \url{https://github.com/cbg-ethz/mnem}.
 
 \section{Supplement}
 
@@ -213,7 +215,7 @@ M\&NEM is available s an R package at \url{https://bitbucket.org/MartinFXP/mnem/
 
 In the case of the original NEMs, two networks $\Phi_1$ and $\Phi_2$ are identical if and only if they have equal transitive closures. We denote this with $\Phi_1 = \Phi_2$. This identity still holds for mixture NEMs. However, mixture NEMs yield additional identifiability problems. In special cases two different mixture $(\Phi^1_1, \Phi_2^1)$ and $(\Phi_1^2, \Phi_2^2)$ are identical even if $\Phi_i^j \neq \Phi_k^l ~\forall i \neq k \text{ or } j \neq l$.
 
-Figure~\ref{fig:ident} shows an example of two mixtures with $k=2$ each. If we assume $\Theta$ is equal for all four $\Phi$, the two mixtures are identical, because they generate the same data. 
+Figure~\ref{fig:ident} shows an example of two mixtures with $k=2$ each. If we assume $\Theta$ is equal for all four networks, the two mixtures are identical, because they generate the same data. 
 
 \begin{figure}
 \begin{center}
@@ -225,8 +227,14 @@ Figure~\ref{fig:ident} shows an example of two mixtures with $k=2$ each. If we a
 
 \subsection{Data processing}
 
+\paragraph{Perturb-Seq}
+We exclude all genes with a median expression of zero from the dataset, take the exponent and add one pseudo-count.
+
 \paragraph{Crop-seq}
-We normalise the count values of each cell to its library size per million. Let $d_{ij}$ be the normalised count value for gene $i$ and cell $j$. Cell $j$  was perturbed by a knock-down of gene $k$. We estimate the density of the distribution of control counts for gene $i$ and the density for the distribution of counts from perturbed cells for gene $i$. We define the log likelihood ratio for $d_{ij}$ being affected by the knock-down by
+We the reduce the dataset by excluding all genes, which have a median of zero counts and normalise the count values of each cell to its library size per million.
+
+\paragraph{Effect log-odds}
+Let $d_{ij}$ be the normalised count value for gene $i$ and cell $j$. Cell $j$  was perturbed by a knock-down of gene $k$. We estimate the density of the distribution of control counts for gene $i$ and the density for the distribution of counts from perturbed cells for gene $i$. We define the log likelihood ratio for $d_{ij}$ being affected by the knock-down by
 \[r_{ij} = \mathrm{log} \left(\frac{p_{ij}^k}{p_{ij}^c}\right),\]
 with $p_{ij}^c$ as the density value for $d_{ij}$ for the control distribution and $p_{ij}^k$ as the density value for the distribution of the knock-down of $k$. If the E-gene shows a clear effect in the cell $r_{ij}$ will be greater than zero and if it shows no effect it will be less than or equal to zero.
 

@@ -12,14 +12,45 @@ for i in `seq 1 100`; do
 done
 
 for i in `seq 1 100`; do
-    file=${runnames[$RANDOM % ${#runnames[@]}]}$i.sh
+    file=${runnames[$RANDOM % ${#runnames[@]}]}${i}.sh
     echo "module load repo/grid" >> $file
     echo "module load grid/grid" >> $file
-    echo "module load R/3.1.0" >> $file
-    echo "R --slave 'Sgenes=3' 'run=$i' 'noise=1:4' 'nem=1:2' 'hiddenstate=0' < mnem.R" >> $file
-    qsub -q mpi04-ht.q -l mf=500M $file
+    echo "module load gcc/5.3.0" >> $file
+    echo "module load R/3.4.0" >> $file
+    echo "R --slave 'Sgenes=5' 'run=$i' 'noise=1:4' 'nem=1:9' < mnem/vignettes/sim.R" >> $file
+    qsub -q mpi04-ht.q -pe make 1 $file
     sleep 1
     rm $file
+done
+
+for i in `seq 1 100`; do
+    for j in `seq 1 4`; do
+	file=${runnames[$RANDOM % ${#runnames[@]}]}${i}_${j}.sh
+	echo "module load repo/grid" >> $file
+	echo "module load grid/grid" >> $file
+	echo "module load gcc/5.3.0" >> $file
+	echo "module load R/3.4.0" >> $file
+	echo "R --slave 'Sgenes=10' 'run=$i' 'noise=$j' 'nem=1:9' < mnem/vignettes/sim.R" >> $file
+	qsub -q mpi04-ht.q -pe make 1 $file
+	sleep 1
+	rm $file
+    done
+done
+
+for i in `seq 1 100`; do
+    for j in `seq 1 4`; do
+	for k in `seq 1 9`; do
+	    file=${runnames[$RANDOM % ${#runnames[@]}]}${i}_${j}_${k}.sh
+	    echo "module load repo/grid" >> $file
+	    echo "module load grid/grid" >> $file
+	    echo "module load gcc/5.3.0" >> $file
+	    echo "module load R/3.4.0" >> $file
+	    echo "R --slave 'Sgenes=10' 'run=$i' 'noise=$j' 'nem=$k' < mnem/vignettes/sim.R" >> $file
+	    qsub -q mpi01.q -pe make 1 $file
+	    sleep 1
+	    rm $file
+	done
+    done
 done
 
 rm *.sh.e*
@@ -65,8 +96,8 @@ acc <- acc2 <- sens <- spec <- mwcor <- numeric(runs)
 
 Sgenes <- 3
 Egenes <- 10
-nem <- 3
-starts <- 1#Sgenes#*nem#*10
+nem <- 10
+starts <- 6#Sgenes#*nem#*10
 noise <- 1
 parallel <- 2
 parallel2 <- NULL
@@ -273,31 +304,13 @@ for (run in 1:length(acc)) {
     }
     acc2[run] <- hamSim(resfull, simfull, symmetric = TRUE)
     lines(run, acc2[run], col = 10, type = "b", pch = 3)
-    if (length(mw) == length(res$mw)) {
-        mwcor[run] <- cor(sort(res$mw), sort(mw))
-    }
-    if (length(mw) > length(res$mw)) {
-        mwcor[run] <- cor(sort(c(res$mw, rep(0, length(mw) - length(res$mw)))), sort(mw))
-    }
-    if (length(mw) < length(res$mw)) {
-        mwcor[run] <- cor(sort(c(mw, rep(0, length(mw) - length(res$mw)))), sort(res$mw))
-    }
-    for (i in 1:length(res$limits)) {
-         print(res$limits[[i]]$ll)
-    }
-    
+
     if ((acc[run] < 1 | acc2[run] < 1) & doinit) { stop() }
     ## if (accc2[run] < 1 & max(mres$best$ll) >= bestLL & yes) { stop() }
     ## if ((accc2[run] < 1 | acc2[run] < 1)) { stop() }
-    randfull <- NULL
-    for (i in 1:nem) {
-        tmp <- matrix(sample(c(0,1), Sgenes*Sgenes, replace = TRUE), Sgenes, Sgenes)
-        tmp[lower.tri(tmp)] <- 0
-        rownames(tmp) <- colnames(tmp) <- sample(1:Sgenes, Sgenes)
-        tmp <- tmp[order(rownames(tmp)), order(colnames(tmp))]
-        tmp <- transitive.closure(tmp, mat = TRUE)
-        randfull <- cbind(randfull, t(tmp))
-    }
+    randfull <- matrix(sample(c(0,1), Sgenes*Sgenes, replace = TRUE), Sgenes, Sgenes)
+    diag(randfull) <- 1
+    colnames(randfull) <- rownames(randfull) <- 1:Sgenes
     acc[run] <- hamSim(randfull, simfull, symmetric = TRUE)
     lines(run, acc[run], col = 11, type = "b", pch = 4)
 }
@@ -326,17 +339,19 @@ abline(h=c(0.9,0.95,0.975,0.99875), lty = 3)
 library(nem)
 library(graph)
 library(e1071)
+library(flexclust)
 source("~/Documents/mnem/R/mnems.r")
 source("~/Documents/mnem/R/mnems_low.r")
 source("~/Documents/mnem/R/mnems_alt.r")
 Sgenes <- 5
 Egenes <- 10
-ratio <- FALSE
+noise <- 4
+ratio <- F#TRUE
 bin <- FALSE
 prior <- simData(Sgenes = Sgenes, Egenes = Egenes, reps = 10, Nems = 1)$Nem[[1]]
 sens <- sens2 <- 0
 spec <- spec2 <- 0
-dev.off()
+#dev.off()
 par(mfrow=c(1,1))
 plot(0, 0, xlim = c(0, 10), ylim = c(0,1))
 for (i in 1:10) {
@@ -366,7 +381,7 @@ for (i in 1:10) {
     }
     start <- Sys.time()
     ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r")
-    init <- modules(data, modulesize = 4, search = "greedy", verbose = TRUE)
+    init <- NULL # modules(data, modulesize = 4, search = "greedy", verbose = TRUE)
     res <- mynem(data, start = init, search= "greedy", parallel = NULL, ratio = ratio)#, prior = sim$Nem[[1]])
     ## print(all(res$adj == prior))
     print(Sys.time() - start)
@@ -390,9 +405,13 @@ for (i in 1:10) {
     }
     colnames(mdata) <- 1:n
     rownames(mdata) <- rownames(data)
-    options <- set.default.parameters(setdiff(unique(colnames(mdata)),"time"))
-    options$type <-  "CONTmLLMAP"
-    res <- nem(mdata, control = options)#, inference = "ModuleNetwork")
+    if (ratio) {
+        options <- set.default.parameters(setdiff(unique(colnames(mdata)),"time"))
+        options$type <-  "CONTmLLMAP"
+        res <- nem(mdata, control = options)#, inference = "ModuleNetwork")
+    } else {
+        res <- nem(mdata)
+    }
     print(Sys.time() - start)
     res$adj <- transitive.reduction(graph2adj(res$graph))
     tp <- sum(res$adj == 1 & sim$Nem[[1]] == 1)
@@ -419,7 +438,7 @@ Evalution of the simulations follows.
 
 ```{r, fig.width = 7, fig.height = 7, fig.cap=fig.cap1}
 
-Sgenes <- 3
+Sgenes <- 10
 
 noises <- c(0.1, 1, 2.5, 5)
 nems <- 2:10
@@ -429,7 +448,7 @@ simres2 <- array(0, c(runs, length(noises), length(nems), 4, 6), list(paste("run
                                                                                                              = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing")))
 
 folder <- "temp/"
-folder <- "sim20170908/"
+##folder <- "sim20170908/"
 
 ihaveruns <- ihavenoise <- ihavenems <- NULL
 
@@ -472,7 +491,7 @@ print(ihavenems)
 
 ## load(paste("mnem_sim/b9cd53a/mnem_sim_", Sgenes, ".rda", sep = "")); simresOld <- simres; load(paste("mnem_sim_", Sgenes, ".rda", sep = ""))
 
-## pdf("temp.pdf", width = 12, height = 12)
+## pdf("temp.pdf", width = 12, height = 24)
 
 random <- TRUE
 

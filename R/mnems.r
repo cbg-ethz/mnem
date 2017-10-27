@@ -1,4 +1,15 @@
-
+#' function for visualizing graphs in normal form
+#' @param data
+#' @param \dots additional arguments
+#' @author Martin Pirkl
+#' @return Rgraphviz object
+#' @export
+#' @import
+#' Rgraphviz
+#' @examples
+#' library(bnem)
+#' g <- c("!A+B=G", "C=G", "!D=G", "C+D+E=G")
+#' plotDnf(g)
 getOmega <- function(data) {
     
     Sgenes <- unique(unlist(strsplit(colnames(data), "_")))
@@ -15,6 +26,18 @@ getOmega <- function(data) {
     return(Omega)
 }
 
+#' function for visualizing graphs in normal form
+#' @param data
+#' @param \dots additional arguments
+#' @author Martin Pirkl
+#' @return Rgraphviz object
+#' @export
+#' @import
+#' Rgraphviz
+#' @examples
+#' library(bnem)
+#' g <- c("!A+B=G", "C=G", "!D=G", "C+D+E=G")
+#' plotDnf(g)
 initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     n <- getSgeneN(data)
     nets <- list()
@@ -759,11 +782,10 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
         weights <- rep(1, ncol(data))
     }
     if (ratio) {
-        adj[which(adj == 0)] <- 0
+        score <- data%*%(adj*weights)
     } else {
-        adj[which(adj == 0)] <- -1
+        score <- -dist2(data, t((adj*mean(data))*weights))
     }
-    score <- data%*%(adj*weights)
     return(score)
 }
 
