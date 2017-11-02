@@ -1,4 +1,4 @@
-# M&NEMS
+# M&NEM
 
 Install:
 --------
@@ -10,13 +10,13 @@ install.packages("devtools")
 
 library(devtools)
 
-install_bitbucket("MartinFXP/M&NEMs")
+install_bitbucket("cbg-ethz/mnem")
 
-library(mnems)
+library(mnem)
 ```
 
-Then check out the vignette for working examples.
+See the vignette for working examples.
 
 ```r
-vignette("mnems")
+vignette("mnem")
 ```
