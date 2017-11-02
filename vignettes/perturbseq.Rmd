@@ -124,6 +124,24 @@ library(Rgraphviz)
 library(dplyr)
 library(annotables)
 
+## get gene length:
+
+data <- data[which(rownames(data) %in% grch38$symbol), ]
+
+genelen <- grch38$end - grch38$start + 1
+
+genelen <- genelen[which(grch38$symbol %in% rownames(data))]
+
+genelen <- genelen[order(grch38$symbol)]
+
+genelen <- genelen[!duplicated(grch38$symbol[which(grch38$symbol %in% rownames(data))])]
+
+data <- data[order(rownames(data)), ]
+
+
+
+##
+
 genes <- toupper(sort(unique(colnames(data))))
 
 ngenes <- length(genes)

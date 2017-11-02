@@ -193,6 +193,13 @@ kadjagg <- kadjagg[con, con]
 
 ## analyse mnem grid results:
 
+source("mnem/R/mnems.r")
+source("mnem/R/mnems_low.r")
+library(nem)
+library(graph)
+library(flexclust)
+library(Rgraphviz)
+
 setwd("~/Mount/Grid/")
 
 load("~/Mount/Grid/cropseq_kegg.rda")
@@ -245,21 +252,79 @@ for (i in 1:length(allres)) {
 
 }
 
+## agg net:
+
+source("mnem/R/mnems.r")
+source("mnem/R/mnems_low.r")
+library(nem)
+library(graph)
+library(flexclust)
+library(Rgraphviz)
+
+setwd("~/Mount/Grid/")
+
+load("~/Mount/Grid/cropseq_kegg.rda")
+
+load("~/Mount/Grid/cropseq_mnem_agg.rda")
+
+for (i in 1:length(res)) {
+
+    pdf(paste0("cropseq/", i, ".pdf"), width = 15, height = 15)
+    
+    par(mfrow=c(1,2))
+    
+    plot(res[[i]])
+
+    plot.adj(kadjagg)
+    
+    dev.off()
+    
+}
+
+for (i in 1:length(res)) {
+
+    L <- max(res[[i]]$best$ll)
+
+    n <- length(res[[i]]$data)
+
+    k <- i
+
+    bic <- log(n)*k - 2*L
+
+    print(L)
+
+    print("_____")
+    
+    print(bic)
+
+}
+
+
 ## paper:
 
-i <- 20
+i <- 3
 
-pdf("temp.pdf", width = 10, height = 8)
+pdf("temp.pdf", width = 14, height = 8)
 
-plot(allres[[i]][[2]])
+plot(res[[i]])
 
-mtext("A", side = 3, line = 3, outer = FALSE, cex = 2.5, adj = 0,
-      at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*1.6)
+mtext("A", side = 3, line = 2.5, outer = FALSE, cex = 2.5, adj = 0,
+      at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*2.5)
 
-mtext("B", side = 3, line = 3, outer = FALSE, cex = 2.5, adj = 0,
-      at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(0.2))
+mtext("B", side = 3, line = 2.5, outer = FALSE, cex = 2.5, adj = 0,
+      at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(1.25))
+
+mtext("C", side = 3, line = 2.5, outer = FALSE, cex = 2.5, adj = 0,
+      at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(0.05))
 
 dev.off()
 
+pdf("temp.pdf", width = 5, height = 5)
+
+plot(res$bic, type = "b", xlim = c(1,4), ylab = "BIC", xlab = "components k", xaxt = "n")
+
+axis(1, 1:4, 1:4)
+
+dev.off()
 
 ```
