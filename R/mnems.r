@@ -784,7 +784,11 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     if (ratio) {
         score <- data%*%(adj*weights)
     } else {
-        score <- -dist2(data, t((adj*mean(data))*weights))
+        if (length(table(data)) == 2) {
+            score <- -dist2(data, t(adj)*weights)
+        } else {
+            score <- -dist2(data, t((adj*mean(data))*weights))
+        }
     }
     return(score)
 }
