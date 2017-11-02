@@ -160,6 +160,9 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                          trans.close = trans.close, redSpace = redSpace, subtopo = subtopo,
                          ratio = ratio, parallel = parallel, prior = prior,
                          modulesize = modulesize, search = search, domean = domean)
+        if (search %in% "exhaustive") {
+            search <- "greedy"
+        }
     }
     D.backup <- D
     D <- modData(D)

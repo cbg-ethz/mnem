@@ -343,13 +343,13 @@ library(e1071)
 library(flexclust)
 source("~/Documents/mnem/R/mnems.r")
 source("~/Documents/mnem/R/mnems_low.r")
-source("~/Documents/mnem/R/mnems_alt.r")
 Sgenes <- 20
 Egenes <- 10
 noise <- 1
+binoise <- 0.1
 runs <- 10
 ratio <- TRUE
-bin <- FALSE
+bin <- TRUE
 prior <- simData(Sgenes = Sgenes, Egenes = Egenes, reps = 10, Nems = 1)$Nem[[1]]
 sens <- sens2 <- 0
 spec <- spec2 <- 0
@@ -373,7 +373,8 @@ for (i in 1:runs) {
     ## }
     data <- sim$data
     if (bin) {
-        fpfn <- sample(1:length(data), floor(length(data)*binoises[noise]))
+        ratio <- FALSE
+        fpfn <- sample(1:length(data), floor(length(data)*binoise))
         data[fpfn] <- 1 - data[fpfn]
     }
     if (ratio) {
@@ -384,8 +385,8 @@ for (i in 1:runs) {
     }
     start <- Sys.time()
     ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r")
-    init <- modules(data, modulesize = 7, search = "greedy", verbose = TRUE)
-    res <- mynem(data, start = init, search= "greedy", parallel = NULL, ratio = ratio)#, prior = sim$Nem[[1]])
+    init <- NULL # modules(data, modulesize = 7, search = "greedy", verbose = TRUE)
+    res <- mynem(data, start = init, search= c("modules", "greedy"), parallel = NULL, ratio = ratio, modulesize = 4)#, prior = sim$Nem[[1]])
     ## print(all(res$adj == prior))
     print(Sys.time() - start)
     tp <- sum(res$adj == 1 & sim$Nem[[1]] == 1)

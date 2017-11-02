@@ -319,9 +319,9 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                  redSpace = NULL, affinity = 0, evolution = FALSE,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
                  popSize = 10, stallMax = 2, elitism = NULL, maxGens = Inf,
-                 domean = TRUE) {
+                 domean = TRUE, modulesize = 4) {
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
-        redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)], search = "exhaustive", reduce = TRUE, verbose = verbose, parallel = c(parallel, parallel2), subtopo = subtopoX, ratio = ratio, domean = FALSE)$redSpace
+        redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)], search = "exhaustive", reduce = TRUE, verbose = verbose, parallel = c(parallel, parallel2), subtopo = subtopoX, ratio = ratio, domean = FALSE, modulesize = modulesize)$redSpace
     }
     D.backup <- D
     D <- modData(D)
@@ -342,7 +342,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
         if (initnets & is.null(start)) {
             meanet <- mynem(D = data, search = search, start = start, method = method,
                                parallel = parallel2, reduce = reduce, runs = runs,
-                               verbose = verbose, redSpace = redSpace, ratio = ratio, domean = domean)
+                               verbose = verbose, redSpace = redSpace, ratio = ratio, domean = domean, modulesize = modulesize)
             init <- initComps(data, k, starts, verbose, meanet)
             probscl <- NULL
         } else {
@@ -369,7 +369,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
         limits[[1]]$res <- list()
         limits[[1]]$res[[1]] <- mynem(D = data, search = search, start = start, method = method,
                                parallel = parallel2, reduce = reduce, runs = runs,
-                               verbose = verbose, redSpace = redSpace, ratio = ratio, domean = domean)
+                               verbose = verbose, redSpace = redSpace, ratio = ratio, domean = domean, modulesize = modulesize)
         limits[[1]]$res[[1]]$D <- NULL
         res <- list()
         res[[1]] <- list()
@@ -492,7 +492,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                                               method = method,
                                               parallel = parallel2, reduce = reduce,
                                               runs = runs, verbose = verbose,
-                                              redSpace = redSpace, ratio = ratio, domean = domean)#, subtopo = subtopoX)
+                                              redSpace = redSpace, ratio = ratio, domean = domean, modulesize = modulesize)#, subtopo = subtopoX)
                         } else {
                             test01 <- list()
                             test01scores <- numeric(3)
@@ -507,7 +507,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                                               method = method,
                                               parallel = parallel2, reduce = reduce,
                                               runs = runs, verbose = verbose,
-                                              redSpace = redSpace, ratio = ratio, domean = domean)#, subtopo = subtopoX)
+                                              redSpace = redSpace, ratio = ratio, domean = domean, modulesize = modulesize)#, subtopo = subtopoX)
                                 test01scores[j] <- max(test01[[j]]$scores)
                             }
                             res[[i]] <- test01[[which.max(test01scores)]]
