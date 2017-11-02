@@ -11,13 +11,15 @@ for i in `seq 1 100`; do
     echo ${runnames[$RANDOM % ${#runnames[@]}]}
 done
 
-for i in `seq 1 1`; do
+module load repo/grid
+
+for i in `seq 1 100`; do
     file=${runnames[$RANDOM % ${#runnames[@]}]}${i}.sh
     echo "module load repo/grid" >> $file
     echo "module load grid/grid" >> $file
     echo "module load gcc/5.3.0" >> $file
     echo "module load R/3.4.0" >> $file
-    echo "R --slave 'Sgenes=3' 'run=$i' 'noise=1:4' 'nem=1:9' < mnem/vignettes/sim.R" >> $file
+    echo "R --slave 'Sgenes=5' 'run=$i' 'noise=1:4' 'nem=1:9' < mnem/vignettes/sim.R" >> $file
     qsub -q mpi04-ht.q -pe make 1 $file
     sleep 1
     rm $file
@@ -618,28 +620,4 @@ dev.off()
 ## RNA-seq gene expression from single cells for different CrispR knock-outs
 	
 Application to single cell data from Perturb-seq.
-
-```{r}
-
-source("~/Documents/mnem/R/ggm.r")
-
-gdata <- rbind(c(rnorm(1000, 0, 1), rnorm(1000, 0, 4)))
-
-res <- mygmm(gdata, k = 2)
-
-res <- mygmm(x=1, k=4)
-
-```
-# E-gene mixture
-
-```{r}
-
-source("~/Documents/mnem/R/mnems.r")
-
-sim <- simData(Sgenes = 3, Egenes = 10, reps = 3, Nems = 3)
-
-data <- sim2egene(sim)
-
-res <- mnem.egene(data, 3)
-
-```
+	    

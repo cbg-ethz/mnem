@@ -160,7 +160,7 @@ learnk <- function(data, kmax = 10, verbose = FALSE) {
             }
         }
     }
-    kmax <- min(c(length(unique(colnames(data))), kmax)) # max number of Sgenes
+    # kmax <- min(c(length(unique(colnames(data))), kmax)) # max number of Sgenes
     k <- min(kmax, max(ks))
     return(list(ks = ks, k = k, lab = lab))
 }
@@ -429,7 +429,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                     if (length(probscl) >= s & type %in% "cluster") {
                         probs <- probscl[[s]]
                     } else {
-                        probs <- matrix(log2(sample(c(0,1), k*ncol(data), replace = TRUE, prob = c(0.9, 0.1))), k, ncol(data))
+                        probs <- matrix(log2(sample(c(0,1), k*ncol(data), replace = TRUE, prob = c(0.9, 0.1))), k, ncol(data)) # how are those probse inferred?
                     }
                     ## mw <- rep(1, nrow(probs))/nrow(probs)
                     mw <- apply(logtype^probs, 1, sum)
