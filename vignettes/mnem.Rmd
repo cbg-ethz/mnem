@@ -11,13 +11,13 @@ for i in `seq 1 100`; do
     echo ${runnames[$RANDOM % ${#runnames[@]}]}
 done
 
-for i in `seq 1 100`; do
+for i in `seq 1 1`; do
     file=${runnames[$RANDOM % ${#runnames[@]}]}${i}.sh
     echo "module load repo/grid" >> $file
     echo "module load grid/grid" >> $file
     echo "module load gcc/5.3.0" >> $file
     echo "module load R/3.4.0" >> $file
-    echo "R --slave 'Sgenes=5' 'run=$i' 'noise=1:4' 'nem=1:9' < mnem/vignettes/sim.R" >> $file
+    echo "R --slave 'Sgenes=3' 'run=$i' 'noise=1:4' 'nem=1:9' < mnem/vignettes/sim.R" >> $file
     qsub -q mpi04-ht.q -pe make 1 $file
     sleep 1
     rm $file
@@ -336,6 +336,7 @@ par(mfrow=c(1,1))
 boxplot(cbind(acc, sens, spec, acc2), ylim = c(0.5,1))
 abline(h=c(0.9,0.95,0.975,0.99875), lty = 3)
 
+library(bnstruct)
 library(nem)
 library(graph)
 library(e1071)
@@ -343,18 +344,20 @@ library(flexclust)
 source("~/Documents/mnem/R/mnems.r")
 source("~/Documents/mnem/R/mnems_low.r")
 source("~/Documents/mnem/R/mnems_alt.r")
-Sgenes <- 5
+Sgenes <- 20
 Egenes <- 10
-noise <- 4
-ratio <- F#TRUE
+noise <- 1
+runs <- 10
+ratio <- TRUE
 bin <- FALSE
 prior <- simData(Sgenes = Sgenes, Egenes = Egenes, reps = 10, Nems = 1)$Nem[[1]]
 sens <- sens2 <- 0
 spec <- spec2 <- 0
+sham <- sham2 <- 0
 #dev.off()
 par(mfrow=c(1,1))
 plot(0, 0, xlim = c(0, 10), ylim = c(0,1))
-for (i in 1:10) {
+for (i in 1:runs) {
     sim <- simData(Sgenes = Sgenes, Egenes = Egenes, reps = 3, Nems = 1, uninform = floor(Sgenes*Egenes*0.1))
     ## if (ratio) {
     ##     data <- sim$data
@@ -381,7 +384,7 @@ for (i in 1:10) {
     }
     start <- Sys.time()
     ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r")
-    init <- NULL # modules(data, modulesize = 4, search = "greedy", verbose = TRUE)
+    init <- modules(data, modulesize = 7, search = "greedy", verbose = TRUE)
     res <- mynem(data, start = init, search= "greedy", parallel = NULL, ratio = ratio)#, prior = sim$Nem[[1]])
     ## print(all(res$adj == prior))
     print(Sys.time() - start)
@@ -397,6 +400,9 @@ for (i in 1:10) {
     spec <- spec + tn/(tn+fp)
     lines(i, tp/(tp+fn), col = 2, pch = 2, type = "b")
     lines(i, tn/(tn+fp), col = 3, pch = 3, type = "b")
+    lines(i, (tp+tn)/(tp+tn+fp+fn), col = 6, pch = 6, type = "b")
+    sham <- sham + shd(res$adj, sim$Nem[[1]])
+    print(sham)
     start <- Sys.time()
     n <- getSgeneN(data)
     mdata <- matrix(0, nrow(data), n)
@@ -420,6 +426,8 @@ for (i in 1:10) {
     fn <- sum(res$adj == 0 & sim$Nem[[1]] == 1)
     lines(i, tp/(tp+fn), col = 4, pch = 4, type = "b")
     lines(i, tn/(tn+fp), col = 5, pch = 5, type = "b")
+    sham2 <- sham2 + shd(res$adj, sim$Nem[[1]])
+    print(sham2)
     if (!is.na(tp/(tp+fn))) {
         sens2 <- sens2 + tp/(tp+fn)
     } else {
@@ -427,10 +435,12 @@ for (i in 1:10) {
     }
     spec2 <- spec2 + tn/(tn+fp)
 }
-print(sens)
-print(spec)
-print(sens2)
-print(spec2)
+print(sens/runs)
+print(spec/runs)
+print(sham/runs)
+print(sens2/runs)
+print(spec2/runs)
+print(sham2/runs)
 
 ```
 
@@ -438,7 +448,7 @@ Evalution of the simulations follows.
 
 ```{r, fig.width = 7, fig.height = 7, fig.cap=fig.cap1}
 
-Sgenes <- 10
+Sgenes <- 3
 
 noises <- c(0.1, 1, 2.5, 5)
 nems <- 2:10
@@ -574,6 +584,31 @@ for (k in 2:3) {
 }
 
 dev.off()
+
+## combine the diff S-genes:
+
+pdf("temp.pdf", width = 10, height = 14)
+
+par(mfrow=c(5,3))
+
+for (i in c(1,3,5,7,9)) {
+    for (j in c(3,5,10)) {
+        tmp <- get(paste0("simres", j))
+        tmp2 <- NULL
+        for (k in c(1,2,4)) {
+            for (l in 1:4) {
+                tmp2 <- cbind(tmp2, tmp[,l,i,k,3])
+            }
+        }
+        boxplot(tmp2, col = c(rep("red", 4), rep("blue", 4), rep("grey", 4)), xaxt = "n", ylim = c(0,1))
+        axis(1, 1:(length(noises)*3), rep(noises, 3))
+        axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c("mnem", "nem", "random"), line = 2, tick = FALSE, cex = 2)
+        abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
+    }
+}
+
+dev.off()
+
 
 ```
 

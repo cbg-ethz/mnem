@@ -192,11 +192,9 @@ Datlinger, et al. 2017 combine pooled CrispR screening with single-cell RNA sequ
 
 We map each gene to pathways from the KEGG (Kanehisa et al.) database. This leaves us with ten pathways with each containing a subset of the knock-down targets. For each pathway we take the subset of the data set including only those targets which are involved in the pathway. We use M\&NEM to infer the most likely mixture of pathways. We start with number of components $k=2$ and increase $k$ as long as the Bayesian information criteria increases. 
 
-We show the results for all ten pathways in the supplement. Figure~\ref{fig:cropseq} shows the highest scoring (Bayesian information criteria, BIC) pathway. It is known that LCK is involved in the activation of ZAP70 (wikipedia). However, our two component mixture is evidence for a feedback loop, which is active in a subpopulation of cells and ZAP70 and LCK are causally influencing each other.
-
 \begin{figure}
 \includegraphics[width=1\textwidth]{cropseq_ex.pdf}
-\caption{\textbf{Crop-seq result} Highest scoring pathway for the Crop-seq dataset. Circles show the perturbed genes. Boxes denote the a posteriori E-gene attachments. Diamonds show the numbers for the a posteriori hard clustering of the cells. Most cells agree with the known activation of ZAP70 by LCK \textbf{(A)}, however roughly one fourth show evidence for an activation of LCK by ZAP70 \textbf{(B)}.}\label{fig:cropseq}
+\caption{\textbf{Crop-seq result} Circles show the perturbed genes. Boxes denote the a posteriori E-gene attachments. Diamonds show the numbers for the a posteriori hard clustering of the cells. }\label{fig:cropseq}
 \end{figure}
 
 \section{Discussion}
@@ -215,7 +213,7 @@ M\&NEM is available s an R package at \url{https://github.com/cbg-ethz/mnem}.
 
 In the case of the original NEMs, two networks $\Phi_1$ and $\Phi_2$ are identical if and only if they have equal transitive closures. We denote this with $\Phi_1 = \Phi_2$. This identity still holds for mixture NEMs. However, mixture NEMs yield additional identifiability problems. In special cases two different mixture $(\Phi^1_1, \Phi_2^1)$ and $(\Phi_1^2, \Phi_2^2)$ are identical even if $\Phi_i^j \neq \Phi_k^l ~\forall i \neq k \text{ or } j \neq l$.
 
-Figure~\ref{fig:ident} shows an example of two mixtures with $k=2$ each. If we assume $\Theta$ is equal for all four networks, the two mixtures are identical, because they generate the same data. 
+Figure~\ref{fig:ident} shows an example of two mixtures with $k=2$ each. If we assume $\Theta$ is equal for all four networks, the two mixtures are identical, because they generate the same data.
 
 \begin{figure}
 \begin{center}
@@ -223,6 +221,21 @@ Figure~\ref{fig:ident} shows an example of two mixtures with $k=2$ each. If we a
 \includegraphics[width=0.425\textwidth]{identmapsA.pdf}\hspace{2cm}\includegraphics[width=0.425\textwidth]{identmapsB.pdf}
 \caption{\textbf{Model identifiability} \textbf{(A)} Mixture of two components (blue, red) with their respective attached cells (data) below. Dark areas are effects and light areas are no effects. Each column of the data is a cell and each row is the effect pattern for gene $E\_X$ attached to S-gene $X$. \textbf{(B)} Identical mixture to \textbf{A}. The first columns (cells) have been switched. Overall the data stays the same, but the network components changed.}\label{fig:ident}
 \end{center}
+\end{figure}
+
+\subsection{Employment of BIC to identify number of components}
+
+The Bayesian Information Criterion (BIC) is defined as
+
+\begin{equation}
+\mathrm{BIC} = \mathrm{ln}\left(n\right)k - 2\mathrm{ln}\left(L\right)
+\end{equation}
+
+with size of the data set $n$, number of components $k$ (free parameters), model likelihood $L$ and the natural logarithm $\mathrm{ln}$.
+
+\begin{figure}
+\includegraphics[width=0.49\textwidth]{cropseq_bic.pdf}\includegraphics[width=0.49\textwidth]{cropseq_bic.pdf}
+\caption{\textbf{Bayesian Information Criterion} BIC for the Crop-seq and the Perturb-seq mixtures.}\label{fig:bics}
 \end{figure}
 
 \subsection{Data processing}

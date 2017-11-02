@@ -149,7 +149,18 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
                   verbose = FALSE, redSpace = NULL,
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
-                  ratio = TRUE, domean = TRUE) { # reduce might not work as expected
+                  ratio = TRUE, domean = TRUE, modulesize = 4) { # reduce might not work as expected
+    if ("modules" %in% search) {
+        if (length(search) > 1) {
+            search <- search[-which(search %in% "modules")]
+        } else {
+            search <- "greedy"
+        }
+        start <- modules(D, method = method, weights = weights, reduce = reduce, verbose = verbose,
+                         trans.close = trans.close, redSpace = redSpace, subtopo = subtopo,
+                         ratio = ratio, parallel = parallel, prior = prior,
+                         modulesize = modulesize, search = search, domean = domean)
+    }
     D.backup <- D
     D <- modData(D)
     colnames(D) <- gsub("\\..*", "", colnames(D))
