@@ -198,7 +198,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         transitive.closure <- nem::transitive.closure
         transitive.reduction <- nem::transitive.reduction
         sfInit(parallel = T, cpus = parallel)
-        sfExport("D", "start", "better", "traClo", "method", "scoreAdj",
+        sfExport("modules", "D", "start", "better", "traClo", "method", "scoreAdj",
                  "weights", "transitive.closure", "llrScore",
                  "transitive.reduction")
     }

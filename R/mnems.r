@@ -16,7 +16,7 @@ getOmega <- function(data) {
     
     Omega <- matrix(0, length(Sgenes), ncol(data))
     
-    for (i in 1:length(Sgenes)) {
+    for (i in seq_len(length(Sgenes))) {
         Omega[i, grep(Sgenes[i], colnames(data))] <- 1
     }
     
@@ -41,7 +41,7 @@ getOmega <- function(data) {
 initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     n <- getSgeneN(data)
     nets <- list()
-    for (i in 1:(starts*k)) {
+    for (i in seq_len(starts*k)) {
         tmp <- matrix(sample(c(0,1), replace = TRUE), n, n)
         tmp[lower.tri(tmp)] <- 0
         colnames(tmp) <- rownames(tmp) <- sample(1:n, n)
@@ -49,9 +49,9 @@ initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
         nets[[i]] <- tmp
     }
     nets <- sortAdj(nets, list = TRUE)$res
-    for (j in 1:starts) {
+    for (j in seq_len(starts)) {
         init[[j]] <- list()
-        for (i in 1:k) {
+        for (i in seq_len(k)) {
             do <- (i+starts*(i-1)+j-1-(i-1)*1)
             init[[j]][[i]] <- nets[[do]]
         }
@@ -62,7 +62,7 @@ initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
 initps <- function(data, ks, k, starts = 3) {
     ## based on the clustering for each knock-down, we estimate non-random membership values for each start of the em:
     clusters <- list()
-    for (i in 1:length(unique(colnames(data)))) {
+    for (i in seq_len(length(unique(colnames(data))))) {
         d <- dist(t(data[, which(colnames(data) %in% i)]))
         if (length(d) > 1) {
             hc <- hclust(d)
@@ -394,7 +394,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                 transitive.closure <- nem::transitive.closure
                 transitive.reduction <- nem::transitive.reduction
                 sfInit(parallel = T, cpus = parallel)
-                sfExport("lo2ll", "mw", "ratio", "getSgeneN", "modData", "sortAdj", "calcEvopen", "evolution", "transitive.reduction", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "transitive.closure", "max_iter", "verbose", "llrScore", "search", "redSpace", "affinity", "getProbs", "probscl", "method")#, "start", "better", "traClo", "method", "scoreAdj", "weights", "transitive.closure")
+                sfExport("modules", "lo2ll", "mw", "ratio", "getSgeneN", "modData", "sortAdj", "calcEvopen", "evolution", "transitive.reduction", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "transitive.closure", "max_iter", "verbose", "llrScore", "search", "redSpace", "affinity", "getProbs", "probscl", "method")#, "start", "better", "traClo", "method", "scoreAdj", "weights", "transitive.closure")
             }
             do_inits <- function(s) {
                 ## initial with random membership values if not input is given:
@@ -617,7 +617,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
             sfInit(parallel = T, cpus = parallel)
             transitive.closure <- nem::transitive.closure
             transitive.reduction <- nem::transitive.reduction
-            sfExport("transitive.closure", "transitive.reduction", "starts", "initps", "n", "getSgeneN", "modData", "sortAdj", "calcEvopen", "checkProbs", "evolution", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "max_iter", "verbose", "llrScore", "redSpace", "affinity", "getProbs")
+            sfExport("modules", "transitive.closure", "transitive.reduction", "starts", "initps", "n", "getSgeneN", "modData", "sortAdj", "calcEvopen", "checkProbs", "evolution", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "max_iter", "verbose", "llrScore", "redSpace", "affinity", "getProbs")
             limits <- sfLapply(1:min(c(starts, length(probscl))), mnem.greedy, D = data, res = res1, k = k,
                                method = method, affinity = affinity,
                                converged = converged, subtopoX = subtopoX,
@@ -658,7 +658,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
             sfInit(parallel = T, cpus = parallel)
             transitive.closure <- nem::transitive.closure
             transitive.reduction <- nem::transitive.reduction
-            sfExport("transitive.closure", "transitive.reduction", "starts", "initps", "n", "getSgeneN", "modData", "sortAdj", "calcEvopen", "checkProbs", "evolution", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "max_iter", "verbose", "llrScore", "redSpace", "affinity", "getProbs")
+            sfExport("modules", "transitive.closure", "transitive.reduction", "starts", "initps", "n", "getSgeneN", "modData", "sortAdj", "calcEvopen", "checkProbs", "evolution", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "max_iter", "verbose", "llrScore", "redSpace", "affinity", "getProbs")
             limits <- sfLapply(1:min(c(starts, length(probscl))), mnem.ga, D = D, res = res1, k = k,
                                method = method, affinity = affinity,
                                converged = converged, subtopoX = subtopoX,

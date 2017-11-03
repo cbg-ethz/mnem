@@ -12,6 +12,7 @@ for i in `seq 1 100`; do
 done
 
 module load repo/grid
+module load grid/grid
 
 for i in `seq 1 100`; do
     file=${runnames[$RANDOM % ${#runnames[@]}]}${i}.sh
@@ -19,8 +20,8 @@ for i in `seq 1 100`; do
     echo "module load grid/grid" >> $file
     echo "module load gcc/5.3.0" >> $file
     echo "module load R/3.4.0" >> $file
-    echo "R --slave 'Sgenes=5' 'run=$i' 'noise=1:4' 'nem=1:9' < mnem/vignettes/sim.R" >> $file
-    qsub -q mpi04-ht.q -pe make 1 $file
+    echo "R --slave 'Sgenes=3' 'run=$i' 'noise=1:4' 'nem=9' < mnem/vignettes/sim.R" >> $file
+    qsub -q mpi01.q -pe make 1 $file
     sleep 1
     rm $file
 done
@@ -345,9 +346,9 @@ library(e1071)
 library(flexclust)
 source("~/Documents/mnem/R/mnems.r")
 source("~/Documents/mnem/R/mnems_low.r")
-Sgenes <- 10
+Sgenes <- 8
 Egenes <- 10
-noise <- 1
+noise <- 0
 binoise <- 0.1
 runs <- 10
 ratio <- TRUE
@@ -356,23 +357,11 @@ prior <- simData(Sgenes = Sgenes, Egenes = Egenes, reps = 10, Nems = 1)$Nem[[1]]
 sens <- sens2 <- 0
 spec <- spec2 <- 0
 sham <- sham2 <- 0
-#dev.off()
+dev.off()
 par(mfrow=c(1,1))
 plot(0, 0, xlim = c(0, 10), ylim = c(0,1))
 for (i in 1:runs) {
     sim <- simData(Sgenes = Sgenes, Egenes = Egenes, reps = 3, Nems = 1, uninform = floor(Sgenes*Egenes*0.1))
-    ## if (ratio) {
-    ##     data <- sim$data
-    ##     shape <- 1000 - 0 # 0 as noise parameter
-    ##     llr <- data
-    ##     llr[which(data == 1)] <- rbeta(sum(data == 1), shape, 0.1)#/runif(sum(data == 1), 0, 1)
-    ##     llr[which(data == 0)] <- rbeta(sum(data == 0), 0.1, shape)#/runif(sum(data == 0), 0, 1)
-    ##     llr[which(is.na(llr) == TRUE)] <- max(llr)
-    ##     data <- log2(llr)
-    ##     HeatmapOP(data, breaks = 100)
-    ##     ## data <- (data - 0.5)/0.5
-    ##     ## data <- data + rnorm(length(data), 0, 1)
-    ## }
     data <- sim$data
     if (bin) {
         ratio <- FALSE
@@ -383,13 +372,12 @@ for (i in 1:runs) {
         data <- (data - 0.5)/0.5
     }
     if (!bin) {
-        data <- data + rnorm(length(sim$data), 0, noises[noise])
+        data <- data + rnorm(length(sim$data), 0, noise)
     }
     start <- Sys.time()
     ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r")
-    init <- NULL # modules(data, modulesize = 7, search = "greedy", verbose = TRUE)
+    init <- NULL
     res <- mynem(data, start = init, search= c("modules", "greedy"), parallel = NULL, ratio = ratio, modulesize = 4)#, prior = sim$Nem[[1]])
-    ## print(all(res$adj == prior))
     print(Sys.time() - start)
     tp <- sum(res$adj == 1 & sim$Nem[[1]] == 1)
     tn <- sum(res$adj == 0 & sim$Nem[[1]] == 0)
@@ -417,7 +405,7 @@ for (i in 1:runs) {
     if (ratio) {
         options <- set.default.parameters(setdiff(unique(colnames(mdata)),"time"))
         options$type <-  "CONTmLLMAP"
-        res <- nem(mdata, control = options)#, inference = "ModuleNetwork")
+        res <- nem(mdata, control = options, inference = "ModuleNetwork")
     } else {
         res <- nem(mdata)
     }
@@ -451,7 +439,7 @@ Evalution of the simulations follows.
 
 ```{r, fig.width = 7, fig.height = 7, fig.cap=fig.cap1}
 
-Sgenes <- 3
+Sgenes <- 5
 
 noises <- c(0.1, 1, 2.5, 5)
 nems <- 2:10
@@ -461,7 +449,7 @@ simres2 <- array(0, c(runs, length(noises), length(nems), 4, 6), list(paste("run
                                                                                                              = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing")))
 
 folder <- "temp/"
-##folder <- "sim20170908/"
+#folder <- "sim20171101/"
 
 ihaveruns <- ihavenoise <- ihavenems <- NULL
 
