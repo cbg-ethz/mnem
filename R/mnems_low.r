@@ -73,6 +73,7 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
         mD <- matrix(0, nrow(D), length(Sgenes))
         if (!is.null(weights)) {
             D <- t(t(D)*weights)
+            weights <- rep(1, ncol(mD))
         }
         for (i in 1:length(Sgenes)) {
             mD[, i] <- apply(D[, which(colnames(D) %in% i), drop = FALSE], 1, mean)
@@ -82,11 +83,15 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
         sumdata <- data <- D
     } else {
         sumdata <- matrix(0, nrow(data), n)
+        if (!is.null(weights)) {
+            D <- t(t(D)*weights)
+            weights <- rep(1, ncol(sumdata))
+        }
         for (i in 1:n) {
-            sumdata[, i] <- apply(data[, which(colnames(data) %in% i), drop = FALSE], 1, sum)
+            sumdata[, i] <- apply(D[, which(colnames(D) %in% i), drop = FALSE], 1, sum)
         }
         colnames(sumdata) <- 1:n
-        rownames(sumdata) <- rownames(data)
+        rownames(sumdata) <- rownames(D)
     }
     D <- NULL
     n <- getSgeneN(data)
