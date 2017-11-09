@@ -1,3 +1,29 @@
+
+getIC <- function(x, AIC = TRUE, degree = 4) {
+    fpar <- 0
+    for (i in 1:length(x$best$res)) {
+        tmp <- transitive.reduction(x$best$res[[i]]$adj)
+        if (degree > 2) {
+            tmp <- transitive.closure(x$best$res[[i]]$adj, mat = TRUE)
+        }
+        diag(tmp) <- 0
+        fpar <- fpar + sum(tmp != 0)
+    }
+    if (degree > 0) {
+        fpar <- fpar + length(x$best$res) - 1
+    }
+    if (degree > 1 & (degree != 3)) {
+        fpar <- fpar + length(x$best$res)*nrow(x$data)
+    }
+    n <- ncol(x$data)
+    if (AIC) {
+        bic <- 2*fpar - 2*max(x$best$ll)
+    } else {
+        bic <- log(n)*fpar - 2*max(x$best$ll)
+    }
+    return(bic)
+}
+
 #' function for visualizing graphs in normal form
 #' @param data
 #' @param \dots additional arguments
@@ -826,7 +852,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         layout(matrix(1:(length(x$comp)), nrow = 1))
     }
     if (!legend & showdata) {
-        layout(rbind(1:(length(x$comp)), c(length(x$comp)+1, rep(length(x$comp)+2, length(x$comp)))))
+        layout(rbind(1:(length(x$comp)), c(length(x$comp)+1, rep(length(x$comp)+2, length(x$comp)-1))))
     }
     
     par(oma=oma)
@@ -865,6 +891,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             shared[which(shared %in% j)] <- Sgenes[j]
         }
         graph <- adj2dnf(net)
+        pathedges <- length(graph)
         if (egenes) {
             enodes <- list()
             enodeshape <- list()
@@ -937,8 +964,12 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         }
         plotDnf(graph, main = paste("Cells: ", realpct[i], "% (unique: ", unipct[i], "%)\n
 Mixture weight: ", round(x$mw[i], 3)*100, "%",
-sep = ""), bordercol = i+1, width = 1, connected = FALSE, signals = shared, inhibitors = Sgenes,
-nodelabel = c(cnodes, enodes, bnodes), nodeshape = c(cnodeshape, enodeshape, bnodeshape), nodewidth = c(cnodeheight, enodewidth, bnodewidth), nodeheight = c(cnodewidth, enodeheight, bnodeheight))
+sep = ""), bordercol = i+1, width = 1, connected = FALSE, signals = shared,
+inhibitors = Sgenes, nodelabel = c(cnodes, enodes, bnodes),
+nodeshape = c(cnodeshape, enodeshape, bnodeshape),
+nodewidth = c(cnodeheight, enodewidth, bnodewidth),
+nodeheight = c(cnodewidth, enodeheight, bnodeheight),
+edgecol = c(rep("black", pathedges), rep("grey", length(graph) - pathedges)))
         full <- net + full
     }
 
