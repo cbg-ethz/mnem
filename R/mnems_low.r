@@ -644,7 +644,7 @@ graph2adj <- function(gR) {
 
 scoreAdj <- function(D, adj, method = "llr", weights = NULL,
                      trans.close = TRUE, subtopo = NULL,
-                     prior = NULL, ratio = FALSE) {
+                     prior = NULL, ratio = TRUE) {
     adj <- transitive.closure(adj, mat = TRUE)
     adj1 <- cbind(adj[colnames(D), ], "0" = 0)
     

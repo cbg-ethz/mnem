@@ -177,15 +177,6 @@ We compute accuracy by looking for similarity of rows of the adjacency matrices 
 
 \section{Application to pooled single cell CrispR screens}
 
-\subsection{Combining CrispR-based perturbation and RNA-seq (Perturb-Seq)}
-
-The data set of Dixit, et al. 2016 consists of RNA-seq transcriptome read-outs for single cells. The data-set is available from the GEO database (GSE90063) or the single cell portal (\url{https://portals.broadinstitute.org/single_cell}). In the following analysis we used the log transformed transcripts per million normalised counts from the single cell portal. 
-
-\begin{figure}
-\includegraphics[width=1\textwidth]{perturbseq_ex.pdf}
-\caption{\textbf{Perturb-seq result}}\label{fig:cropseq}
-\end{figure}
-
 \subsection{CrispR droplet sequencing (CROP-seq)}
 
 Datlinger, et al. 2017 combine pooled CrispR screening with single-cell RNA sequencing to produce gene expression count data on the single cell level. They show the validity of their method with an analysis of T-cell receptor (TCR) activation in Jurkat cells. The processed CROP-seq data if available from the NCBI GEO database (GSE92872). We reduced the data to stimulated cells and genes, which have a median count number of $> 0$ over the remaining cells. We normalised the count data for library size, took the log of the normalised counts and calculated log likelihood ratios (supplement).
@@ -195,6 +186,15 @@ We map each gene to pathways from the KEGG (Kanehisa et al.) database. This leav
 \begin{figure}
 \includegraphics[width=1\textwidth]{cropseq_ex.pdf}
 \caption{\textbf{Crop-seq result} Circles show the perturbed genes. Boxes denote the a posteriori E-gene attachments. Diamonds show the numbers for the a posteriori hard clustering of the cells. }\label{fig:cropseq}
+\end{figure}
+
+\subsection{Combining CrispR-based perturbation and RNA-seq (Perturb-Seq)}
+
+The data set of Dixit, et al. 2016 consists of RNA-seq transcriptome read-outs for single cells. The data-set is available from the GEO database (GSE90063) or the single cell portal (\url{https://portals.broadinstitute.org/single_cell}). In the following analysis we used the log transformed transcripts per million normalised counts from the single cell portal. 
+
+\begin{figure}
+\includegraphics[width=1\textwidth]{perturbseq_ex.pdf}
+\caption{\textbf{Perturb-seq result}}\label{fig:cropseq}
 \end{figure}
 
 \section{Discussion}
@@ -223,33 +223,29 @@ Figure~\ref{fig:ident} shows an example of two mixtures with $k=2$ each. If we a
 \end{center}
 \end{figure}
 
-\subsection{Employment of BIC to identify number of components}
+\subsection{Employment of AIC to identify number of components}
 
-The Bayesian Information Criterion (BIC) is defined as
+The Akaike Information Criterion (AIC) is defined as
 
 \begin{equation}
-\mathrm{BIC} = \mathrm{ln}\left(n\right)k - 2\mathrm{ln}\left(L\right)
+\mathrm{AIC} = 2k - 2\mathrm{ln}\left(L\right)
 \end{equation}
 
-with size of the data set $n$, number of components $k$ (free parameters), model likelihood $L$ and the natural logarithm $\mathrm{ln}$.
+with free parameters $k$, model likelihood $L$ and the natural logarithm $\mathrm{ln}$.
 
 \begin{figure}
-\includegraphics[width=0.49\textwidth]{cropseq_bic.pdf}\includegraphics[width=0.49\textwidth]{cropseq_bic.pdf}
-\caption{\textbf{Bayesian Information Criterion} BIC for the Crop-seq and the Perturb-seq mixtures.}\label{fig:bics}
+\includegraphics[width=0.49\textwidth]{cropseq_bic1.pdf}\includegraphics[width=0.49\textwidth]{cropseq_bic1.pdf}
+\caption{\textbf{Akaike Information Criterion} AIC (red) for the Crop-seq (left) and the Perturb-seq (right) mixtures in comparison with the raw log likelihood (blue).}\label{fig:bics}
 \end{figure}
 
 \subsection{Data processing}
 
-\paragraph{Perturb-Seq}
-We exclude all genes with a median expression of zero from the dataset, take the exponent and add one pseudo-count.
-
-\paragraph{Crop-seq}
-We the reduce the dataset by excluding all genes, which have a median of zero counts and normalise the count values of each cell to its library size per million.
+All cells are normalised by library size. We remove genes which have a median expression of $0$ add a pseudo count of $0.5$ and take the $\mathrm{log2}$..
 
 \paragraph{Effect log-odds}
-Let $d_{ij}$ be the normalised count value for gene $i$ and cell $j$. Cell $j$  was perturbed by a knock-down of gene $k$. We estimate the density of the distribution of control counts for gene $i$ and the density for the distribution of counts from perturbed cells for gene $i$. We define the log likelihood ratio for $d_{ij}$ being affected by the knock-down by
-\[r_{ij} = \mathrm{log} \left(\frac{p_{ij}^k}{p_{ij}^c}\right),\]
-with $p_{ij}^c$ as the density value for $d_{ij}$ for the control distribution and $p_{ij}^k$ as the density value for the distribution of the knock-down of $k$. If the E-gene shows a clear effect in the cell $r_{ij}$ will be greater than zero and if it shows no effect it will be less than or equal to zero.
+We calculate log odds for the effects analoge to Siegburg-Polster et al., 2015. Let $d_{ij}$ be the normalised count value for gene $i$ and cell $j$. Cell $j$ was perturbed by a knock-down of gene $k$. We estimate the empirical distribution function $F_0$ of the normalised control counts for gene $i$ and the empirical distribution function $F_k$ of the normalised counts from cells perturbed by $k$ for gene $i$ and calculate the log odds by
+\[r_{ij} = \mathrm{log} \left(\frac{P\left(d_{ij} \left|\right. F_k\right)}{P\left(d_{ij} \left|\right. F_0\right)}\right).\]
+ If the E-gene shows a clear effect in the cell $r_{ij}$ will be greater than zero and if it shows no effect it will be less than or equal to zero.
 
 \section{References}
 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4648179/

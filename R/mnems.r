@@ -811,7 +811,7 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     if (ratio) {
         score <- data%*%(adj*weights)
     } else {
-        if (length(table(data)) == 2) {
+        if (max(data) == 1) {
             score <- -dist2(data, t(adj)*weights)
         } else {
             score <- -dist2(data, t((adj*mean(data))*weights))
@@ -833,7 +833,7 @@ bootstrap <- function(x) {
     ## bootstrap on the components to get frequencies 
 }
 
-plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = FALSE, ...) {
+plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = FALSE, showprobs = FALSE, ...) {
 
     if (global) {
         main <- paste(main, " - Joint dimension reduction.", sep = "")
@@ -843,17 +843,18 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
 
     x2 <- x
     
-    layout(rbind(1:(length(x$comp)+1), c(length(x$comp)+2, rep(length(x$comp)+3, length(x$comp)))))
+    laymat <- rbind(1:(length(x$comp)+1), c(length(x$comp)+2, rep(length(x$comp)+3, length(x$comp))))
 
     if (legend & !showdata) {
-        layout(matrix(1:(length(x$comp)+1), nrow = 1))
+        laymat <- matrix(1:(length(x$comp)+1), nrow = 1)
     }
     if (!legend & !showdata) {
-        layout(matrix(1:(length(x$comp)), nrow = 1))
+        laymat <- matrix(1:(length(x$comp)), nrow = 1)
     }
     if (!legend & showdata) {
-        layout(rbind(1:(length(x$comp)), c(length(x$comp)+1, rep(length(x$comp)+2, length(x$comp)-1))))
+        laymat <- rbind(1:(length(x$comp)), c(length(x$comp)+1, rep(length(x$comp)+2, length(x$comp)-1)))
     }
+    layout(laymat)
     
     par(oma=oma)
     if (legend) {
@@ -975,8 +976,9 @@ edgecol = c(rep("black", pathedges), rep("grey", length(graph) - pathedges)))
 
     if (showdata) {
         full[which(full > 1)] <- 1
-        plot.adj(full)
-        
+        if (length(x$comp) > 1) {
+            plot.adj(full)
+        }
         if (nrow(pnorm) > 1) {
             
             pnorm <- apply(logtype^x$probs, 2, function(x) return(x/sum(x)))
