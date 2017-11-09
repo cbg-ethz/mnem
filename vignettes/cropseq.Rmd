@@ -281,6 +281,16 @@ for (i in 1:length(res)) {
     
 }
 
+for (i in 1:length(res2)) {
+
+    pdf(paste0("cropseq/", i, "_2.pdf"), width = 15, height = 15)
+    
+    plot(res2[[i]])
+
+    dev.off()
+    
+}
+
 for (i in 1:length(res)) {
 
     L <- max(res[[i]]$best$ll)
@@ -289,7 +299,7 @@ for (i in 1:length(res)) {
 
     k <- i
 
-    bic <- log(n)*k - 2*L
+    bic <- getBIC(res[[i]]$data, k, L)
 
     print(L)
 
@@ -298,7 +308,6 @@ for (i in 1:length(res)) {
     print(bic)
 
 }
-
 
 ## paper:
 
@@ -326,5 +335,19 @@ plot(res$bic, type = "b", xlim = c(1,4), ylab = "BIC", xlab = "components k", xa
 axis(1, 1:4, 1:4)
 
 dev.off()
+
+Rprof()
+
+plot(res2[[i]])
+
+Rprof(NULL)
+
+Rprof(filename="Rprof.out");
+
+plot(res2[[1]])
+
+Rprof(NULL)
+
+summaryRprof(filename="Rprof.out")
 
 ```

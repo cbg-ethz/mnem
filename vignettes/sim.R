@@ -42,6 +42,9 @@ nems <- 2:10
 
 ## fixed parameters:
 starts <- 15 # make it dependent on the learnt k
+search <- "modules"
+
+if (Sgenes < 8) { search <- "greedy" }
 
 ## mixing parameters:
 Egenes <- 10
@@ -88,11 +91,9 @@ for (donoise in noise) {
         data <- data + rnorm(length(sim$data), 0, noises[donoise])
         ## learn k:
         ## random p:
-        k <- learnk(modData(data))
-        p <- log2(matrix(runif(k$k*ncol(data)), k$k, ncol(data)))
-        ## p <- NULL
+        p <- NULL
         start <- as.numeric(format(Sys.time(), "%s"))
-        res <- mnem(data, starts = starts, p = p, verbose = T)
+        res <- mnem(data, starts = starts, verbose = T, type = "random", search = search)
         simres[run, donoise, donem, 1, 1] <- as.numeric(format(Sys.time(), "%s")) - start
         resfull <- NULL
         fullres <- res$comp[[1]]$phi*0
@@ -124,7 +125,7 @@ for (donoise in noise) {
         
         ## nem:
         start <- as.numeric(format(Sys.time(), "%s"))
-        nemres <- mynem(data)
+        nemres <- mynem(data, search = search)
         simres[run, donoise, donem, 2, 1] <- as.numeric(format(Sys.time(), "%s")) - start
         fullnem <- transitive.closure(nemres$adj, mat = TRUE)
         diag(fullnem) <- 1
