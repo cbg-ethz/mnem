@@ -375,6 +375,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
         res[[1]] <- list()
         res[[1]]$adj <- limits[[1]]$res[[1]]$adj
         n <- ncol(res[[1]]$adj)
+        mw <- 1
         probs0 <- list()
         probs0$probs <- matrix(0, k, ncol(data))
         for (i in 1:2) { # i == 1 seems to win most of the time
@@ -563,7 +564,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                 if (ll - bestll > 0) {
                     bestll <- ll; bestres <- res1; bestprobs <- probs
                 }
-                if (abs(ll - llold) > converged) {
+                if (abs(ll - llold) > converged | llold > ll) { # llold > ll probably hardly happens but when it does it prob goes into a cycle for 100 iterations
                     if (verbose) {
                         print("no convergence")
                     }
@@ -806,7 +807,7 @@ bootstrap <- function(x) {
     ## bootstrap on the components to get frequencies 
 }
 
-plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, ...) {
+plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = FALSE, ...) {
 
     if (global) {
         main <- paste(main, " - Joint dimension reduction.", sep = "")
@@ -830,10 +831,10 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
     
     par(oma=oma)
     if (legend) {
-    plotDnf(c("Sgenes=Egenes", "Egenes=Cells"), edgecol = rep("transparent", 2),
-            nodeshape = list(Sgenes = "circle", Egenes = "box", Cells = "diamond"),
-            nodelabel = list(Sgenes = "signaling\ngenes", Egenes = "effect\nreporters", Cells = "single\ncells"),
-            nodeheight = list(Sgenes = 2, Egenes = 0.5, Cells = 0.5), nodewidth = list(Sgenes = 2),
+    plotDnf(c("Sgenes=Egenes", "Egenes=Cells", "Cells=Fit"), edgecol = rep("transparent", 3),
+            nodeshape = list(Sgenes = "circle", Egenes = "box", Cells = "diamond", Fit = "circle"),
+            nodelabel = list(Sgenes = "signaling\ngenes", Egenes = "effect\nreporters", Cells = "single\ncells", Fit = "highest\nresponsibility"),
+            nodeheight = list(Sgenes = 2, Egenes = 0.5, Cells = 0.5, Fit = 0.5), nodewidth = list(Sgenes = 2, Egenes = 0.5, Cells = 0.5, Fit = 0.5),
             layout = "circo")
     }
     full <- x$comp[[1]]$phi
@@ -920,10 +921,24 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             cnodeheight <- NULL
             cnodewidth <- NULL
         }
+        if (bestCell) {
+            bnodes <- bnodeshape <- bnodeheight <- bnodewidth <- list()
+            gam <- apply((2^x$probs)*x$mw, 2, function(x) return(x/sum(x)))
+            for (bnode in sort(unique(colnames(gam)))) {
+                graph <- c(graph, paste0(bnode, "=bnode", bnode))
+                tmpN <- paste0("bnode", bnode)
+                bnodes[[tmpN]] <- paste0(round(max(gam[i, which(colnames(gam) %in% bnode)]), 2)*100, "%")
+                bnodeheight[[tmpN]] <- 0.5
+                bnodewidth[[tmpN]] <- 0.5
+                bnodeshape[[tmpN]] <- "circle"
+            }
+        } else {
+            bnodes <- bnodeshape <- bnodeheight <- bnodewidth <- NULL
+        }
         plotDnf(graph, main = paste("Cells: ", realpct[i], "% (unique: ", unipct[i], "%)\n
 Mixture weight: ", round(x$mw[i], 3)*100, "%",
 sep = ""), bordercol = i+1, width = 1, connected = FALSE, signals = shared, inhibitors = Sgenes,
-nodelabel = c(cnodes, enodes), nodeshape = c(cnodeshape, enodeshape), nodewidth = c(cnodeheight, enodewidth), nodeheight = c(cnodewidth, enodeheight))
+nodelabel = c(cnodes, enodes, bnodes), nodeshape = c(cnodeshape, enodeshape, bnodeshape), nodewidth = c(cnodeheight, enodewidth, bnodewidth), nodeheight = c(cnodewidth, enodeheight, bnodeheight))
         full <- net + full
     }
 

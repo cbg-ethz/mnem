@@ -138,7 +138,7 @@ Analogous to the previous likelihood formulation,
 \end{align}
 
 \subsection{Inference with a nested Expectation maximisation algorithm}
-We compute the responsibility of component $k$ for cell $i$.
+We use a variation of the Expected Maximization scheme (Dempster et al., 1977) for inference. We compute the responsibility of component $k$ for cell $i$.
 \begin{align}\label{eq:gammaki}
 \gamma(z_{ki}) &= P(z_{ki} = 1|d_i) = \frac{P(z_{ki} = 1)P(d_i|z_{ki} = 1)}{\sum\limits_{j=1}^KP(z_{ji} = 1)P(d_i|z_{ji} = 1)} = \frac{P(z_{ki} = 1)\frac{P(d_i|z_{ki} = 1)}{P(d_i|N)}}{\sum\limits_{j=1}^KP(z_{ji} = 1)\frac{P(d_i|z_{ji} = 1)}{P(d_i|N)}}\nonumber\\
 &=   \frac{\pi_k\prod\limits_{t=1}^m\frac{P(d_{ti}|e_{ti} = p_{it}^k)}{P(d_{ti}|e_{ti} = 0)}}{\sum\limits_{j=1}^K\pi_j\prod\limits_{t=1}^m\frac{P(d_{ti}|e_{ti} = p_{it}^j)}{P(d_{ti}|e_{ti} = 0)}} =   \frac{\pi_k\prod\limits_{t=1}^m \mathrm{exp}(p_{it}^kr_{ti})}{\sum\limits_{j=1}^K\pi_j\prod\limits_{t=1}^m\mathrm{exp}(p_{it}^j r_{ti})} = \frac{\pi_k\mathrm{exp}\left(\sum\limits_{t=1}^m p_{it}^k r_{ti}\right)}{\sum\limits_{j=1}^K\pi_j\mathrm{exp}\left(\sum\limits_{t=1}^mp_{it}^j r_{ti}\right)}\nonumber\\
