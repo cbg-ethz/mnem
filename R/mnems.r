@@ -1,25 +1,25 @@
 
 getIC <- function(x, AIC = TRUE, degree = 4) {
     fpar <- 0
-    for (i in 1:length(x$best$res)) {
-        tmp <- transitive.reduction(x$best$res[[i]]$adj)
+    for (i in 1:length(x$comp)) {
+        tmp <- transitive.reduction(x$comp[[i]]$phi)
         if (degree > 2) {
-            tmp <- transitive.closure(x$best$res[[i]]$adj, mat = TRUE)
+            tmp <- transitive.closure(x$comp[[i]]$phi, mat = TRUE)
         }
         diag(tmp) <- 0
         fpar <- fpar + sum(tmp != 0)
     }
     if (degree > 0) {
-        fpar <- fpar + length(x$best$res) - 1
+        fpar <- fpar + length(x$comp) - 1
     }
     if (degree > 1 & (degree != 3)) {
-        fpar <- fpar + length(x$best$res)*nrow(x$data)
+        fpar <- fpar + length(x$comp)*nrow(x$data)
     }
     n <- ncol(x$data)
     if (AIC) {
-        bic <- 2*fpar - 2*max(x$best$ll)
+        bic <- 2*fpar - 2*max(x$ll)
     } else {
-        bic <- log(n)*fpar - 2*max(x$best$ll)
+        bic <- log(n)*fpar - 2*max(x$ll)
     }
     return(bic)
 }
@@ -253,7 +253,7 @@ estimateSubtopo <- function(data) {
     return(subtopoX)
 }
 
-getProbs <- function(probs, k, data, res, method, n, affinity, converged, subtopoX = NULL, ratio = FALSE, logtype = 2) {
+getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, converged = 10^-2, subtopoX = NULL, ratio = FALSE, logtype = 2) {
     if (is.null(subtopoX)) {
         subtopoX <- estimateSubtopo(data)
     }
@@ -261,7 +261,7 @@ getProbs <- function(probs, k, data, res, method, n, affinity, converged, subtop
     bestprobs <- probsold <- probs
     time0 <- TRUE
     count <- 0
-    max_count <- 100 # if this is set to one I get slower convergence so max_iter in mnem main must be set higher
+    max_count <- 1 # if this is set to one I get slower convergence so max_iter in mnem main must be set higher
     ll0 <- 0
     stop <- FALSE
     mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE, logtype = logtype), 1, sum) # apply(logtype^probs, 1, sum)
@@ -354,13 +354,15 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
     Sgenes <- getSgenes(D)
     data <- D
     D <- NULL
-    tmp <- learnk(data, kmax = kmax)
     ## learn k:
     if (is.null(k) & is.null(start) & is.null(p)) {
+        tmp <- learnk(data, kmax = kmax)
         k <- tmp$k
         print(paste("components detected: ", k, sep = ""))
+        ks <- tmp$ks
+    } else {
+        ks <- rep(k, length(Sgenes))
     }
-    ks <- tmp$ks
     if (is.null(subtopoX)) {
         subtopoX <- estimateSubtopo(data)
     }
@@ -372,15 +374,17 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
             init <- initComps(data, k, starts, verbose, meanet)
             probscl <- NULL
         } else {
-            probscl <- initps(data, ks, k, starts = starts)
-            ## starts <- length(probscl)
+            if (type %in% "cluster") {
+                probscl <- initps(data, ks, k, starts = starts)
+                ## starts <- length(probscl)
+            }
         }
     } else {
         probscl <- NULL
     }
     ## if we start with specific membership values or networks we do not do several runs:
     if (!is.null(parallel)) { parallel2 <- NULL }
-    if (!is.null(start) | !is.null(p)) { starts <- length(start); k <- max(c(nrow(p), length(start[[1]]))) }
+    if (!is.null(start) | !is.null(p)) { starts <- length(start); k <- max(c(nrow(p), length(start))) }
     init <- start
     res1 <- NULL
     mw <- rep(1, k)/k
@@ -388,6 +392,9 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
     if (!is.null(parallel)) { parallel2 <- NULL }
     ## learn "mixture" of k = 1 or k > 1:
     if (k == 1) {
+        if (!is.null(init)) {
+            start <- start[[1]]
+        }
         if (!is.null(parallel) & is.null(parallel2)) { parallel2 <- parallel }
         print("no evidence for sub populations or k set to 1")
         limits <- list()
@@ -765,8 +772,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
         comp[[i]]$phi <- unique[[i]]$adj
         comp[[i]]$theta <- unique[[i]]$subtopo
     }
-    
-    res <- list(limits = limits, best = best, comp = comp, data = D.backup, mw = lambda, probs = probs)
+    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, ll = getLL(probs))
     class(res) <- "mnem"
     return(res)
 }
@@ -833,7 +839,7 @@ bootstrap <- function(x) {
     ## bootstrap on the components to get frequencies 
 }
 
-plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = FALSE, showprobs = FALSE, ...) {
+plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ...) {
 
     if (global) {
         main <- paste(main, " - Joint dimension reduction.", sep = "")
@@ -900,9 +906,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             enodewidth <- list()
             for (j in 1:SgeneN) {
                 tmpN <- paste("E", j, sep = "_")
-                probs <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype)
-                align <- scoreAdj(modData(x$data), x$comp[[i]]$phi, weights = probs[i, ], ...)
-                subtopo <- align$subtopo
+                probs <- x$probs
+                subtopo <- x$comp[[i]]$theta
                 enodes[[tmpN]] <- sum(subtopo == j)
                 enodeshape[[tmpN]] <- "box"
                 enodewidth[[tmpN]] <- 0.5
@@ -951,7 +956,12 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         }
         if (bestCell) {
             bnodes <- bnodeshape <- bnodeheight <- bnodewidth <- list()
-            gam <- apply((2^x$probs)*x$mw, 2, function(x) return(x/sum(x)))
+            if (nrow(x$probs) > 1) {
+                gam <- apply((2^x$probs)*x$mw, 2, function(x) return(x/sum(x)))
+            } else {
+                gam <- (2^x$probs)*x$mw
+                gam <- gam/gam
+            }
             for (bnode in sort(unique(colnames(gam)))) {
                 graph <- c(graph, paste0(bnode, "=bnode", bnode))
                 tmpN <- paste0("bnode", bnode)
@@ -963,6 +973,23 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         } else {
             bnodes <- bnodeshape <- bnodeheight <- bnodewidth <- NULL
         }
+        edgecol <- c(rep("black", pathedges), rep("grey", length(graph) - pathedges))
+        if (egenes) {
+            enodes[["Null"]] <- "NULL"
+            enodeshape[["Null"]] <- "circle"
+            enodewidth[["Null"]] <- 1
+            enodeheight[["Null"]] <- 1
+            nulltargets <- 0
+            for (j in 1:length(x$comp)) {
+                nulltargets <- nulltargets + sum(x$comp[[j]]$theta == max(x$comp[[j]]$theta))
+            }
+            enodes[["Nulltargets"]] <- nulltargets
+            enodeshape[["Nulltargets"]] <- "box"
+            enodewidth[["Nulltargets"]] <- 0.5
+            enodeheight[["Nulltargets"]] <- 0.5
+            graph <- c(graph, "Null=Nulltargets")
+        }
+        edgecol <- c(rep("black", pathedges), rep("grey", length(graph) - pathedges))
         plotDnf(graph, main = paste("Cells: ", realpct[i], "% (unique: ", unipct[i], "%)\n
 Mixture weight: ", round(x$mw[i], 3)*100, "%",
 sep = ""), bordercol = i+1, width = 1, connected = FALSE, signals = shared,
@@ -970,7 +997,7 @@ inhibitors = Sgenes, nodelabel = c(cnodes, enodes, bnodes),
 nodeshape = c(cnodeshape, enodeshape, bnodeshape),
 nodewidth = c(cnodeheight, enodewidth, bnodewidth),
 nodeheight = c(cnodewidth, enodeheight, bnodeheight),
-edgecol = c(rep("black", pathedges), rep("grey", length(graph) - pathedges)))
+edgecol = edgecol)
         full <- net + full
     }
 

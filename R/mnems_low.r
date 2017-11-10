@@ -390,7 +390,7 @@ plot.mynem <- function(x, ...) {
 }
 
 simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
-                    Nems = 2, reps = NULL, mw = NULL, evolution = TRUE,
+                    Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE) {
     Nem <- list()
     data <- NULL

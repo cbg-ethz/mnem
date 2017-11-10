@@ -14,26 +14,26 @@ done
 module load repo/grid
 module load grid/grid
 
-for i in `seq 1 100`; do
+for i in `seq 1 2`; do
     file=${runnames[$RANDOM % ${#runnames[@]}]}${i}.sh
     echo "module load repo/grid" >> $file
     echo "module load grid/grid" >> $file
     echo "module load gcc/5.3.0" >> $file
     echo "module load R/3.4.0" >> $file
-    echo "R --slave 'Sgenes=3' 'run=$i' 'noise=1:4' 'nem=9' < mnem/vignettes/sim.R" >> $file
+    echo "R --slave 'Sgenes=3' 'run=$i' 'noise=1:3' 'nem=1:4' < mnem/vignettes/sim.R" >> $file
     qsub -q mpi01.q -pe make 1 $file
     sleep 1
     rm $file
 done
 
 for i in `seq 54 100`; do
-    for j in `seq 1 4`; do
+    for j in `seq 1 3`; do
 	file=${runnames[$RANDOM % ${#runnames[@]}]}${i}_${j}.sh
 	echo "module load repo/grid" >> $file
 	echo "module load grid/grid" >> $file
 	echo "module load gcc/5.3.0" >> $file
 	echo "module load R/3.4.0" >> $file
-	echo "R --slave 'Sgenes=10' 'run=$i' 'noise=$j' 'nem=1:9' < mnem/vignettes/sim.R" >> $file
+	echo "R --slave 'Sgenes=10' 'run=$i' 'noise=$j' 'nem=1:4' < mnem/vignettes/sim.R" >> $file
 	qsub -q mpi04-ht.q -pe make 1 $file
 	sleep 1
 	rm $file
@@ -41,8 +41,8 @@ for i in `seq 54 100`; do
 done
 
 for i in `seq 1 100`; do
-    for j in `seq 1 4`; do
-	for k in `seq 1 9`; do
+    for j in `seq 1 3`; do
+	for k in `seq 1 4`; do
 	    file=${runnames[$RANDOM % ${#runnames[@]}]}${i}_${j}_${k}.sh
 	    echo "module load repo/grid" >> $file
 	    echo "module load grid/grid" >> $file
@@ -86,31 +86,20 @@ source("~/Documents/mnem/R/mnems_low.r")
 
 ## variable parameters:
 runs <- 10
-noises <- c(0.1, 1, 2.5, 5)
+noises <- c(1, 2.5, 5)
 binoises <- c(0.01, 0.1, 0.2, 0.5)
-redSpace <- NULL
-
-## fixed parameters:
-max_iter <- 100
-initnets <- FALSE
 
 acc <- acc2 <- sens <- spec <- mwcor <- numeric(runs)
 
 Sgenes <- 3
 Egenes <- 10
-nem <- 10
-starts <- 15#Sgenes#*nem#*10
+nem <- 1
+maxk <- 6
+starts <- 4
+search <- "modules"
 noise <- 1
 parallel <- 2
-parallel2 <- NULL
 verbose <- TRUE
-affinity <- 0
-evolution <- FALSE
-inference <- "em"
-ratio <- TRUE
-bin <- FALSE
-method <- "llr"
-unitheta <- FALSE
 
 if (inference %in% "greedy") {
     starts <- 1
@@ -135,8 +124,7 @@ for (run in 1:length(acc)) {
     mw <- runif(nem, 0.1, 1)
     mw <- mw/sum(mw)
     sim <- simData(Sgenes = Sgenes, Egenes = Egenes, nCells = nCells,
-                   Nems = nem, evolution = evolution, unitheta = unitheta
-                 , uninform = floor(Egenes*Sgenes*0.1), mw = mw)
+                   Nems = nem, uninform = floor(Egenes*Sgenes*0.1), mw = mw)
     simfull <- NULL
     fullsim <- sim$Nem[[1]]*0
     gtn <- list()
@@ -166,7 +154,7 @@ for (run in 1:length(acc)) {
     }
 
     init <- list()
-    init[[1]] <- sim$Nem
+    init <- sim$Nem
     theta <- list()
     theta[[1]] <- sim$theta
     p <- matrix(0, nem, ncol(data))
@@ -175,17 +163,12 @@ for (run in 1:length(acc)) {
     }
     p <- log2(p)
     
-    gtnll <- TRUE
+    gtnll <- FALSE
     if (gtnll) {
         gtnll <- mnem(data,
-                      inference = "em",
                       max_iter = 0,
                       start = init,
-                      p = p,
-                      affinity = affinity,
-                      evolution = evolution,
-                      ratio = ratio,
-                      method = method
+                      p = p
                       )
         print(paste0("GTN ll: ", gtnll$best$ll))
     }
@@ -198,7 +181,7 @@ for (run in 1:length(acc)) {
     ## test:
     if (FALSE) {
         ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r");
-        mw2 <- apply(getAffinity(p, affinity = affinity, norm = TRUE, mw = mw), 1, sum) # apply(2^p, 1, sum)
+        mw2 <- apply(getAffinity(p, norm = TRUE, mw = mw), 1, sum) # apply(2^p, 1, sum)
         mw2 <- mw2/sum(mw2)
         if (any(is.na(mw2))) { mw2 <- rep(1, k)/k }
         data2 <- modData(data)
@@ -213,7 +196,7 @@ for (run in 1:length(acc)) {
             } else {
                 probs <- matrix(i - 1, k, ncol(data2))
             }
-            probs <- getProbs(probs, k, data2, gtn, method, n, affinity, converged = 10^-16, subtopoX=NULL, ratio)
+            probs <- getProbs(probs, k, data2, gtn, n=n)
             if (getLL(probs$probs) > getLL(probs0$probs)) {
                 probs0 <- probs
             }
@@ -221,8 +204,8 @@ for (run in 1:length(acc)) {
         subtopoX <- probs0$subtopoX
         probs <- probs0$probs
         p2 <- apply((2^probs)*mw2, 2, function(x) return(x/sum(x)))
-        p3 <- getAffinity(p, affinity = affinity, norm = TRUE, mw = mw2)
-        p4 <- getAffinity(probs, affinity = affinity, norm = TRUE, mw = mw2)
+        p3 <- getAffinity(p, norm = TRUE, mw = mw2)
+        p4 <- getAffinity(probs, norm = TRUE, mw = mw2)
         print(getLL(probs))
         HeatmapOP(rbind(sim$index,
                         2^p,
@@ -239,64 +222,19 @@ for (run in 1:length(acc)) {
     start <- Sys.time()
     if (do == 1) {
         ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r"); parallel <- NULL
-        res <- mnem(data, starts = starts,
-                    search = "modules",
-                    inference = inference,
-                    max_iter = max_iter,
-                    start = init,
-                    p = p,
-                    verbose = verbose,
-                    parallel = parallel,
-                    parallel2= parallel2,
-                    affinity = affinity,
-                    evolution = evolution,
-                    ratio = ratio,
-                    method = method,
-                    initnets = initnets,
-                    popSize = popSize,
-                    stallMax = stallMax#, k = 1
-                    )
-        ## getBIC <- function(x, AIC = FALSE) {
-        ##     fpar <- 0
-        ##     for (i in 1:length(x$best$res)) {
-        ##         tmp <- transitive.reduction(x$best$res[[i]]$adj)
-        ##         #tmp <- transitive.closure(x$best$res[[i]]$adj, mat = TRUE)
-        ##         diag(tmp) <- 0
-        ##         fpar <- fpar + sum(tmp != 0)
-        ##     }
-        ##     n <- ncol(x$data)
-        ##     if (AIC) {
-        ##         bic <- 2*fpar - 2*max(x$best$ll)
-        ##     } else {
-        ##         bic <- log(n)*fpar*length(x$best$res)*nrow(x$data) - 2*max(x$best$ll)
-        ##         bic <- log(n)*fpar*length(x$best$res) - 2*max(x$best$ll)
-        ##     }
-        ##     return(bic)
-        ## }
-        ## res <- list()
-        ## for (k in 1:5) {
-        ##     res[[k]] <- mnem(data, starts = starts,
-        ##                      search = "modules",
-        ##                      inference = inference,
-        ##                      max_iter = max_iter,
-        ##                      start = init,
-        ##                      p = p,
-        ##                      verbose = verbose,
-        ##                      parallel = parallel,
-        ##                      parallel2= parallel2,
-        ##                      affinity = affinity,
-        ##                      evolution = evolution,
-        ##                      ratio = ratio,
-        ##                      method = method,
-        ##                      initnets = initnets,
-        ##                      popSize = popSize,
-        ##                      stallMax = stallMax, k = k
-        ##                      )
-        ## }
-        ## for (k in 1:5) {
-        ##     print(res[[k]]$best$ll)
-        ##     print(getBIC(res[[k]]))
-        ## }
+        res <- list()
+        bics <- rep(Inf, maxk)
+        for (k in 1:maxk) {
+            res[[k]] <- mnem(data, starts = starts,
+                        search = search,
+                        start = init,
+                        p = p,
+                        verbose = verbose,
+                        parallel = parallel, k = k
+                        )
+            bics[k] <- getIC(res[[k]])
+        }
+        res <- res[[which.min(bics)]]
     } else {
         ## init <- NULL
         D <- modData(data)
@@ -389,11 +327,12 @@ source("~/Documents/mnem/R/mnems.r")
 source("~/Documents/mnem/R/mnems_low.r")
 Sgenes <- 10
 Egenes <- 10
-noise <- 1
+noise <- 2
 binoise <- 0.1
 runs <- 10
 ratio <- TRUE
 bin <- FALSE
+beta <- 1.5
 prior <- simData(Sgenes = Sgenes, Egenes = Egenes, reps = 10, Nems = 1)$Nem[[1]]
 sens <- sens2 <- 0
 spec <- spec2 <- 0
@@ -415,6 +354,13 @@ for (i in 1:runs) {
     }
     if (!bin) {
         data <- data + rnorm(length(sim$data), 0, noise)
+    }
+    if (!is.null(beta)) {
+        noise <- beta
+        data <- sim$data
+        data[which(data == 1)] <- log(rbeta(sum(data == 1), noise, 1)/rbeta(sum(data == 1), 1, noise))
+        data[which(data == 0)] <- log(rbeta(sum(data == 0), 1, noise)/rbeta(sum(data == 0), noise, 1))
+        HeatmapOP(data)
     }
     start <- Sys.time()
     ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r")
