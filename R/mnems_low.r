@@ -113,7 +113,7 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
             subdata <- data[, which(colnames(data) %in% subset)]
             tmp <- mynem(subdata, search = search, method = method,
                          parallel = parallel, reduce = reduce,
-                         weights = weights, verbose = verbose,
+                         weights = weights[which(colnames(data) %in% subset)], verbose = verbose,
                          redSpace = redSpace, trans.close = trans.close,
                          subtopo = subtopo, prior = prior, ratio = ratio,
                          domean = FALSE)

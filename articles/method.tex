@@ -184,7 +184,7 @@ Datlinger, et al. 2017 combine pooled CrispR screening with single-cell RNA sequ
 We map each gene to pathways from the KEGG (Kanehisa et al.) database. This leaves us with ten pathways with each containing a subset of the knock-down targets. For each pathway we take the subset of the data set including only those targets which are involved in the pathway. We use M\&NEM to infer the most likely mixture of pathways. We start with number of components $k=2$ and increase $k$ as long as the Bayesian information criteria increases. 
 
 \begin{figure}
-\includegraphics[width=1\textwidth]{cropseq_ex.pdf}
+\includegraphics[width=1\textwidth]{cropseq_A.pdf}%\includegraphics[width=0.33\textwidth]{cropseq_kegg.pdf}
 \caption{\textbf{Crop-seq result} Circles show the perturbed genes. Boxes denote the a posteriori E-gene attachments. Diamonds show the numbers for the a posteriori hard clustering of the cells. }\label{fig:cropseq}
 \end{figure}
 
@@ -222,6 +222,10 @@ Figure~\ref{fig:ident} shows an example of two mixtures with $k=2$ each. If we a
 \caption{\textbf{Model identifiability} \textbf{(A)} Mixture of two components (blue, red) with their respective attached cells (data) below. Dark areas are effects and light areas are no effects. Each column of the data is a cell and each row is the effect pattern for gene $E\_X$ attached to S-gene $X$. \textbf{(B)} Identical mixture to \textbf{A}. The first columns (cells) have been switched. Overall the data stays the same, but the network components changed.}\label{fig:ident}
 \end{center}
 \end{figure}
+
+\subsection{NEM inference}
+
+We employ a logical extension of the module network approach of Fröhlich et al., 2009. We cluster knock-outs into groups of n (e.g. $n=4$) and perform a local neighbourhood search on each group. We combine the inferred sub-networks to one large network including all S-genes and use it as the initial network for a local neighbourhood search on the full set of S-genes.
 
 \subsection{Employment of AIC to identify number of components}
 
