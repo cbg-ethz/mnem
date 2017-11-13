@@ -550,8 +550,6 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                         thetachange <- thetachange + sum(res[[i]]$subtopo != res1[[i]]$subtopo)
                         res[[i]]$D <- NULL
                         res[[i]]$subweights <- NULL
-                        res[[i]]$subtopo <- NULL
-                        res[[i]]$scores <- NULL
                         
                     }
                     evopen <- 0
@@ -839,7 +837,7 @@ bootstrap <- function(x) {
     ## bootstrap on the components to get frequencies 
 }
 
-plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ...) {
+plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ratio = TRUE, method = "llr", ...) {
 
     if (global) {
         main <- paste(main, " - Joint dimension reduction.", sep = "")
@@ -904,10 +902,16 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             enodeshape <- list()
             enodeheight <- list()
             enodewidth <- list()
+            probs <- x$probs
+            if (is.null(x$comp[[i]]$theta)) {
+                weights <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw)
+                subtopo <- scoreAdj(modData(x$data), x$comp[[i]]$phi, method = method, weights = weights[i, ],
+                                    ratio = ratio, ...)$subtopo
+            } else {
+                subtopo <- x$comp[[i]]$theta
+            }
             for (j in 1:SgeneN) {
                 tmpN <- paste("E", j, sep = "_")
-                probs <- x$probs
-                subtopo <- x$comp[[i]]$theta
                 enodes[[tmpN]] <- sum(subtopo == j)
                 enodeshape[[tmpN]] <- "box"
                 enodewidth[[tmpN]] <- 0.5
