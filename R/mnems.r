@@ -345,7 +345,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                  redSpace = NULL, affinity = 0, evolution = FALSE,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
                  popSize = 10, stallMax = 2, elitism = NULL, maxGens = Inf,
-                 domean = TRUE, modulesize = 4) {
+                 domean = TRUE, modulesize = 5) {
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
         redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)], search = "exhaustive", reduce = TRUE, verbose = verbose, parallel = c(parallel, parallel2), subtopo = subtopoX, ratio = ratio, domean = FALSE, modulesize = modulesize)$redSpace
     }
@@ -377,10 +377,12 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
             if (type %in% "cluster") {
                 probscl <- initps(data, ks, k, starts = starts)
                 ## starts <- length(probscl)
+            } else {
+                probscl <- 0
             }
         }
     } else {
-        probscl <- NULL
+        probscl <- 0
     }
     ## if we start with specific membership values or networks we do not do several runs:
     if (!is.null(parallel)) { parallel2 <- NULL }
@@ -578,9 +580,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                     probs <- probs0$probs
                     modelsize <- n*n*k
                     datasize <- nrow(data)*ncol(data)*k
-                    ll <- getLL(probs, logtype = logtype, mw = mw) + evopen*datasize*(modelsize^-1) # the probs are already log ratios! marginal or maximal? same with affinity=1
-                    mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, sum) # apply(logtype^probs, 1, sum)
-                    mw <- mw/sum(mw)
+                    ll <- getLL(probs, logtype = logtype, mw = mw) + evopen*datasize*(modelsize^-1)
+                    mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, mean)
                     if(verbose) {
                         print(paste("ll: ", ll, sep = ""))
                         print(paste("changes in phi(s): ", edgechange, sep = ""))
@@ -758,7 +759,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
     unique <- unique2
     probs <- best$probs[added, , drop = FALSE]
     colnames(probs) <- colnames(D.backup)
-    postprobs <- apply(2^probs, 2, function(x) return(x/sum(x)))
+    postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
     if (!is.null(dim(postprobs))) {
         lambda <- apply(postprobs, 1, mean)
     } else {
@@ -770,7 +771,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
         comp[[i]]$phi <- unique[[i]]$adj
         comp[[i]]$theta <- unique[[i]]$subtopo
     }
-    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, ll = getLL(probs))
+    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, ll = getLL(probs, logtype = logtype, mw = mw))
     class(res) <- "mnem"
     return(res)
 }
