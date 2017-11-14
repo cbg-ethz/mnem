@@ -337,7 +337,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
 }
 
 mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = "llr",
-                 parallel = NULL, reduce = FALSE, runs = 1, starts = 3, type = "cluster", # can be random
+                 parallel = NULL, reduce = FALSE, runs = 1, starts = 3, type = "random", # can be "cluster"
                  p = NULL, k = NULL, kmax = 10, verbose = FALSE,
                  max_iter = 100, parallel2 = NULL, converged = 10^-1,
                  redSpace = NULL, affinity = 0, evolution = FALSE,
@@ -370,7 +370,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                                parallel = parallel2, reduce = reduce, runs = runs,
                                verbose = verbose, redSpace = redSpace, ratio = ratio, domean = domean, modulesize = modulesize)
             init <- initComps(data, k, starts, verbose, meanet)
-            probscl <- NULL
+            probscl <- 0
         } else {
             if (type %in% "cluster") {
                 probscl <- initps(data, ks, k, starts = starts)
