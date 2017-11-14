@@ -496,7 +496,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                     edgechange <- 0
                     thetachange <- 0
                     for (i in 1:k) {
-                        if (!is.null(res1)) {
+                        if (!is.null(res1) & !("modules" %in% search)) {
                             start0 <- res1[[i]]$adj
                         } else {
                             start0 <- NULL
