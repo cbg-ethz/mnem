@@ -264,8 +264,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
     max_count <- 1 # if this is set to one I get slower convergence so max_iter in mnem main must be set higher
     ll0 <- 0
     stop <- FALSE
-    mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE, logtype = logtype), 1, sum) # apply(logtype^probs, 1, sum)
-    mw <- mw/sum(mw)
+    mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE, logtype = logtype), 1, mean)
     if (any(is.na(mw))) { mw <- rep(1, k)/k }
     while((!stop | time0) & count < max_count) {
         llold <- max(ll0)
@@ -329,8 +328,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
         if (abs(max(ll0) - llold) <= converged) {
             stop <- TRUE
         }
-        mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, sum) # apply(bestprobs, 1, sum)
-        mw <- mw/sum(mw)
+        mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, mean)
         count <- count + 1
         ## if (verbose) { print(max(ll0)) }
     }
@@ -465,17 +463,14 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                     if (length(probscl) >= s & type %in% "cluster") {
                         probs <- probscl[[s]]
                     } else {
-                        probs <- matrix(log2(sample(c(0,1), k*ncol(data), replace = TRUE, prob = c(0.9, 0.1))), k, ncol(data)) # how are those probse inferred?
+                        probs <- matrix(log2(sample(c(0,1), k*ncol(data), replace = TRUE, prob = c(0.9, 0.1))), k, ncol(data))
                     }
-                    ## mw <- rep(1, nrow(probs))/nrow(probs)
-                    mw <- apply(logtype^probs, 1, sum)
-                    mw <- mw/sum(mw)
+                    mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, mean)
                 } else {
                     k <- nrow(p)
                     probs <- p
                 }
-                mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, sum) # apply(logtype^probs, 1, sum)
-                mw <- mw/sum(mw)
+                mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, mean)
                 if (any(is.na(mw))) { mw <- rep(1, k)/k }
                 if (verbose) {
                     print(paste("start...", s))
@@ -754,8 +749,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
     unique2 <- list()
     for (i in ulength) {
         count <- count + 1
-        unique2[[count]] <- unique[[i]]
-    }
+        unique2[[count]] <- unique[[i]]    }
     unique <- unique2
     probs <- best$probs[added, , drop = FALSE]
     colnames(probs) <- colnames(D.backup)
@@ -838,7 +832,7 @@ bootstrap <- function(x) {
     ## bootstrap on the components to get frequencies 
 }
 
-plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ratio = TRUE, method = "llr", ...) {
+plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ratio = TRUE, method = "llr", logtype = 2, ...) {
 
     if (global) {
         main <- paste(main, " - Joint dimension reduction.", sep = "")
@@ -962,7 +956,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         if (bestCell) {
             bnodes <- bnodeshape <- bnodeheight <- bnodewidth <- list()
             if (nrow(x$probs) > 1) {
-                gam <- apply((2^x$probs)*x$mw, 2, function(x) return(x/sum(x)))
+                gam <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw)
             } else {
                 gam <- (2^x$probs)*x$mw
                 gam <- gam/gam
@@ -1012,7 +1006,6 @@ edgecol = edgecol)
             plot.adj(full)
         }
         if (nrow(pnorm) > 1) {
-            
             pnorm <- apply(logtype^x$probs, 2, function(x) return(x/sum(x)))
             if (is.null(dim(pnorm))) {
                 pnorm <- matrix(pnorm, 1, length(pnorm))
