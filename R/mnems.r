@@ -979,10 +979,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             enodeshape[["Null"]] <- "circle"
             enodewidth[["Null"]] <- 1
             enodeheight[["Null"]] <- 1
-            nulltargets <- 0
-            for (j in 1:length(x$comp)) {
-                nulltargets <- nulltargets + sum(x$comp[[j]]$theta == max(x$comp[[j]]$theta))
-            }
+            nulltargets <- sum(subtopo == (SgeneN+1))
             enodes[["Nulltargets"]] <- nulltargets
             enodeshape[["Nulltargets"]] <- "box"
             enodewidth[["Nulltargets"]] <- 0.5
