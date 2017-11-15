@@ -141,13 +141,14 @@ initps <- function(data, ks, k, starts = 3) {
 modData <- function(D) {
     SgeneN <- getSgeneN(D)
     Sgenes <- sort(unique(colnames(D)))
-    if (any(is.na(as.numeric(Sgenes)) == TRUE)) {
+    if (!all(is.numeric(Sgenes))) {
         colnamesD <- numeric(ncol(D))
         for (i in 1:SgeneN) {
             colnamesD[which(colnames(D) %in% Sgenes[i])] <- i
         }
         colnames(D) <- as.numeric(colnamesD)
     }
+    rownames(D) <- as.numeric(1:nrow(D))
     return(D)
 }
 
