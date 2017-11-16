@@ -348,6 +348,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
         redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)], search = "exhaustive", reduce = TRUE, verbose = verbose, parallel = c(parallel, parallel2), subtopo = subtopoX, ratio = ratio, domean = FALSE, modulesize = modulesize)$redSpace
     }
+    if (!is.null(parallel)) { if (parallel == 1) { parallel <- NULL } }
     D.backup <- D
     D <- modData(D)
     Sgenes <- getSgenes(D)
