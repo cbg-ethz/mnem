@@ -767,7 +767,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
         comp[[i]]$phi <- unique[[i]]$adj
         comp[[i]]$theta <- unique[[i]]$subtopo
     }
-    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, ll = getLL(probs, logtype = logtype, mw = mw))
+    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, ll = getLL(probs, logtype = logtype, mw = lambda))
     class(res) <- "mnem"
     return(res)
 }
