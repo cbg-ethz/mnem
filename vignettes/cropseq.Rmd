@@ -311,30 +311,63 @@ for (i in 1:length(res)) {
 
 ## paper:
 
-i <- 3
+load("cropseq_mnem_agg.rda")
+load("cropseq_kegg.rda")
 
-pdf("temp.pdf", width = 14, height = 8)
+pdf("temp.pdf", width = 6, height = 5)
+
+maxk <- 5
+
+bics <- rep(Inf, maxk)
+
+ll <- rep(Inf, maxk)
+
+for (i in 1:maxk) {
+    
+    bics[i] <- getIC(res[[i]], AIC = TRUE)
+
+    ll[i] <- max(res[[i]]$best$ll)
+
+}
+
+ll2 <- ll
+
+ll <- ll - min(ll) + min(bics)
+
+ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
+
+par(mar=c(5,5,1,5))
+plot(bics, type = "b", ylab = "AIC", col = "red", xlab = "AIC (red) and log likelihood (blue) as a function of number of components", yaxt = "n", ylim = c(min(ll), max(ll)))
+lines(ll, type = "b", col = "blue")
+axis(4, ll3, round(ll3 + min(ll2) - min(bics)))
+axis(2, ll3, round(ll3))
+mtext("unnormalized log likelihood", side=4, line=3)
+
+dev.off()
+
+source("~/Documents/mnem/R/mnems.r")
+
+pdf("temp.pdf", width = 20, height = 10)
+
+i <- 2
 
 plot(res[[i]])
 
-mtext("A", side = 3, line = 2.5, outer = FALSE, cex = 2.5, adj = 0,
-      at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*2.5)
+## mtext("A", side = 3, line = 1, outer = FALSE, cex = 2.5, adj = 0,
+##       at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*2)
 
-mtext("B", side = 3, line = 2.5, outer = FALSE, cex = 2.5, adj = 0,
-      at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(1.25))
-
-mtext("C", side = 3, line = 2.5, outer = FALSE, cex = 2.5, adj = 0,
-      at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(0.05))
+## mtext("B", side = 3, line = 2, outer = FALSE, cex = 2.5, adj = 0,
+##       at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(-2))
 
 dev.off()
 
-pdf("temp.pdf", width = 5, height = 5)
+pdf("temp.pdf", width = 6, height = 8)
 
-plot(res$bic, type = "b", xlim = c(1,4), ylab = "BIC", xlab = "components k", xaxt = "n")
-
-axis(1, 1:4, 1:4)
+plot.adj(kegg)
 
 dev.off()
+
+## profiling
 
 Rprof()
 

@@ -37,14 +37,14 @@ start1 <- as.numeric(format(Sys.time(), "%s"))
 
 ## variable parameters:
 runs <- 100
-noises <- c(0.1, 1, 2.5, 5)
-nems <- 2:10
+noises <- c(1, 2.5, 5, 10)
+nems <- 1:10
+maxk <- 5
 
 ## fixed parameters:
-starts <- 15 # make it dependent on the learnt k
+starts <- 10 # make it dependent on the learnt k
 search <- "modules"
-
-if (Sgenes < 8) { search <- "greedy" }
+verbose <- FALSE
 
 ## mixing parameters:
 Egenes <- 10
@@ -93,7 +93,18 @@ for (donoise in noise) {
         ## random p:
         p <- NULL
         start <- as.numeric(format(Sys.time(), "%s"))
-        res <- mnem(data, starts = starts, verbose = T, type = "random", search = search)
+        res <- list()
+        if (maxk == 1) {
+            res <- mnem(data, starts = starts, search = search, verbose = verbose)
+        } else {
+            bics <- rep(Inf, maxk)
+            for (k in 1:maxk) {
+                res[[k]] <- mnem(data, starts = starts, search = search, k = k, verbose = verbose)
+                bics[k] <- getIC(res[[k]], AIC = TRUE)
+            }
+            res1 <- res[[1]]
+            res <- res[[which.min(bics)]]
+        }
         simres[run, donoise, donem, 1, 1] <- as.numeric(format(Sys.time(), "%s")) - start
         resfull <- NULL
         fullres <- res$comp[[1]]$phi*0
@@ -127,7 +138,7 @@ for (donoise in noise) {
         start <- as.numeric(format(Sys.time(), "%s"))
         nemres <- mynem(data, search = search)
         simres[run, donoise, donem, 2, 1] <- as.numeric(format(Sys.time(), "%s")) - start
-        fullnem <- transitive.closure(nemres$adj, mat = TRUE)
+        fullnem <- transitive.closure(res1$comp[[1]]$phi, mat = TRUE) # transitive.closure(nemres$adj, mat = TRUE)
         diag(fullnem) <- 1
 
         simres[run, donoise, donem, 2, 2] <- 1/nems[donem]
