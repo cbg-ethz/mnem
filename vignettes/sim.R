@@ -5,7 +5,7 @@ run <- gsub("run=", "", args[grep("run=", args)])
 noise <- gsub("noise=", "", args[grep("noise=", args)])
 nem <- gsub("nem=", "", args[grep("nem=", args)])
 
-# nem <- 1:2; noise <- run <- 1; affinity <- 0; Sgenes <- 3
+# nem <- 1; noise <- run <- 1; Sgenes <- 3
 
 if (length(grep(":", nem)) > 0) {
     nem <- as.numeric(gsub(":.*", "", nem)):as.numeric(gsub(".*:", "", nem))
@@ -39,7 +39,7 @@ start1 <- as.numeric(format(Sys.time(), "%s"))
 runs <- 100
 noises <- c(1, 2.5, 5, 10)
 nems <- 1:10
-maxk <- 5
+maxk <- 1
 
 ## fixed parameters:
 starts <- 10 # make it dependent on the learnt k
@@ -47,7 +47,7 @@ search <- "modules"
 verbose <- FALSE
 
 ## mixing parameters:
-Egenes <- 10
+Egenes <- 2
 nCells <- 1000#*Sgenes#*nems[nem] # cells are fixed we cannot tweak the number except of course we have more cells with more sgenes! but only for the tix data set and not for pooled screens
 
 simres <- array(0, c(runs, length(noises), length(nems), 4, 6), list(paste("run_", 1:runs, sep = ""), paste("noise_", noises, sep = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing")))
@@ -138,7 +138,11 @@ for (donoise in noise) {
         start <- as.numeric(format(Sys.time(), "%s"))
         nemres <- mynem(data, search = search)
         simres[run, donoise, donem, 2, 1] <- as.numeric(format(Sys.time(), "%s")) - start
-        fullnem <- transitive.closure(res1$comp[[1]]$phi, mat = TRUE) # transitive.closure(nemres$adj, mat = TRUE)
+        if (maxk == 1) {
+            fullnem <- transitive.closure(nemres$adj, mat = TRUE)
+        } else {
+            fullnem <- transitive.closure(res1$comp[[1]]$phi, mat = TRUE)
+        }
         diag(fullnem) <- 1
 
         simres[run, donoise, donem, 2, 2] <- 1/nems[donem]
