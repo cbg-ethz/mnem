@@ -538,8 +538,10 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                             }
                             res[[i]] <- test01[[which.max(test01scores)]]
                         }
-                        edgechange <- edgechange + sum(abs(res[[i]]$adj - res1[[i]]$adj))
-                        thetachange <- thetachange + sum(res[[i]]$subtopo != res1[[i]]$subtopo)
+                        if (!is.null(res1)) {
+                            edgechange <- edgechange + sum(abs(res[[i]]$adj - res1[[i]]$adj))
+                            thetachange <- thetachange + sum(res[[i]]$subtopo != res1[[i]]$subtopo)
+                        }
                         res[[i]]$D <- NULL
                         res[[i]]$subweights <- NULL
                         
