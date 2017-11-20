@@ -187,15 +187,8 @@ learnk <- function(data, kmax = 10, verbose = FALSE) {
             }
         }
     }
-    # kmax <- min(c(length(unique(colnames(data))), kmax)) # max number of Sgenes
     k <- min(kmax, max(ks))
     return(list(ks = ks, k = k, lab = lab))
-}
-
-lo2ll <- function(x, logtype = 2) {
-    x <- (logtype^x)/(logtype^x + 1)
-    x <- log(x)/log(logtype)
-    return(x)
 }
 
 getLL <- function(x, logtype = 2, mw = NULL) {
@@ -254,7 +247,7 @@ estimateSubtopo <- function(data) {
     return(subtopoX)
 }
 
-getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, converged = 10^-2, subtopoX = NULL, ratio = FALSE, logtype = 2) {
+getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, converged = 10^-2, subtopoX = NULL, ratio = TRUE, logtype = 2) {
     if (is.null(subtopoX)) {
         subtopoX <- estimateSubtopo(data)
     }
@@ -262,7 +255,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
     bestprobs <- probsold <- probs
     time0 <- TRUE
     count <- 0
-    max_count <- 1 # if this is set to one I get slower convergence so max_iter in mnem main must be set higher
+    max_count <- 100
     ll0 <- 0
     stop <- FALSE
     mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE, logtype = logtype), 1, mean)
@@ -320,13 +313,13 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
         } else {
             sdo <- which.max(ll0) - 1
         }
-        if (max(ll0) - llold > converged) {
+        if (max(ll0) - llold > 0) {
             bestprobs <- probs0[[which.max(ll0)]]
             bestsubtopoY <- subtopo0[sdo, ]
         }
         probs <- probs0[[which.max(ll0)]]
         subtopoY <- subtopo0[sdo, ]
-        if (abs(max(ll0) - llold) <= converged) {
+        if (max(ll0) - llold <= converged) {
             stop <- TRUE
         }
         mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, mean)
@@ -430,7 +423,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                 transitive.closure <- nem::transitive.closure
                 transitive.reduction <- nem::transitive.reduction
                 sfInit(parallel = T, cpus = parallel)
-                sfExport("modules", "lo2ll", "mw", "ratio", "getSgeneN", "modData", "sortAdj", "calcEvopen", "evolution", "transitive.reduction", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "transitive.closure", "max_iter", "verbose", "llrScore", "search", "redSpace", "affinity", "getProbs", "probscl", "method")#, "start", "better", "traClo", "method", "scoreAdj", "weights", "transitive.closure")
+                sfExport("modules", "mw", "ratio", "getSgeneN", "modData", "sortAdj", "calcEvopen", "evolution", "transitive.reduction", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "transitive.closure", "max_iter", "verbose", "llrScore", "search", "redSpace", "affinity", "getProbs", "probscl", "method")#, "start", "better", "traClo", "method", "scoreAdj", "weights", "transitive.closure")
             }
             do_inits <- function(s) {
                 ## initial with random membership values if not input is given:
@@ -484,7 +477,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                 count <- 0
                 time0 <- TRUE
                 probsold <- probs
-                while ((abs(ll - llold) > converged & count < max_iter) | time0) {
+                while ((ll - llold > converged & count < max_iter) | time0) {
                     if (!time0) {
                         if (ll - bestll > 0) {
                             bestll <- ll; bestres <- res1; bestprobs <- probs

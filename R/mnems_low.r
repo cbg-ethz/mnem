@@ -4,7 +4,7 @@
 
 tinem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1, verbose = FALSE, redSpace = NULL,
-                  trans.close = TRUE, subtopo = NULL, prior = NULL, ratio = FALSE, timeseries = NULL, max_iter = 100, evolution = TRUE) {
+                  trans.close = TRUE, subtopo = NULL, prior = NULL, ratio = TRUE, timeseries = NULL, max_iter = 100, evolution = TRUE) {
     if (is.null(timeseries)) {
         res <- mynem(D = data, search = search, start = start, method = method,
                      parallel = parallel, reduce = reduce, runs = runs,
