@@ -96,6 +96,7 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
     D <- NULL
     n <- getSgeneN(data)
     cordata <- cor(sumdata)
+    cordata[is.na(cordata)] <- -1
     d <- as.dist((1 - cordata)/2)
     for (i in 2:n) {
         hc <- hclust(d)
