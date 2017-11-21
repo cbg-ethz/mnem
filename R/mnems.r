@@ -139,8 +139,9 @@ initps <- function(data, ks, k, starts = 3) {
 }
 
 modData <- function(D) {
+    require(naturalsort)
     SgeneN <- getSgeneN(D)
-    Sgenes <- sort(unique(colnames(D)))
+    Sgenes <- naturalsort(unique(colnames(D)))
     if (!all(is.numeric(Sgenes))) {
         colnamesD <- numeric(ncol(D))
         for (i in 1:SgeneN) {
