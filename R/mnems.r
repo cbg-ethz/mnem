@@ -902,7 +902,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
                 subtopo <- x$comp[[i]]$theta
             }
             for (j in 1:SgeneN) {
-                tmpN <- paste("E", j, sep = "_")
+                tmpN <- paste("_9247E", j, sep = "_")
                 enodes[[tmpN]] <- sum(subtopo == j)
                 enodeshape[[tmpN]] <- "box"
                 enodewidth[[tmpN]] <- 0.5
@@ -934,7 +934,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             cnodeheight <- list()
             cnodewidth <- list()
             for (j in 1:SgeneN) {
-                tmpN <- paste("C", j, sep = "_")
+                tmpN <- paste("__9247C", j, sep = "_")
                 cnodes[[tmpN]] <- sum(colnames(datanorm)[which(pnorm[i, ] == 1)] == j)
                 cnodeshape[[tmpN]] <- "diamond"
                 cnodewidth[[tmpN]] <- 0.5
@@ -958,8 +958,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
                 gam <- gam/gam
             }
             for (bnode in sort(unique(colnames(gam)))) {
-                graph <- c(graph, paste0(bnode, "=bnode", bnode))
-                tmpN <- paste0("bnode", bnode)
+                tmpN <- paste0("_9247bnode", bnode)
+                graph <- c(graph, paste0(bnode, "=_9247bnode", bnode))
                 bnodes[[tmpN]] <- paste0(round(max(gam[i, which(colnames(gam) %in% bnode)]), 2)*100, "%")
                 bnodeheight[[tmpN]] <- 0.5
                 bnodewidth[[tmpN]] <- 0.5
@@ -970,25 +970,26 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         }
         edgecol <- c(rep("black", pathedges), rep("grey", length(graph) - pathedges))
         if (egenes) {
-            enodes[["Null"]] <- "NULL"
-            enodeshape[["Null"]] <- "circle"
-            enodewidth[["Null"]] <- 1
-            enodeheight[["Null"]] <- 1
+            enodes[["_9247Null"]] <- "NULL"
+            enodeshape[["_9247Null"]] <- "circle"
+            enodewidth[["_9247Null"]] <- 1
+            enodeheight[["_9247Null"]] <- 1
             nulltargets <- sum(subtopo == (SgeneN+1))
-            enodes[["Nulltargets"]] <- nulltargets
-            enodeshape[["Nulltargets"]] <- "box"
-            enodewidth[["Nulltargets"]] <- 0.5
-            enodeheight[["Nulltargets"]] <- 0.5
-            graph <- c(graph, "Null=Nulltargets")
+            enodes[["_9247Nulltargets"]] <- nulltargets
+            enodeshape[["_9247Nulltargets"]] <- "box"
+            enodewidth[["_9247Nulltargets"]] <- 0.5
+            enodeheight[["_9247Nulltargets"]] <- 0.5
+            graph <- c(graph, "_9247Null=_9247Nulltargets")
         }
         edgecol <- c(rep("black", pathedges), rep("grey", length(graph) - pathedges))
         plotDnf(graph, main = paste("Cells: ", realpct[i], "% (unique: ", unipct[i], "%)\n
 Mixture weight: ", round(x$mw[i], 3)*100, "%",
-sep = ""), bordercol = i+1, width = 1, connected = FALSE, signals = shared,
-inhibitors = Sgenes, nodelabel = c(cnodes, enodes, bnodes),
+sep = ""), bordercol = i+1, width = 1, connected = FALSE,
+# signals = shared, inhibitors = Sgenes,
+nodelabel = c(cnodes, enodes, bnodes),
 nodeshape = c(cnodeshape, enodeshape, bnodeshape),
-nodewidth = c(cnodeheight, enodewidth, bnodewidth),
-nodeheight = c(cnodewidth, enodeheight, bnodeheight),
+nodewidth = c(cnodewidth, enodewidth, bnodewidth),
+nodeheight = c(cnodeheight, enodeheight, bnodeheight),
 edgecol = edgecol)
         full <- net + full
     }
