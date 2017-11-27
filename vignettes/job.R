@@ -79,8 +79,6 @@ if (dollr) {
 
         if (length(grep("p7d|cc7d", dataset)) > 0) {
 
-            data <- data[, -which(colnames(data) %in% "")]
-
             colnames(data)[grep("INTER", colnames(data))] <- ""
 
         }
@@ -191,6 +189,10 @@ if (dosmall) {
         lods <- lods[-badgenes, ]
     }
 
+    sdev <- apply(lods, 1, sd)
+
+    lods <- lods[which(sdev > sd(lods)), ] ## this really?
+
     n <- length(unique(colnames(lods)))
 
     lods <- lods#/(sum(lods)/1023) # max(abs(lods))
@@ -211,9 +213,7 @@ if (dosmall) {
         ##     if (bics[k] > bics[(k-1)]) { break() }
         ## }
 
-        if (k > 1) {
-            res[[k]]$data <- NULL
-        }
+        res[[k]]$data <- NULL
         
         save(res, file = paste0("cropseq/", dataset, "_mnem_small", addendum, ".rda"))
         
@@ -266,7 +266,7 @@ if (dobig) {
 
     n <- length(unique(colnames(lods)))
 
-    lods <- lods/(sum(lods)/1023) # max(abs(lods)) normalising the max to one does not seem to be enough... weird
+    lods <- lods # max(abs(lods)) normalising the max to one does not seem to be enough... weird
 
     bics <- rep(Inf, maxk)
 
@@ -307,11 +307,11 @@ if (dobig) {
             ##     if (bics[k] > bics[(k-1)]) { break() }
             ## }
 
+            res[[k]]$data <- NULL
+
             save(res, res3, file = paste0("cropseq/", dataset, "_mnem_big", addendum, ".rda"))
 
         }
-
-        res$bics <- bics
 
         if (i == 1) {
             res3 <- res
@@ -328,159 +328,18 @@ if (dobig) {
 
 }
 
-############################################# do mnem:
-
-## source("mnem/R/mnems.r")
-## source("mnem/R/mnems_low.r")
-## library(cluster)
-## library(nem)
-
-## load(paste0(dataset, "_kegg.rda"))
-## load(paste0(dataset, "_llr.rda"))
-
-## if (length(grep("perturbseq", dataset)) == 0) {
-
-##     llr <- llr[, -grep("DHODH|MVD|TUBB", colnames(llr))]
-
-## }
-
-## llr <- t(apply(llr, 1, function(x) {
-##     x[is.infinite(x)] <- max(x[!is.infinite(x)])
-##     return(x)
-## }))
-
-## colnames(llr) <- toupper(colnames(llr))
-
-## done.genes <- NULL
-
-## allgenes <- sort(unique(colnames(llr)))
-
-## if (length(kadj) == 0) {
-
-##     kadj <- list()
-
-##     tmp <- matrix(0, length(unique(colnames(llr))), length(unique(colnames(llr))))
-
-##     colnames(tmp) <- rownames(tmp) <- sort(unique(colnames(llr)))
-
-##     kadj[[1]] <- tmp
-
-## }
-
-## for (i in 1:length(kadj)) {
-
-##     kegg <- kadj[[i]]
-
-##     for (j in 1:nrow(genes)) {
-##         colnames(kegg) <- gsub(paste("^", genes[j, 2], "$", sep = ""), genes[j, 1], colnames(kegg))
-##         rownames(kegg) <- gsub(paste("^", genes[j, 2], "$", sep = ""), genes[j, 1], rownames(kegg))
-##     }
-    
-##     do.genes <- genes[which(genes[, 1] %in% colnames(kegg)), 1]
-
-##     done.genes <- c(done.genes, do.genes)
-
-## }
-
-## if (!all(allgenes %in% done.genes)) {
-
-##     do.genes <- allgenes[-which(allgenes %in% done.genes)]
-
-##     tmp <- matrix(0, length(do.genes), length(do.genes))
-
-##     colnames(tmp) <- rownames(tmp) <- sort(do.genes)
-
-##     kadj[[(length(kadj)+1)]] <- tmp
-
-## }
-
-## allres <- list()
-
-## for (i in 1:length(kadj)) {
-
-##     ## i <- 1
-
-##     kegg <- kadj[[i]]
-
-##     for (j in 1:nrow(genes)) {
-##         colnames(kegg) <- gsub(paste("^", genes[j, 2], "$", sep = ""), genes[j, 1], colnames(kegg))
-##         rownames(kegg) <- gsub(paste("^", genes[j, 2], "$", sep = ""), genes[j, 1], rownames(kegg))
-##     }
-    
-##     do.genes <- genes[which(genes[, 1] %in% colnames(kegg)), 1]
-
-##     done.genes <- c(done.genes, do.genes)
-
-##     data <- llr[, which(colnames(llr) %in% do.genes)]
-
-##     badgenes <- "Tcrlibrary|^RP"
-    
-##     if (length(grep(badgenes, rownames(data))) > 0) {
-##         data <- data[-grep(badgenes, rownames(data)), ]
-##     }
-    
-##     data <- exp(data)
-
-##     data <- log2(data)
-
-##     n <- length(unique(colnames(data)))
-    
-##     ## this is important: furhter reduce egenes?
-
-##     ## shrink to prevent infinite likelihood:
-    
-##     data <- data/max(abs(data))
-
-##     bics <- rep(Inf, maxk)
-    
-##     res <- list()
-
-##     for (k in 1:maxk) {
-
-##         ## k <- 2
-        
-##         res[[k]] <- mnem(data, starts = starts, type = "random", parallel = parallel, k = k, verbose = TRUE, converged = 10^-1, search = "modules")
-        
-##         bics[k] <- log(nrow(data)*ncol(data))*k - 2*max(res[[k]]$best$ll)
-
-##         if (k > 2) {
-##             if (bics[k] > bics[(k-1)]) { break() }
-##         }
-##     }
-
-##     res$bics <- bics
-
-##     allres[[i]] <- res
-
-## }
-
-## save(allres, file = paste0(dataset, "_mnem.rda"))
-
-## stop("mnem done")
-
 ###########################################
 
 stop()
 
 rm *.sh.*
-
+    
 ##
-
-module load repo/grid
-module load grid/grid
-
-file=Whatsgoingongridusers.sh
-echo "module load repo/grid" >> $file
-echo "module load grid/grid" >> $file
-echo "module load R/3.4.0" >> $file
-echo "R --slave --args 'cores=10' 'run=0' 'starts=10' < mnem/vignettes/job.R" >> $file
-
+    
 ##qsub -q mpi01.q@bs-dsvr50.ethz.ch -pe make 1 $file
 
-qsub -q mpi04-ht.q -pe make 10 $file
-
-rm $file
-
+## on the grid:
+    
 ## several starts on one core each:
 
 rm *.sh.*
@@ -490,14 +349,30 @@ rm *.sh.*
 module load repo/grid
 module load grid/grid
 
-for i in `seq 1 1`; do
+for i in `seq 1 100`; do
     cores=1
-    file=Anybodyseenanygoodfilmslately${i}.sh
+    file=Workrelated${i}.sh
     echo "module load repo/grid" >> $file
     echo "module load grid/grid" >> $file
     echo "module load R/3.4.0" >> $file
-    echo "R --slave --args 'dataset=perturbseq_dc3' 'cores=$cores' 'run=$i' 'starts=1' 'dollr=0' 'dobig=1' 'dosmall=0' < mnem/vignettes/job.R" >> $file
-    qsub -q mpi04-ht.q -pe make $cores $file
+    echo "R --slave --args 'dataset=perturbseq_p7d' 'cores=$cores' 'run=$i' 'starts=1' 'dollr=0' 'dobig=1' 'dosmall=0' < mnem/vignettes/job.R" >> $file
+    qsub -q mpi01.q -pe make $cores $file
+    rm $file
+done
+
+## on euler:
+
+## several starts on one core each:
+
+R
+q("no")
+module load r/3.4.0
+
+for i in `seq 1 1`; do
+    cores=1
+    file=Job${i}.sh
+    echo "R --slave --args 'dataset=cropseq' 'cores=$cores' 'run=$i' 'starts=1' 'dollr=0' 'dobig=0' 'dosmall=1' < mnem/vignettes/job.R" >> $file
+bsub -M 10000 -q normal.24h -n 1 -e logs/${file}_${i}_error.txt -o logs/${file}_${i}_output.txt < $file
     rm $file
 done
 
@@ -515,7 +390,7 @@ dataset <- "cropseq"
 
 #dataset <- "perturbseq_dc3"
 
-bigorsmall <- "agg"
+bigorsmall <- "small"
 
 lls <- matrix(0, 5, starts)
 
@@ -525,7 +400,11 @@ resMax <- list()
 
 for (i in 1:starts) {
     print(i)
-    load(paste0("cropseq/", dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))
+    if (file.exists(paste0("cropseq/", dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))) {
+        load(paste0("cropseq/", dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))
+    } else {
+        next()
+    }
     lls[1, i] <- res[[1]]$ll
     for (j in 1:min(maxk, length(res))) {
         lls[j, i] <- res[[j]]$ll
@@ -542,12 +421,11 @@ for (i in 1:starts) {
 
 res <- resMax
 
-res[[5]]$data <- res[[4]]$data <- res[[3]]$data <- res[[2]]$data <- res[[1]]$data
+res[[5]]$data <- res[[4]]$data <- res[[3]]$data <- res[[2]]$data <- res[[1]]$data #<- lods
 
-i <- 1
+i <- 4
 
 plot(c(lls[i, ], llmins[i, ]))
-
 
 ## get bics:
 
@@ -566,7 +444,7 @@ ll <- rep(0, maxk)
 
 for (i in 1:maxk) {
     
-    bics[i] <- getIC(res[[i]], AIC = F)
+    bics[i] <- getIC(res[[i]], AIC = T)
 
     ll[i] <- max(res[[i]]$ll)
 
@@ -580,11 +458,25 @@ ll <- ll - min(ll) + min(bics)
 
 ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
 
+## pdf("temp.pdf", width = 6, height = 5)
+
 par(mar=c(5,5,1,5))
-plot(bics, type = "b", ylab = "AIC", col = "red", xlab = "AIC (red) and log likelihood (blue) as a function of number of components", yaxt = "n", ylim = c(min(min(bics,ll)), max(max(bics,ll))))
+plot(bics, type = "b", ylab = "AIC", col = "red", xlab = "AIC (red) and log likelihood (blue) as a function of number of components", yaxt = "n", ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
 lines(ll, type = "b", col = "blue")
 axis(4, ll3, round(ll3 + min(ll2) - min(bics)))
 axis(2, ll3, round(ll3))
+axis(1, 1:maxk, 1:maxk)
 mtext("unnormalized log likelihood", side=4, line=3)
 
+dev.off()
+
+i <- 4
+
+gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
+
+HeatmapOP(gamma, breaks = 100)
+
+hist(gamma, border = "blue")
+
 ## ```
+

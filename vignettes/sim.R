@@ -5,7 +5,7 @@ run <- gsub("run=", "", args[grep("run=", args)])
 noise <- gsub("noise=", "", args[grep("noise=", args)])
 nem <- gsub("nem=", "", args[grep("nem=", args)])
 
-# nem <- 1; noise <- run <- 1; Sgenes <- 3
+# nem <- 1; noise <- run <- 1; Sgenes <- 20
 
 if (length(grep(":", nem)) > 0) {
     nem <- as.numeric(gsub(":.*", "", nem)):as.numeric(gsub(".*:", "", nem))
@@ -39,7 +39,7 @@ start1 <- as.numeric(format(Sys.time(), "%s"))
 runs <- 100
 noises <- c(1, 2.5, 5, 10)
 nems <- 1:10
-maxk <- 1
+maxk <- 5
 
 ## fixed parameters:
 starts <- 10 # make it dependent on the learnt k
@@ -48,13 +48,14 @@ verbose <- FALSE
 
 ## mixing parameters:
 Egenes <- 2
-nCells <- 1000#*Sgenes#*nems[nem] # cells are fixed we cannot tweak the number except of course we have more cells with more sgenes! but only for the tix data set and not for pooled screens
+nCells <- 1000
 
 simres <- array(0, c(runs, length(noises), length(nems), 4, 6), list(paste("run_", 1:runs, sep = ""), paste("noise_", noises, sep = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing")))
 
 for (i in nem) {
     for (j in noise) {    
         if (file.exists(paste("temp/simres_mnem_", Sgenes, "_", run, "_", j, "_", i, ".rda", sep = ""))) {
+            print(paste("temp/simres_mnem_", Sgenes, "_", run, "_", j, "_", i, ".rda", sep = ""))
             stop("simulation result already exists")
         }
     }
@@ -100,7 +101,7 @@ for (donoise in noise) {
             bics <- rep(Inf, maxk)
             for (k in 1:maxk) {
                 res[[k]] <- mnem(data, starts = starts, search = search, k = k, verbose = verbose)
-                bics[k] <- getIC(res[[k]], AIC = TRUE)
+                bics[k] <- getIC(res[[k]], AIC = FALSE)
             }
             res1 <- res[[1]]
             res <- res[[which.min(bics)]]
