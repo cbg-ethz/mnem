@@ -16,10 +16,11 @@ getIC <- function(x, AIC = TRUE, degree = 4, logtype = 2) {
         fpar <- fpar + length(x$comp)*nrow(x$data)
     }
     n <- ncol(x$data)
+    LL <- max(x$ll)*log(logtype)
     if (AIC) {
-        bic <- 2*fpar - 2*max(log(logtype^x$ll))
+        bic <- 2*fpar - 2*LL
     } else {
-        bic <- log(n)*fpar - 2*max(log(logtype^x$ll))
+        bic <- log(n)*fpar - 2*LL
     }
     return(bic)
 }
