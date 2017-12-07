@@ -1,5 +1,5 @@
 
-getIC <- function(x, AIC = TRUE, degree = 4, logtype = 2) {
+getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2) {
     fpar <- 0
     for (i in 1:length(x$comp)) {
         tmp <- transitive.reduction(x$comp[[i]]$phi)
@@ -18,7 +18,7 @@ getIC <- function(x, AIC = TRUE, degree = 4, logtype = 2) {
     n <- ncol(x$data)
     LL <- max(x$ll)*log(logtype)
     if (AIC) {
-        bic <- 2*fpar - 2*LL
+        bic <- pen*fpar - 2*LL
     } else {
         bic <- log(n)*fpar - 2*LL
     }
