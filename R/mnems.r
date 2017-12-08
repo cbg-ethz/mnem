@@ -895,7 +895,6 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
     unipct <- round(rowSums(unipct)/ncol(mixnorm), 3)*100
     Sgenes <- naturalsort(unique(colnames(x$data)))
     SgeneN <- length(Sgenes)
-print(Sgenes)
     for (i in 1:length(x$comp)) {
 
         shared <- unique(colnames(mixnorm)[which(apply(mixnorm, 2, function(x) return(sum(x != 0))) != 1 & mixnorm[i, ] != 0)])
