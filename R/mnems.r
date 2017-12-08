@@ -157,7 +157,7 @@ modData <- function(D) {
 learnk <- function(data, kmax = 10, verbose = FALSE) {
     ks <- numeric(length(unique(colnames(data))))
     lab <- list()
-    for (i in sort(as.numeric(unique(colnames(data))))) {
+    for (i in naturalsort(as.numeric(unique(colnames(data))))) {
         if (verbose) {
             print(i)
         }
@@ -834,7 +834,7 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
 }
 
 modAdj <- function(adj, D) {
-    Sgenes <- sort(unique(colnames(D)))
+    Sgenes <- naturalsort(unique(colnames(D)))
     SgeneN <- getSgeneN(D)
     for (i in 1:SgeneN) {
         colnames(adj) <- rownames(adj) <- gsub(i, Sgenes[i], colnames(adj))
@@ -848,11 +848,11 @@ bootstrap <- function(x) {
 
 plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ratio = TRUE, method = "llr", ...) {
 
-    if (global) {
-        main <- paste(main, " - Joint dimension reduction.", sep = "")
-    } else {
-        main <- paste(main, " - Individual dimension reduction.", sep = "")
-    }
+    ## if (global) {
+    ##     main <- paste(main, " - Joint dimension reduction.", sep = "")
+    ## } else {
+    ##     main <- paste(main, " - Individual dimension reduction.", sep = "")
+    ## }
 
     x2 <- x
     
@@ -893,9 +893,9 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
     unipct <- mixnorm
     unipct[, which(colSums(mixnorm) > 1)] <- 0
     unipct <- round(rowSums(unipct)/ncol(mixnorm), 3)*100
-    Sgenes <- sort(unique(colnames(x$data)))
+    Sgenes <- naturalsort(unique(colnames(x$data)))
     SgeneN <- length(Sgenes)
-
+print(Sgenes)
     for (i in 1:length(x$comp)) {
 
         shared <- unique(colnames(mixnorm)[which(apply(mixnorm, 2, function(x) return(sum(x != 0))) != 1 & mixnorm[i, ] != 0)])
@@ -972,10 +972,10 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             if (nrow(x$probs) > 1) {
                 gam <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw)
             } else {
-                gam <- (2^x$probs)*x$mw
+                gam <- (logtype^x$probs)*x$mw
                 gam <- gam/gam
             }
-            for (bnode in sort(unique(colnames(gam)))) {
+            for (bnode in naturalsort(unique(colnames(gam)))) {
                 tmpN <- paste0("_9247bnode", bnode)
                 graph <- c(graph, paste0(bnode, "=_9247bnode", bnode))
                 bnodes[[tmpN]] <- paste0(round(max(gam[i, which(colnames(gam) %in% bnode)]), 2)*100, "%")
@@ -1058,7 +1058,7 @@ edgecol = edgecol)
                     scale <- (max(jittered) - min(jittered))*0.5
                 }
             }
-            for (i in sort(unique(pcols))) {
+            for (i in naturalsort(unique(pcols))) {
                 maxind0 <- which(pcols == i)
                 if (!global) {
                     if (tsne) {
