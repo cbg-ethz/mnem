@@ -846,13 +846,7 @@ bootstrap <- function(x) {
     ## bootstrap on the components to get frequencies 
 }
 
-plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ratio = TRUE, method = "llr", ...) {
-
-    ## if (global) {
-    ##     main <- paste(main, " - Joint dimension reduction.", sep = "")
-    ## } else {
-    ##     main <- paste(main, " - Individual dimension reduction.", sep = "")
-    ## }
+plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ratio = TRUE, method = "llr", showweights = TRUE, ...) {
 
     x2 <- x
     
@@ -999,9 +993,13 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             graph <- c(graph, "_9247Null=_9247Nulltargets")
         }
         edgecol <- c(rep("black", pathedges), rep("grey", length(graph) - pathedges))
-        plotDnf(graph, main = paste("Cells: ", realpct[i], "% (unique: ", unipct[i], "%)\n
-Mixture weight: ", round(x$mw[i], 3)*100, "%",
-sep = ""), bordercol = i+1, width = 1, connected = FALSE,
+        if (showweights) {
+            mainweights = paste("Cells: ", realpct[i], "% (unique: ", unipct[i], "%)\n
+Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
+        } else {
+            mainweights <- NULL
+        }
+        plotDnf(graph, main = mainweights, bordercol = i+1, width = 1, connected = FALSE,
 # signals = shared, inhibitors = Sgenes,
 nodelabel = c(cnodes, enodes, bnodes),
 nodeshape = c(cnodeshape, enodeshape, bnodeshape),
