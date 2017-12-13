@@ -155,7 +155,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
                   verbose = FALSE, redSpace = NULL,
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
-                  ratio = TRUE, domean = TRUE, modulesize = 4) { # reduce might not work as expected
+                  ratio = TRUE, domean = TRUE, modulesize = 5) { # reduce might not work as expected
     if ("modules" %in% search) {
         if (length(search) > 1) {
             search <- search[-which(search %in% "modules")]

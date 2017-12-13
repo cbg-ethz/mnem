@@ -1,19 +1,23 @@
 
 getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2) {
-    fpar <- 0
-    for (i in 1:length(x$comp)) {
-        tmp <- transitive.reduction(x$comp[[i]]$phi)
-        if (degree > 2) {
-            tmp <- transitive.closure(x$comp[[i]]$phi, mat = TRUE)
+    if (degree != 5) {
+        fpar <- 0   
+        for (i in 1:length(x$comp)) {
+            tmp <- transitive.reduction(x$comp[[i]]$phi)
+            if (degree > 2) {
+                tmp <- transitive.closure(x$comp[[i]]$phi, mat = TRUE)
+            }
+            diag(tmp) <- 0
+            fpar <- fpar + sum(tmp != 0)
         }
-        diag(tmp) <- 0
-        fpar <- fpar + sum(tmp != 0)
+        if (degree > 1 & (degree != 3)) {
+            fpar <- fpar + length(x$comp)*nrow(x$data)
+        }
+    } else {
+        fpar <- (x$comp[[i]]$phi+ncol(x$comp[[i]]$phi)*length(x$comp[[i]]$theta))*length(x$comp)
     }
     if (degree > 0) {
         fpar <- fpar + length(x$comp) - 1
-    }
-    if (degree > 1 & (degree != 3)) {
-        fpar <- fpar + length(x$comp)*nrow(x$data)
     }
     n <- ncol(x$data)
     LL <- max(x$ll)*log(logtype)
