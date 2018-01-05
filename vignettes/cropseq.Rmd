@@ -1,5 +1,10 @@
 ```r
+
+## do bulk:
+
 data.bulk <- read.csv("data/cropseq/GSE92872_CROP-seq_Jurkat_TCR.count_matrix.csv", stringsAsFactors = FALSE)
+
+### prepr single cell stuff:
 
 data <- read.csv("data/cropseq/GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv", stringsAsFactors = FALSE)
 
@@ -15,11 +20,11 @@ colnames(counts) <- data[4, grep("^stim", colnames(data))]
 
 colnames(counts)[which(colnames(counts) %in% "CTRL")] <- ""
 
+data <- data[, -grep("DHODH|MVD|TUBB", colnames(data))]
+
 ## save(data, file = "~/Mount/Grid/cropseq_data.rda")
 
 load("~/Mount/Grid/cropseq_data.rda")
-
-data <- data[, -grep("DHODH|MVD|TUBB", colnames(data))]
 
 ## map to pathways:
 

@@ -39,7 +39,7 @@ start1 <- as.numeric(format(Sys.time(), "%s"))
 runs <- 100
 noises <- c(1, 2.5, 5, 10)
 nems <- 1:10
-maxk <- 5
+maxk <- 6
 
 ## fixed parameters:
 starts <- 10 # make it dependent on the learnt k
@@ -47,10 +47,10 @@ search <- "modules"
 verbose <- FALSE
 
 ## mixing parameters:
-Egenes <- 2
+Egenes <- 10
 nCells <- 1000
 
-simres <- array(0, c(runs, length(noises), length(nems), 4, 6), list(paste("run_", 1:runs, sep = ""), paste("noise_", noises, sep = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing")))
+simres <- array(0, c(runs, length(noises), length(nems), 4, 7), list(paste("run_", 1:runs, sep = ""), paste("noise_", noises, sep = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing", "mixing2")))
 
 for (i in nem) {
     for (j in noise) {    
@@ -90,7 +90,6 @@ for (donoise in noise) {
         data <- sim$data
         data <- (data - 0.5)/0.5
         data <- data + rnorm(length(sim$data), 0, noises[donoise])
-        ## learn k:
         ## random p:
         p <- NULL
         start <- as.numeric(format(Sys.time(), "%s"))
@@ -116,6 +115,18 @@ for (donoise in noise) {
         }
         fullres[which(fullres > 1)] <- 1
         diag(fullres) <- 1
+
+        ## look at binary mixing weights:
+        if (dim(res$probs)[1] == 1) {
+            mwbin <- 1
+        } else {
+            mwbin <- apply(apply(getAffinity(res$probs, mw = res$mw,affinity=0), 2,
+                                 function(x) { xmax <- max(x)
+                                     x[which(x != xmax)] <- 0
+                                     x[which(x != 0)] <- 1
+                                     return(x) }),
+                           1, sum)/ncol(res$probs)
+        }
         
         simres[run, donoise, donem, 1, 2] <- length(res$comp)/nems[donem]
         tp <- sum(fullres == 1 & fullsim == 1) - ncol(fullres)
@@ -127,12 +138,15 @@ for (donoise in noise) {
         simres[run, donoise, donem, 1, 3] <- hamSim(simfull, resfull)
         if (length(mw) == length(res$mw)) {
             simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(res$mw), sort(mw))))
+            simres[run, donoise, donem, 1, 7] <- sum(dist(rbind(sort(mwbin), sort(mw))))
         }
         if (length(mw) > length(res$mw)) {
             simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(c(res$mw, rep(0, length(mw) - length(res$mw)))), sort(mw))))
+            simres[run, donoise, donem, 1, 7] <- sum(dist(rbind(sort(c(mwbin, rep(0, length(mw) - length(mwbin)))), sort(mw))))
         }
         if (length(mw) < length(res$mw)) {
             simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(c(mw, rep(0, length(res$mw) - length(mw)))), sort(res$mw))))
+            simres[run, donoise, donem, 1, 7] <- sum(dist(rbind(sort(c(mw, rep(0, length(mwbin) - length(mw)))), sort(mwbin))))
         }
         
         ## nem:

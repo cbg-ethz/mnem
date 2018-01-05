@@ -351,7 +351,7 @@ module load grid/grid
 
 for i in `seq 1 100`; do
     cores=1
-    file=Workrelated${i}.sh
+    file=${i}.sh
     echo "module load repo/grid" >> $file
     echo "module load grid/grid" >> $file
     echo "module load R/3.4.0" >> $file
@@ -368,15 +368,17 @@ R
 q("no")
 module load r/3.4.0
 
-for i in `seq 1 1`; do
+for i in `seq 2 100`; do
     cores=1
-    file=Job${i}.sh
-    echo "R --slave --args 'dataset=cropseq' 'cores=$cores' 'run=$i' 'starts=1' 'dollr=0' 'dobig=0' 'dosmall=1' < mnem/vignettes/job.R" >> $file
+    file=Withsomeluck${i}.sh
+    echo "R --slave --args 'dataset=cropseq' 'cores=$cores' 'run=$i' 'starts=1' 'dollr=0' 'dobig=1' 'dosmall=0' < mnem/vignettes/job.R" >> $file
 bsub -M 10000 -q normal.24h -n 1 -e logs/${file}_${i}_error.txt -o logs/${file}_${i}_output.txt < $file
     rm $file
 done
 
 ## get the best for several on one core each:
+
+setwd("~/Mount/Euler")
 
 maxk <- 5
 
@@ -384,11 +386,9 @@ starts <- 100
 
 dataset <- "cropseq"
 
-#dataset <- "perturbseq_p7d"
-
 #dataset <- "perturbseq_cc7d"
 
-#dataset <- "perturbseq_dc3"
+#dataset <- "perturbseq_p7d"
 
 bigorsmall <- "small"
 
@@ -419,13 +419,23 @@ for (i in 1:starts) {
     }
 }
 
+## load log odds before next step
+
 res <- resMax
 
-res[[5]]$data <- res[[4]]$data <- res[[3]]$data <- res[[2]]$data <- res[[1]]$data #<- lods
+res[[5]]$data <- res[[4]]$data <- res[[3]]$data <- res[[2]]$data <- res[[1]]$data <- lods
 
-i <- 4
+## save(res, file = paste0(dataset, "_mnem_", bigorsmall, "_final.rda"))
 
-plot(c(lls[i, ], llmins[i, ]))
+load(paste0(dataset, "_mnem_", bigorsmall, "_final.rda"))
+
+## i <- 2
+
+## llstmp <- c(lls[i, ], llmins[i, ])
+
+## llstmp <- llstmp[which(llstmp != 0)]
+
+## plot(llstmp)
 
 ## get bics:
 
@@ -437,6 +447,7 @@ library(graph)
 library(nem)
 library(Rgraphviz)
 library(epiNEM)
+library(naturalsort)
 
 bics <- rep(0, maxk)
 
@@ -444,7 +455,7 @@ ll <- rep(0, maxk)
 
 for (i in 1:maxk) {
     
-    bics[i] <- getIC(res[[i]], AIC = T)
+    bics[i] <- getIC(res[[i]])
 
     ll[i] <- max(res[[i]]$ll)
 
@@ -458,25 +469,118 @@ ll <- ll - min(ll) + min(bics)
 
 ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
 
-## pdf("temp.pdf", width = 6, height = 5)
+if (length(grep("perturbseq", dataset)) != 0) {
+    bigorsmall <- "" # for perturbseq
+} else {
+    bigorsmall <- paste0("_", bigorsmall)
+}
 
-par(mar=c(5,5,1,5))
-plot(bics, type = "b", ylab = "AIC", col = "red", xlab = "AIC (red) and log likelihood (blue) as a function of number of components", yaxt = "n", ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
+## pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_bic.pdf"), width = 7, height = 6)
+
+par(mar=c(5,5,2,5))
+plot(bics, type = "b", ylab = "BIC", col = "red", xlab = "BIC (red) and log likelihood (blue) as a function of number of components", yaxt = "n", ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
 lines(ll, type = "b", col = "blue")
-axis(4, ll3, round(ll3 + min(ll2) - min(bics)))
+axis(4, ll3, round(seq(min(ll2), max(ll2), length.out = 5)))
 axis(2, ll3, round(ll3))
 axis(1, 1:maxk, 1:maxk)
 mtext("unnormalized log likelihood", side=4, line=3)
 
 dev.off()
 
-i <- 4
+i <- which.min(bics)
 
 gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
 
-HeatmapOP(gamma, breaks = 100)
+## HeatmapOP(gamma, breaks = 100, bordercol = "transparent")
 
-hist(gamma, border = "blue")
+pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_hist.pdf"), width = 5, height = 5)
+
+hist(gamma, main = "Histogram of responsibilities", xlab = "responsibilities")
+
+dev.off()
+
+i <- which.min(bics)
+
+pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_gamma.pdf"), width = 30, height = 10)
+
+gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
+
+HeatmapOP(gamma, breaks = 100, bordercol="transparent", cexCol = 0.4, xrot = 45, Rowv = F)
+
+dev.off()
+
+pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network.pdf"), width = 30, height = 10)
+
+plot(res[[i]])
+
+dev.off()
+
+pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network_overfit.pdf"), width = 30, height = 10)
+
+plot(res[[(i+1)]])
+
+dev.off()
+
+if (length(grep("cc7d", dataset)) == 0) {
+    pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network_wo.pdf"), width = 10, height = 7)
+} else {
+    pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network_wo.pdf"), width = 14, height = 14) # cc7d
+}
+
+plot(res[[i]], egenes = F, bestCell=F, cells = F, showweights = F)
+
+dev.off()
+
+if (length(grep("p7d", dataset)) == 1) {
+    pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network_overfit_wo.pdf"), width = 8, height = 5)
+    plot(res[[(i+1)]], egenes = F, bestCell=F, cells = F, showweights = F)
+    dev.off()
+}
+
+if (length(grep("cc7d", dataset)) == 1) {
+    pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network_overfit_wo.pdf"), width = 11.5, height = 8.5)
+    plot(res[[(i+1)]], egenes = F, bestCell=F, cells = F, showweights = F)
+    dev.off()
+}
+
+pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_kegg.pdf"), width = 10, height = 10)
+
+plot.adj(kadjagg)
+
+dev.off()
+
+## get distance for kegg and combined result:
+
+library(bnstruct)
+#kadjagg2 <- transitive.closure(kadjagg[order(rownames(kadjagg)), order(colnames(kadjagg))], mat = T)
+kadjagg2 <- kadjagg[order(rownames(kadjagg)), order(colnames(kadjagg))]
+diag(kadjagg2) <- 0
+#resnem <- transitive.closure(annotAdj(res[[1]]$comp[[1]]$phi, lods), mat = TRUE)
+resnem <- annotAdj(res[[1]]$comp[[1]]$phi, lods)
+diag(resnem) <- 0
+shd(resnem, kadjagg2)
+
+resagg <- annotAdj(res[[i]]$comp[[1]]$phi, lods)
+for (j in 1:i) {
+    #resagg <- resagg + transitive.closure(res[[i]]$comp[[j]]$phi, mat = TRUE)
+    resagg <- resagg + res[[i]]$comp[[j]]$phi
+    print(shd(kadjagg2, res[[i]]$comp[[j]]$phi))
+}
+diag(resagg) <- 0
+resagg[which(resagg > 0)] <- 1
+
+shd(resagg, kadjagg2)
+
+par(mfrow=c(1,3))
+plot.adj(kadjagg2)
+plot.adj(resagg)
+plot.adj(resnem)
+
+annotAdj <- function(adj, data) {
+    Sgenes <- sort(unique(colnames(data)))
+    colnames(adj) <- rownames(adj) <- sort(Sgenes)
+    return(adj)
+}
 
 ## ```
 

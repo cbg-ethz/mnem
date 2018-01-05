@@ -26,6 +26,10 @@ data <- as.matrix(data)
 
 rownames(data) <- data.backup$GENE
 
+## data.backup <- data
+
+data <- data.backup
+
 ## data <- data[, grep("dc0", colnames(data))]
 
 ## data <- data[, grep("dc3", colnames(data))]
@@ -34,13 +38,13 @@ rownames(data) <- data.backup$GENE
 
 ## data <- data[, grep("cc7d", colnames(data))]
 
-## c2g <- read.csv("data/perturbseq/GSE90063_RAW/GSM2396857_dc_0hr_cbc_gbc_dict.csv") # not sure wtd
+## c2g <- read.csv("data/perturbseq/GSE90063_RAW/GSM2396857_dc_0hr_cbc_gbc_dict.csv", header = FALSE) # not sure wtd
 
-## c2g <- read.csv("data/perturbseq/GSE90063_RAW/GSM2396856_dc_3hr_cbc_gbc_dict_lenient.csv") # use strict to get more "controls"
+## c2g <- read.csv("data/perturbseq/GSE90063_RAW/GSM2396856_dc_3hr_cbc_gbc_dict_strict.csv", header = FALSE) # use strict to get more "controls"
 
-## c2g <- read.csv("data/perturbseq/GSE90063_RAW/GSM2396858_k562_tfs_7_cbc_gbc_dict.csv")
+## c2g <- read.csv("data/perturbseq/GSE90063_RAW/GSM2396858_k562_tfs_7_cbc_gbc_dict.csv", header = FALSE)
 
-## c2g <- read.csv("data/perturbseq/GSE90063_RAW/GSM2396861_k562_ccycle_cbc_gbc_dict.csv")
+## c2g <- read.csv("data/perturbseq/GSE90063_RAW/GSM2396861_k562_ccycle_cbc_gbc_dict.csv", header = FALSE)
 
 cn <- character(ncol(data))
 
@@ -49,13 +53,19 @@ for (i in 1:length(c2g[[1]])) {
     cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
     
     cn[which(colnames(data) %in% cells)] <- paste(cn[which(colnames(data) %in% cells)],
-                                                       gsub("^c_|^c_sg|^m_|_[0-9]$", "", as.character(c2g[[1]][[i]])), sep = "_")
+                                                       gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "", as.character(c2g[[1]][[i]])), sep = "_")
 
 }
 
 colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
 
+## careful:
+
+data <- data[, -which(colnames(data) %in% "")]
+
 pertdist <- unlist(lapply(colnames(data), function(x) return(length(unlist(strsplit(x, "_"))))))
+
+hist(pertdist)
 
 if (length(grep("_", colnames(data))) > 0) {
     data <- data[, -grep("_", colnames(data))]
@@ -77,7 +87,7 @@ getOmega <- function(data) {
     return(Omega)
 }
 
-## save(data, file = "~/Mount/Grid/perturbseq_p7d_data.rda")
+## save(data, file = "~/Mount/Grid/perturbseq_dc3_data.rda")
 
 ## ## do wildetype:
 
@@ -285,59 +295,5 @@ con <- which(apply(kadjagg, 1, sum) > 0 | apply(kadjagg, 2, sum) > 0)
 kadjagg <- kadjagg[con, con, drop = FALSE]
 
 ## save(kadj, kadjagg, genes, file = "~/Mount/Grid/perturbseq_d3_kegg.rda")
-
-## analyse grid mnem results:
-
-setwd("~/Mount/Grid/")
-
-dataset <- "p7d"
-
-load(paste0("~/Mount/Grid/perturbseq_", dataset, "_mnem.rda"))
-
-for (i in 1:length(allres)) {
-
-    tmp <- Inf
-    tmp2 <- 1
-
-    for (j in 1:(length(allres[[i]])-1)) {
-        
-        pdf(paste0("perturbseq/", dataset, "/", i, "_", j, ".pdf"), width = 15, height = 15)
-        
-        plot(allres[[i]][[j]])
-
-        dev.off()
-
-        if (allres[[i]][[j]]$best$ll <= tmp | j == 2) {
-            tmp2 <- j
-            tmp <- allres[[i]][[j]]$best$ll
-        }
-
-    }
-    
-    print(paste0("kegg ", i))
-    print(tmp2)
-    print(tmp)
-
-}
-
-## paper:
-
-i <- 16
-
-pdf("temp.pdf", width = 10, height = 8)
-
-plot(allres[[i]][[3]])
-
-## mtext("A", side = 3, line = 2, outer = FALSE, cex = 2.5, adj = 0,
-##       at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*2.9)
-
-## mtext("B", side = 3, line = 2, outer = FALSE, cex = 2.5, adj = 0,
-##       at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(1.55))
-
-## mtext("C", side = 3, line = 2, outer = FALSE, cex = 2.5, adj = 0,
-##       at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(0.2))
-
-dev.off()
-
 
 ```
