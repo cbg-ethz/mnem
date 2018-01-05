@@ -13,44 +13,43 @@ done
 
 module load repo/grid
 module load grid/grid
+module load gcc/5.3.0
+module load R/3.4.0
 
-for i in `seq 1 2`; do
+for i in `seq 1 10`; do
     file=${runnames[$RANDOM % ${#runnames[@]}]}${i}.sh
     echo "module load repo/grid" >> $file
     echo "module load grid/grid" >> $file
     echo "module load gcc/5.3.0" >> $file
     echo "module load R/3.4.0" >> $file
-    echo "R --slave 'Sgenes=3' 'run=$i' 'noise=1:3' 'nem=1:4' < mnem/vignettes/sim.R" >> $file
+    echo "R --slave --args 'Sgenes=3' 'run=$i' 'noise=1' 'nem=1:5' < mnem/vignettes/sim.R" >> $file
     qsub -q mpi01.q -pe make 1 $file
-    sleep 1
     rm $file
 done
 
-for i in `seq 54 100`; do
+for i in `seq 1 100`; do
     for j in `seq 1 3`; do
 	file=${runnames[$RANDOM % ${#runnames[@]}]}${i}_${j}.sh
 	echo "module load repo/grid" >> $file
 	echo "module load grid/grid" >> $file
 	echo "module load gcc/5.3.0" >> $file
 	echo "module load R/3.4.0" >> $file
-	echo "R --slave 'Sgenes=10' 'run=$i' 'noise=$j' 'nem=1:4' < mnem/vignettes/sim.R" >> $file
+	echo "R --slave --args 'Sgenes=5' 'run=$i' 'noise=$j' 'nem=1:5' < mnem/vignettes/sim.R" >> $file
 	qsub -q mpi04-ht.q -pe make 1 $file
-	sleep 1
 	rm $file
     done
 done
 
 for i in `seq 1 100`; do
     for j in `seq 1 3`; do
-	for k in `seq 1 4`; do
+	for k in `seq 1 5`; do
 	    file=${runnames[$RANDOM % ${#runnames[@]}]}${i}_${j}_${k}.sh
 	    echo "module load repo/grid" >> $file
 	    echo "module load grid/grid" >> $file
 	    echo "module load gcc/5.3.0" >> $file
 	    echo "module load R/3.4.0" >> $file
-	    echo "R --slave 'Sgenes=10' 'run=$i' 'noise=$j' 'nem=$k' < mnem/vignettes/sim.R" >> $file
+	    echo "R --slave --args 'Sgenes=10' 'run=$i' 'noise=$j' 'nem=$k' < mnem/vignettes/sim.R" >> $file
 	    qsub -q mpi01.q -pe make 1 $file
-	    sleep 1
 	    rm $file
 	done
     done
@@ -85,25 +84,21 @@ source("~/Documents/mnem/R/mnems.r")
 source("~/Documents/mnem/R/mnems_low.r")
 
 ## variable parameters:
-runs <- 10
+runs <- 1
 noises <- c(1, 2.5, 5)
 binoises <- c(0.01, 0.1, 0.2, 0.5)
 
 acc <- acc2 <- sens <- spec <- mwcor <- numeric(runs)
 
-Sgenes <- 3
-Egenes <- 10
+Sgenes <- 5
+Egenes <- 2
 nem <- 1
-maxk <- 6
-starts <- 4
+maxk <- 5
+starts <- 10
 search <- "modules"
-noise <- 1
+noise <- 2
 parallel <- 2
 verbose <- TRUE
-
-if (inference %in% "greedy") {
-    starts <- 1
-}
 
 doinit <- F
 do <- 1
@@ -139,16 +134,8 @@ for (run in 1:length(acc)) {
     diag(fullsim) <- 1
     
     data <- sim$data
-    if (bin) {
-        fpfn <- sample(1:length(data), floor(length(data)*binoises[noise]))
-        data[fpfn] <- 1 - data[fpfn]
-    }
-    if (ratio) {
-        data <- (data - 0.5)/0.5
-    }
-    if (!bin) {
-        data <- data + rnorm(length(sim$data), 0, noises[noise])
-    }
+    data <- (data - 0.5)/0.5
+    data <- data + rnorm(length(sim$data), 0, noises[noise])
     for (i in 1:Sgenes) {
         colnames(data)[which(colnames(data) == i)] <- letters[i] # paste("Sgene", i, sep = "")
     }
@@ -222,19 +209,21 @@ for (run in 1:length(acc)) {
     start <- Sys.time()
     if (do == 1) {
         ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r"); parallel <- NULL
-        res <- list()
+        res2 <- list()
         bics <- rep(Inf, maxk)
         for (k in 1:maxk) {
-            res[[k]] <- mnem(data, starts = starts,
+            res2[[k]] <- mnem(data, starts = starts,
                         search = search,
                         start = init,
                         p = p,
                         verbose = verbose,
                         parallel = parallel, k = k
                         )
-            bics[k] <- getIC(res[[k]])
+            bics[k] <- getIC(res2[[k]], AIC = F)
+            print(length(res2[[k]]$comp))
         }
-        res <- res[[which.min(bics)]]
+        res <- res2[[which.min(bics)]]
+        print(bics)
     } else {
         ## init <- NULL
         D <- modData(data)
@@ -327,16 +316,17 @@ source("~/Documents/mnem/R/mnems.r")
 source("~/Documents/mnem/R/mnems_low.r")
 Sgenes <- 10
 Egenes <- 10
-noise <- 2
+noise <- 1
 binoise <- 0.1
 runs <- 10
 ratio <- TRUE
 bin <- FALSE
-beta <- 1.5
+beta <- NULL
 prior <- simData(Sgenes = Sgenes, Egenes = Egenes, reps = 10, Nems = 1)$Nem[[1]]
 sens <- sens2 <- 0
 spec <- spec2 <- 0
 sham <- sham2 <- 0
+time <- time2 <- 0
 dev.off()
 par(mfrow=c(1,1))
 plot(0, 0, xlim = c(0, 10), ylim = c(0,1))
@@ -366,7 +356,7 @@ for (i in 1:runs) {
     ## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r")
     init <- NULL
     res <- mynem(data, start = init, search= c("modules", "greedy"), parallel = NULL, ratio = ratio, modulesize = 4)#, prior = sim$Nem[[1]])
-    print(Sys.time() - start)
+    print(time <- time + Sys.time() - start)
     tp <- sum(res$adj == 1 & sim$Nem[[1]] == 1)
     tn <- sum(res$adj == 0 & sim$Nem[[1]] == 0)
     fp <- sum(res$adj == 1 & sim$Nem[[1]] == 0)
@@ -421,9 +411,11 @@ for (i in 1:runs) {
 print(sens/runs)
 print(spec/runs)
 print(sham/runs)
+print(time/runs)
 print(sens2/runs)
 print(spec2/runs)
 print(sham2/runs)
+print(time2/runs)
 
 ```
 
@@ -431,26 +423,25 @@ Evalution of the simulations follows.
 
 ```{r, fig.width = 7, fig.height = 7, fig.cap=fig.cap1}
 
+setwd("~/Mount/Grid/")
+
 Sgenes <- 10
 
-noises <- c(0.1, 1, 2.5, 5)
-nems <- 2:10
+noises2 <- c(1, 2.5, 5)
+nems2 <- 1:10
 runs <- 100
 
-simres2 <- array(0, c(runs, length(noises), length(nems), 4, 6), list(paste("run_", 1:runs, sep = ""), paste("noise_", noises, sep
-                                                                                                             = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing")))
+simres2 <- array(0, c(runs, length(noises2), length(nems2), 4, 7), list(paste("run_", 1:runs, sep = ""), paste0("noise_", noises2), paste("components_", nems2, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing", "mixing2")))
 
 folder <- "temp/"
-#folder <- "sim20171101/"
+#folder <- "sim20171129/"
 
 ihaveruns <- ihavenoise <- ihavenems <- NULL
 
 for (run in 1:runs) {
-    for (noise in 1:length(noises)) {
-        
-        for (nem in 1:length(nems)) {
-            file <- paste("~/Mount/Grid/", folder, "simres_mnem", "_", Sgenes, "_", run, "_", noise, "_", nem, ".rda", sep = "")
-            ##file <- paste("simres_mnem", "_", Sgenes, "_", run, "_", noise, "_", nem, ".rda", sep = "")
+    for (noise in 1:length(noises2)) {
+        for (nem in 1:length(nems2)) {
+            file <- paste0(folder, "simres_mnem", "_", Sgenes, "_", run, "_", noise, "_", nem, ".rda")
             if (file.exists(file)) {
                 ihaveruns <- c(ihaveruns, run)
                 ihavenoise <- c(ihavenoise, noise)
@@ -458,12 +449,6 @@ for (run in 1:runs) {
                 load(file)
                 simres2[run,noise,nem,,] <- simres2[run,noise,nem,,] + simres[run,noise,nem,,]
             }
-            ## } else {
-            ##     print("not")
-            ##     print(run)
-            ##     print(noise)
-            ##     print(nem)
-            ## }
         }
     }
 }
@@ -473,9 +458,11 @@ ihavenoise <- sort(unique(ihavenoise))
 ihavenems <- sort(unique(ihavenems))
 
 simres <- simres2[ihaveruns,,,,] # subset if I don't have all runs...
+
+assign(paste0("simres", Sgenes), simres)
    
-noises <- c(0.1, 1, 2.5, 5)
-nems <- 2:10
+noises <- c(1, 2.5, 5)
+nems <- 1:10
 nems <- nems[ihavenems]
 
 print(ihaveruns)
@@ -484,14 +471,14 @@ print(ihavenems)
 
 ## load(paste("mnem_sim/b9cd53a/mnem_sim_", Sgenes, ".rda", sep = "")); simresOld <- simres; load(paste("mnem_sim_", Sgenes, ".rda", sep = ""))
 
-## pdf("temp.pdf", width = 12, height = 24)
+## pdf("temp.pdf", width = 12, height = 12)
 
 random <- TRUE
 
-par(mfrow=c(length(nems), 4))
-for (l in (nems-1)) {
+par(mfrow=c(length(nems), 5))
+for (l in nems) {
     ylab <- c("seconds", "inferred/simulated components", "accuracy", "sensitivity", "specificity", "mixture weights residuals")
-    for (k in 1:6) {
+    for (k in 1:7) {
         if (k == 4 | k == 5) { next() }
         tmp <- NULL
         for (i in 4:1) {
@@ -511,7 +498,7 @@ for (l in (nems-1)) {
         }
         ## if (k == 1) { tmp <- apply(tmp, c(1,2), function(x) return(log(x+1))) }
         if (k == 2) { tmp <- tmp[, 1:(ncol(tmp)/3)] }
-        if (k == 6 | k == 1) {
+        if (k == 6 | k == 6 | k == 1) {
             minylim <- 0
         } else {
             minylim <- 0#.5
@@ -570,28 +557,80 @@ dev.off()
 
 ## combine the diff S-genes:
 
-pdf("temp.pdf", width = 10, height = 14)
+dowhat <- 3 # dimnames(simres3)
 
-par(mfrow=c(5,3))
+pdf("sim.pdf", width = 8, height = 6)
 
-for (i in c(1,3,5,7,9)) {
-    for (j in c(3,5,10)) {
+mar <- 1.5
+
+par(mfrow=c(5,4),mar=rep(mar, 4),oma=rep(mar,4))
+
+for (i in 1:5) {
+    for (j in c(3,5,10,20)) {
         tmp <- get(paste0("simres", j))
         tmp2 <- NULL
-        for (k in c(1,2,4)) {
-            for (l in 1:4) {
-                tmp2 <- cbind(tmp2, tmp[,l,i,k,3])
+        for (k in c(1,2)) {
+            for (l in 1:3) {
+                tmp3 <- tmp[,l,i,k,dowhat]
+                tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
+                tmp2 <- cbind(tmp2, tmp3)
             }
         }
-        boxplot(tmp2, col = c(rep("red", 4), rep("blue", 4), rep("grey", 4)), xaxt = "n", ylim = c(0,1))
+        boxplot(tmp2, col = c(rep("red", 3), rep("blue", 3), rep("grey", 3)), xaxt = "n", ylim = c(0.5,1))
         axis(1, 1:(length(noises)*3), rep(noises, 3))
-        axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c("mnem", "nem", "random"), line = 2, tick = FALSE, cex = 2)
+        ## axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c("mnem", "nem", "random"), line = 2, tick = FALSE, cex = 2)
         abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
     }
 }
 
 dev.off()
 
+pdf("sim_k.pdf", width = 10, height = 14)
+
+par(mfrow=c(5,4))
+
+for (i in 1:5) {
+    for (j in c(3,5,10,20)) {
+        tmp <- get(paste0("simres", j))
+        tmp2 <- NULL
+        for (l in 1:3) {
+            tmp3 <- tmp[,l,i,1,2]
+            tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
+            tmp2 <- cbind(tmp2, tmp3)
+        }
+        boxplot(tmp2, col = rep("red", 3), xaxt = "n")
+        axis(1, 1:(length(noises)*3), rep(noises, 3))
+        axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c(paste0(j, " | ", i), "nem", "random"), line = 2, tick = FALSE, cex = 2)
+        abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
+    }
+}
+
+dev.off()
+
+## check missing runs:
+
+Sgenes <- 3
+
+for (i in 1:100) {
+    for (j in 1:5) {
+        for (k in 1:3) {
+            if (!file.exists(paste0("temp/simres_mnem_", Sgenes, "_", i, "_", k, "_", j, ".rda"))) {
+                stop("got one")
+                file <- paste0("MissedIt", Sgenes, "_", i, "_", k, "_", j, ".sh")
+                system(paste0("file=", file))
+                system(paste('echo "module load repo/grid" >> ', file))
+                system(paste('echo "module load grid/grid" >> ', file))
+                system(paste('echo "module load gcc/5.3.0" >> ', file))
+                system(paste('echo "module load R/3.4.0" >> ', file))
+                tmp0 <- paste0("'Sgenes=", Sgenes, "' 'run=", i, "' 'noise=", k, "' 'nem=", j, "'")
+                tmp <- paste0('echo "R --slave --args ', tmp0, ' < mnem/vignettes/sim.R" >> ', file)
+                system(tmp)
+                system(paste0("qsub -q mpi04-ht.q -pe make 1 ", file))
+                system(paste0("rm ", file))
+            }
+        }
+    }
+}
 
 ```
 
