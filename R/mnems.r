@@ -362,7 +362,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
                  redSpace = NULL, affinity = 0, evolution = FALSE,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
                  popSize = 10, stallMax = 2, elitism = NULL, maxGens = Inf,
-                 domean = TRUE, modulesize = 5, compress = TRUE) {
+                 domean = TRUE, modulesize = 5, compress = FALSE) {
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
         redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)], search = "exhaustive", reduce = TRUE, verbose = verbose, parallel = c(parallel, parallel2), subtopo = subtopoX, ratio = ratio, domean = FALSE, modulesize = modulesize)$redSpace
     }
@@ -747,61 +747,61 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
             }
         }
         ## I try to merge components based on the fact, that some components can be completely included in the others and are obsolete:
-    ##     dead <- NULL
-    ##     for (i in 1:length(unique)) {
-    ##         dups <- NULL
-    ##         a <- transitive.closure(unique[[i]]$adj, mat = TRUE)
-    ##         for (j in 1:length(unique)) {
-    ##             if (i %in% j | j %in% dead) { next() }
-    ##             b <- transitive.closure(unique[[j]]$adj, mat = TRUE)
-    ##             dups <- c(dups, which(apply(abs(a - b), 1, sum) == 0))
-    ##         }
-    ##         if (all(1:nrow(unique[[i]]$adj) %in% dups)) {
-    ##             dead <- c(dead, i)
-    ##         }
-    ##     }
-    ##     if (is.null(dead)) {
-    ##         ulength <- 1:length(unique)
-    ##     } else {
-    ##         added <- added[-dead]
-    ##         ulength <- (1:length(unique))[-dead]
-    ##     }
-    ##     count <- 0
-    ##     unique2 <- list()
-    ##     for (i in ulength) {
-    ##         count <- count + 1
-    ##         unique2[[count]] <- unique[[i]]    }
-    ##     unique <- unique2
-    ##     probs <- best$probs[added, , drop = FALSE]
-    ##     colnames(probs) <- colnames(D.backup)
-    ##     postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
-    ##     if (!is.null(dim(postprobs))) {
-    ##         lambda <- apply(postprobs, 1, mean)
-    ##     } else {
-    ##         lambda <- 1
-    ##     }
-    ##     comp <- list()
-    ##     for (i in 1:length(unique)) {
-    ##         comp[[i]] <- list()
-    ##         comp[[i]]$phi <- unique[[i]]$adj
-    ##         comp[[i]]$theta <- unique[[i]]$subtopo
-    ##     }
-    ## } else {
-    ##     probs <- best$probs[added, , drop = FALSE]
-    ##     colnames(probs) <- colnames(D.backup)
-    ##     postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
-    ##     if (!is.null(dim(postprobs))) {
-    ##         lambda <- apply(postprobs, 1, mean)
-    ##     } else {
-    ##         lambda <- 1
-    ##     }
-    ##     comp <- list()
-    ##     for (i in 1:length(best)) {
-    ##         comp[[i]] <- list()
-    ##         comp[[i]]$phi <- best$res[[i]]$adj
-    ##         comp[[i]]$theta <- best$res[[i]]$subtopo
-    ##     }
-    ## }
+        dead <- NULL
+        for (i in 1:length(unique)) {
+            dups <- NULL
+            a <- transitive.closure(unique[[i]]$adj, mat = TRUE)
+            for (j in 1:length(unique)) {
+                if (i %in% j | j %in% dead) { next() }
+                b <- transitive.closure(unique[[j]]$adj, mat = TRUE)
+                dups <- c(dups, which(apply(abs(a - b), 1, sum) == 0))
+            }
+            if (all(1:nrow(unique[[i]]$adj) %in% dups)) {
+                dead <- c(dead, i)
+            }
+        }
+        if (is.null(dead)) {
+            ulength <- 1:length(unique)
+        } else {
+            added <- added[-dead]
+            ulength <- (1:length(unique))[-dead]
+        }
+        count <- 0
+        unique2 <- list()
+        for (i in ulength) {
+            count <- count + 1
+            unique2[[count]] <- unique[[i]]    }
+        unique <- unique2
+        probs <- best$probs[added, , drop = FALSE]
+        colnames(probs) <- colnames(D.backup)
+        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
+        if (!is.null(dim(postprobs))) {
+            lambda <- apply(postprobs, 1, mean)
+        } else {
+            lambda <- 1
+        }
+        comp <- list()
+        for (i in 1:length(unique)) {
+            comp[[i]] <- list()
+            comp[[i]]$phi <- unique[[i]]$adj
+            comp[[i]]$theta <- unique[[i]]$subtopo
+        }
+    } else {
+        probs <- best$probs[added, , drop = FALSE]
+        colnames(probs) <- colnames(D.backup)
+        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
+        if (!is.null(dim(postprobs))) {
+            lambda <- apply(postprobs, 1, mean)
+        } else {
+            lambda <- 1
+        }
+        comp <- list()
+        for (i in 1:length(best)) {
+            comp[[i]] <- list()
+            comp[[i]]$phi <- best$res[[i]]$adj
+            comp[[i]]$theta <- best$res[[i]]$subtopo
+        }
+    }
     res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, ll = getLL(probs, logtype = logtype, mw = lambda))
     class(res) <- "mnem"
     return(res)
