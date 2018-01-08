@@ -787,7 +787,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
             comp[[i]]$theta <- unique[[i]]$subtopo
         }
     } else {
-        probs <- best$probs[added, , drop = FALSE]
+        probs <- best$probs[, , drop = FALSE]
         colnames(probs) <- colnames(D.backup)
         postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
         if (!is.null(dim(postprobs))) {
