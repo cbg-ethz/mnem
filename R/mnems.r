@@ -1,25 +1,44 @@
 
-getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2) {
-    if (degree != 5) {
-        fpar <- 0   
+getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = TRUE, Fnorm = TRUE) {
+    n <- ncol(x$data)
+    if (useF) {
         for (i in 1:length(x$comp)) {
-            tmp <- transitive.reduction(x$comp[[i]]$phi)
-            if (degree > 2) {
-                tmp <- transitive.closure(x$comp[[i]]$phi, mat = TRUE)
+            tmp <- transitive.closure(x$comp[[i]]$phi, mat = TRUE)
+            tmp2 <- matrix(0, nrow = nrow(tmp), ncol = length(x$comp[[i]]$theta))
+            tmp3 <- x$comp[[i]]$theta
+            tmp3[which(tmp3 > nrow(tmp2))] <- 0
+            tmp2[cbind(tmp3, 1:ncol(tmp2))] <- 1
+            tmp4 <- tmp%*%tmp2
+            if (i == 1) {
+                fpar <- tmp4
+            } else {
+                fpar <- fpar + tmp4
             }
-            diag(tmp) <- 0
-            fpar <- fpar + sum(tmp != 0)
         }
-        if (degree > 1 & (degree != 3)) {
-            fpar <- fpar + length(x$comp)*nrow(x$data)
+        if (Fnorm) {
+            fpar[which(fpar > 0)] <- 1
         }
     } else {
-        fpar <- (x$comp[[i]]$phi+ncol(x$comp[[i]]$phi)*length(x$comp[[i]]$theta))*length(x$comp)
+        if (degree != 5) {
+            fpar <- 0   
+            for (i in 1:length(x$comp)) {
+                tmp <- transitive.reduction(x$comp[[i]]$phi)
+                if (degree > 2) {
+                    tmp <- transitive.closure(x$comp[[i]]$phi, mat = TRUE)
+                }
+                diag(tmp) <- 0
+                fpar <- fpar + sum(tmp != 0)
+            }
+            if (degree > 1 & (degree != 3)) {
+                fpar <- fpar + length(x$comp)*nrow(x$data)
+            }
+        } else {
+            fpar <- (x$comp[[i]]$phi+ncol(x$comp[[i]]$phi)*length(x$comp[[i]]$theta))*length(x$comp)
+        }
+        if (degree > 0) {
+            fpar <- fpar + length(x$comp) - 1
+        }
     }
-    if (degree > 0) {
-        fpar <- fpar + length(x$comp) - 1
-    }
-    n <- ncol(x$data)
     LL <- max(x$ll)*log(logtype)
     if (AIC) {
         bic <- pen*fpar - 2*LL
@@ -728,61 +747,61 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
             }
         }
         ## I try to merge components based on the fact, that some components can be completely included in the others and are obsolete:
-        dead <- NULL
-        for (i in 1:length(unique)) {
-            dups <- NULL
-            a <- transitive.closure(unique[[i]]$adj, mat = TRUE)
-            for (j in 1:length(unique)) {
-                if (i %in% j | j %in% dead) { next() }
-                b <- transitive.closure(unique[[j]]$adj, mat = TRUE)
-                dups <- c(dups, which(apply(abs(a - b), 1, sum) == 0))
-            }
-            if (all(1:nrow(unique[[i]]$adj) %in% dups)) {
-                dead <- c(dead, i)
-            }
-        }
-        if (is.null(dead)) {
-            ulength <- 1:length(unique)
-        } else {
-            added <- added[-dead]
-            ulength <- (1:length(unique))[-dead]
-        }
-        count <- 0
-        unique2 <- list()
-        for (i in ulength) {
-            count <- count + 1
-            unique2[[count]] <- unique[[i]]    }
-        unique <- unique2
-        probs <- best$probs[added, , drop = FALSE]
-        colnames(probs) <- colnames(D.backup)
-        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
-        if (!is.null(dim(postprobs))) {
-            lambda <- apply(postprobs, 1, mean)
-        } else {
-            lambda <- 1
-        }
-        comp <- list()
-        for (i in 1:length(unique)) {
-            comp[[i]] <- list()
-            comp[[i]]$phi <- unique[[i]]$adj
-            comp[[i]]$theta <- unique[[i]]$subtopo
-        }
-    } else {
-        probs <- best$probs[added, , drop = FALSE]
-        colnames(probs) <- colnames(D.backup)
-        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
-        if (!is.null(dim(postprobs))) {
-            lambda <- apply(postprobs, 1, mean)
-        } else {
-            lambda <- 1
-        }
-        comp <- list()
-        for (i in 1:length(best)) {
-            comp[[i]] <- list()
-            comp[[i]]$phi <- best$res[[i]]$adj
-            comp[[i]]$theta <- best$res[[i]]$subtopo
-        }
-    }
+    ##     dead <- NULL
+    ##     for (i in 1:length(unique)) {
+    ##         dups <- NULL
+    ##         a <- transitive.closure(unique[[i]]$adj, mat = TRUE)
+    ##         for (j in 1:length(unique)) {
+    ##             if (i %in% j | j %in% dead) { next() }
+    ##             b <- transitive.closure(unique[[j]]$adj, mat = TRUE)
+    ##             dups <- c(dups, which(apply(abs(a - b), 1, sum) == 0))
+    ##         }
+    ##         if (all(1:nrow(unique[[i]]$adj) %in% dups)) {
+    ##             dead <- c(dead, i)
+    ##         }
+    ##     }
+    ##     if (is.null(dead)) {
+    ##         ulength <- 1:length(unique)
+    ##     } else {
+    ##         added <- added[-dead]
+    ##         ulength <- (1:length(unique))[-dead]
+    ##     }
+    ##     count <- 0
+    ##     unique2 <- list()
+    ##     for (i in ulength) {
+    ##         count <- count + 1
+    ##         unique2[[count]] <- unique[[i]]    }
+    ##     unique <- unique2
+    ##     probs <- best$probs[added, , drop = FALSE]
+    ##     colnames(probs) <- colnames(D.backup)
+    ##     postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
+    ##     if (!is.null(dim(postprobs))) {
+    ##         lambda <- apply(postprobs, 1, mean)
+    ##     } else {
+    ##         lambda <- 1
+    ##     }
+    ##     comp <- list()
+    ##     for (i in 1:length(unique)) {
+    ##         comp[[i]] <- list()
+    ##         comp[[i]]$phi <- unique[[i]]$adj
+    ##         comp[[i]]$theta <- unique[[i]]$subtopo
+    ##     }
+    ## } else {
+    ##     probs <- best$probs[added, , drop = FALSE]
+    ##     colnames(probs) <- colnames(D.backup)
+    ##     postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
+    ##     if (!is.null(dim(postprobs))) {
+    ##         lambda <- apply(postprobs, 1, mean)
+    ##     } else {
+    ##         lambda <- 1
+    ##     }
+    ##     comp <- list()
+    ##     for (i in 1:length(best)) {
+    ##         comp[[i]] <- list()
+    ##         comp[[i]]$phi <- best$res[[i]]$adj
+    ##         comp[[i]]$theta <- best$res[[i]]$subtopo
+    ##     }
+    ## }
     res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, ll = getLL(probs, logtype = logtype, mw = lambda))
     class(res) <- "mnem"
     return(res)
