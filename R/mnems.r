@@ -796,7 +796,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = 
             lambda <- 1
         }
         comp <- list()
-        for (i in 1:length(best)) {
+        for (i in 1:length(best$res)) {
             comp[[i]] <- list()
             comp[[i]]$phi <- best$res[[i]]$adj
             comp[[i]]$theta <- best$res[[i]]$subtopo
