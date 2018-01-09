@@ -1,5 +1,5 @@
 
-getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = TRUE, Fnorm = TRUE) {
+getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = TRUE, Fnorm = FALSE) {
     n <- ncol(x$data)
     if (useF) {
         for (i in 1:length(x$comp)) {
