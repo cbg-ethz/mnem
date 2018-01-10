@@ -1,5 +1,5 @@
 
-getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = TRUE, Fnorm = FALSE) {
+getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE, Fnorm = FALSE) {
     n <- ncol(x$data)
     if (useF) {
         for (i in 1:length(x$comp)) {
@@ -18,6 +18,8 @@ getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = TRUE,
         if (Fnorm) {
             fpar[which(fpar > 0)] <- 1
         }
+        fpar <- sum(fpar)
+        fpar <- fpar + length(x$comp) - 1
     } else {
         if (degree != 5) {
             fpar <- 0   
@@ -33,7 +35,7 @@ getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = TRUE,
                 fpar <- fpar + length(x$comp)*nrow(x$data)
             }
         } else {
-            fpar <- (x$comp[[i]]$phi+ncol(x$comp[[i]]$phi)*length(x$comp[[i]]$theta))*length(x$comp)
+            fpar <- (length(x$comp[[1]]$phi)+length(x$comp[[1]]$theta))*length(x$comp)
         }
         if (degree > 0) {
             fpar <- fpar + length(x$comp) - 1
