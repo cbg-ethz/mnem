@@ -5,7 +5,7 @@ run <- gsub("run=", "", args[grep("run=", args)])
 noise <- gsub("noise=", "", args[grep("noise=", args)])
 nem <- gsub("nem=", "", args[grep("nem=", args)])
 
-# nem <- 1; noise <- run <- 1; Sgenes <- 20
+# nem <- 1:5; noise <- 1:3; run <- 1; Sgenes <- 3
 
 if (length(grep(":", nem)) > 0) {
     nem <- as.numeric(gsub(":.*", "", nem)):as.numeric(gsub(".*:", "", nem))
@@ -39,15 +39,15 @@ start1 <- as.numeric(format(Sys.time(), "%s"))
 runs <- 100
 noises <- c(1, 2.5, 5, 10)
 nems <- 1:10
-maxk <- 6
+maxk <- 5
 
 ## fixed parameters:
-starts <- 10 # make it dependent on the learnt k
+starts <- 10
 search <- "modules"
 verbose <- FALSE
 
 ## mixing parameters:
-Egenes <- 10
+Egenes <- 2
 nCells <- 1000
 
 simres <- array(0, c(runs, length(noises), length(nems), 4, 7), list(paste("run_", 1:runs, sep = ""), paste("noise_", noises, sep = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing", "mixing2")))
@@ -64,7 +64,7 @@ for (i in nem) {
 for (donoise in noise) {
     for (donem in nem) {
 
-        ## donoise <- noise[1]; donem <- nem[1]
+        ## donoise <- noise[1]; donem <- nem[2]
 
         print(paste(rep("_", 100), collapse = ""))
         print(paste("run", run))
@@ -100,7 +100,7 @@ for (donoise in noise) {
             bics <- rep(Inf, maxk)
             for (k in 1:maxk) {
                 res[[k]] <- mnem(data, starts = starts, search = search, k = k, verbose = verbose)
-                bics[k] <- getIC(res[[k]], AIC = FALSE)
+                bics[k] <- getIC(res[[k]])
             }
             res1 <- res[[1]]
             res <- res[[which.min(bics)]]
@@ -192,14 +192,10 @@ end1 <- as.numeric(format(Sys.time(), "%s"))
 
 print(end1 - start1)
 
-## simres[1,,,,]
-
 for (i in nem) {
     for (j in noise) {    
         save(simres, noises, nems, file = paste("temp/simres_mnem_", Sgenes, "_", run, "_", j, "_", i, ".rda", sep = ""))
     }
 }
-
-## save(simres, noises, file = paste("temp/simres_mnem_", Sgenes, "_", run, "_", noise, "_", nem, "_", as.numeric(format(Sys.time(), "%s")), ".rda", sep = ""))
 
 stop("simulations are done")

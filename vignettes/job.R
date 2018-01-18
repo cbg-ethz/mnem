@@ -455,7 +455,7 @@ ll <- rep(0, maxk)
 
 for (i in 1:maxk) {
     
-    bics[i] <- getIC(res[[i]])
+    bics[i] <- getIC(res[[i]], useF = F, Fnorm = T)
 
     ll[i] <- max(res[[i]]$ll)
 
@@ -478,12 +478,12 @@ if (length(grep("perturbseq", dataset)) != 0) {
 ## pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_bic.pdf"), width = 7, height = 6)
 
 par(mar=c(5,5,2,5))
-plot(bics, type = "b", ylab = "BIC", col = "red", xlab = "BIC (red) and log likelihood (blue) as a function of number of components", yaxt = "n", ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
+plot(bics, type = "b", ylab = "modified log likelihood ratio", col = "red", xlab = "modified (red) and raw log likelihood (blue) as a function of number of components", yaxt = "n", ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
 lines(ll, type = "b", col = "blue")
 axis(4, ll3, round(seq(min(ll2), max(ll2), length.out = 5)))
 axis(2, ll3, round(ll3))
 axis(1, 1:maxk, 1:maxk)
-mtext("unnormalized log likelihood", side=4, line=3)
+mtext("raw log likelihood ratio", side=4, line=3)
 
 dev.off()
 
