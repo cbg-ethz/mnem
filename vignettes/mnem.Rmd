@@ -67,6 +67,7 @@ biocLite("epiNEM")
 
 
 ```r
+ 
 ##library(flexclust)
 library(cluster)
 library(nem)
@@ -78,7 +79,36 @@ library(Rgraphviz)
 source("mnem/R/mnems.r")
 source("mnem/R/mnems_low.r")
 
-## these are simulations to account for the transitive closure and the bias for random networks:
+## random mixture weights simulations:
+
+runs <- 100
+maxk <- 5
+par(mfrow=c(1,maxk))
+mixrand <- matrix(0, runs, maxk)
+for (j in 1:5) {
+    nem <- j
+    tmp <- numeric(runs)
+    for (i in 1:runs) {
+        mw <- runif(nem, 0.1, 1)
+        mw <- mw/sum(mw)
+        nem2 <- sample(1:5, 1)
+        mw2 <- runif(nem2, 0.1, 1)
+        mw2 <- mw2/sum(mw2)
+        tmp[i] <- dist(rbind(mw, mw2))
+    }
+    hist(tmp)
+    abline(v=mean(tmp), col = "red")
+    abline(v=median(tmp), col = "blue")
+    mixrand[, j] <- tmp
+}
+par(mfrow=c(1,1))
+
+pdf("mixrand.pdf", height = 4, width = 5)
+boxplot(mixrand, col = "grey", main = "random", xlab = "components K")
+#abline(h=0.5, lty=2)
+dev.off()
+
+##
 
 source("~/Documents/mnem/R/mnems.r")
 source("~/Documents/mnem/R/mnems_low.r")
@@ -90,13 +120,13 @@ binoises <- c(0.01, 0.1, 0.2, 0.5)
 
 acc <- acc2 <- sens <- spec <- mwcor <- numeric(runs)
 
-Sgenes <- 5
+Sgenes <- 15
 Egenes <- 2
-nem <- 1
+nem <- 2
 maxk <- 5
-starts <- 10
+starts <- 1
 search <- "modules"
-noise <- 2
+noise <- 1
 parallel <- 2
 verbose <- TRUE
 
@@ -219,7 +249,7 @@ for (run in 1:length(acc)) {
                         verbose = verbose,
                         parallel = parallel, k = k
                         )
-            bics[k] <- getIC(res2[[k]], AIC = F)
+            bics[k] <- getIC(res2[[k]])
             print(length(res2[[k]]$comp))
         }
         res <- res2[[which.min(bics)]]
@@ -285,6 +315,15 @@ for (run in 1:length(acc)) {
     acc[run] <- hamSim(randfull, simfull, symmetric = TRUE)
     lines(run, acc[run], col = 11, type = "b", pch = 4)
 }
+
+par(mfrow=c(1,maxk))
+bics <- rep(Inf, maxk)
+for (k in 1:maxk) {
+    bics[k] <- getIC(res2[[k]], useF = F)
+    print(getLL(res2[[k]]$probs, logtype = 2, mw = res2[[k]]$mw))
+    hist(getAffinity(res2[[k]]$probs, mw = res2[[k]]$mw))
+}
+print(bics)
 
 pdf("temp.pdf", width = 30, height = 10)
     
@@ -423,9 +462,9 @@ Evalution of the simulations follows.
 
 ```{r, fig.width = 7, fig.height = 7, fig.cap=fig.cap1}
 
-setwd("~/Mount/Grid/")
+setwd("~/Mount/Grid/") # setwd("~/Mount/Euler/")
 
-Sgenes <- 10
+Sgenes <- 20
 
 noises2 <- c(1, 2.5, 5)
 nems2 <- 1:10
@@ -504,6 +543,7 @@ for (l in nems) {
             minylim <- 0#.5
         }
         boxplot(tmp, col = c(rep("grey", length(noises)), rep("lightblue", length(noises)), rep("blue", length(noises))), xaxt = "none", ylim = c(minylim,max(c(1,max(tmp)))), ylab = ylab[k])
+        lines(1:ncol(tmp), apply(tmp, 2, mean), type = "p", col = "red", pch = "X")
         if (k == 1) { abline(h=0, lty = 3) }
         if (k == 2) { abline(h=1, lty = 3) }
         if (k != 1 & k != 2) { abline(h=0.5, lty = 3); abline(h=0.9, lty = 3) }
@@ -557,13 +597,21 @@ dev.off()
 
 ## combine the diff S-genes:
 
-dowhat <- 3 # dimnames(simres3)
+setwd("~/Documents/")
 
-pdf("sim.pdf", width = 8, height = 6)
+meancol2 <- rgb(1,0,0)
+
+meancol <- rgb(0,0,1)
+
+redcol <- rgb(1,0,0)
+
+bluecol <- rgb(0,0,1)
+
+pdf("sim.pdf", width = 10, height = 8)
 
 mar <- 1.5
 
-par(mfrow=c(5,4),mar=rep(mar, 4),oma=rep(mar,4))
+par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
 
 for (i in 1:5) {
     for (j in c(3,5,10,20)) {
@@ -571,23 +619,109 @@ for (i in 1:5) {
         tmp2 <- NULL
         for (k in c(1,2)) {
             for (l in 1:3) {
-                tmp3 <- tmp[,l,i,k,dowhat]
-                tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
+                tmp3 <- tmp[,l,i,k,3]
+                #tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
                 tmp2 <- cbind(tmp2, tmp3)
             }
         }
-        boxplot(tmp2, col = c(rep("red", 3), rep("blue", 3), rep("grey", 3)), xaxt = "n", ylim = c(0.5,1))
+        boxplot(tmp2, col = c(rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0.5,1))
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
         axis(1, 1:(length(noises)*3), rep(noises, 3))
         ## axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c("mnem", "nem", "random"), line = 2, tick = FALSE, cex = 2)
-        abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
+        ## abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
+        abline(v=c(length(noises)+0.5), lty = 3, col = "black", lwd = 2)
     }
+}
+
+for (i in 1:5) {
+    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*4)
+}
+
+Sgenes <- c(3,5,10,20)
+
+for (i in 1:4) {
+    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
+}
+
+for (i in 1:4) {
+    mtext("NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(2.97 - (i-1)*1.2))
+}
+
+for (i in 1:4) {
+    mtext("M&NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.5 - (i-1)*1.2))
+}
+
+for (i in 1:4) {
+    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
 
 dev.off()
 
-pdf("sim_k.pdf", width = 10, height = 14)
+pdf("sim_g.pdf", width = 10, height = 8)
 
-par(mfrow=c(5,4))
+mar <- 1.5
+
+par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
+
+for (i in 1:5) {
+    for (j in c(3,5,10,20)) {
+        tmp <- get(paste0("simres", j))
+        tmp2 <- NULL
+        for (k in c(1,2)) {
+            for (l in 1:3) {
+                tmp3 <- tmp[,l,i,k,6]
+                #tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
+                tmp2 <- cbind(tmp2, tmp3)
+            }
+        }
+        boxplot(tmp2, col = c(rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0,1))
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
+        axis(1, 1:(length(noises)*3), rep(noises, 3))
+        ## axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c("mnem", "nem", "random"), line = 2, tick = FALSE, cex = 2)
+        ## abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
+        abline(v=c(length(noises)+0.5), lty = 3, col = "black", lwd = 2)
+    }
+}
+
+for (i in 1:5) {
+    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*4)
+}
+
+Sgenes <- c(3,5,10,20)
+
+for (i in 1:4) {
+    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
+}
+
+for (i in 1:4) {
+    mtext("NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(2.97 - (i-1)*1.2))
+}
+
+for (i in 1:4) {
+    mtext("M&NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.5 - (i-1)*1.2))
+}
+
+for (i in 1:4) {
+    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
+}
+
+dev.off()
+
+pdf("sim_k.pdf", width = 10, height = 8)
+
+par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
 
 for (i in 1:5) {
     for (j in c(3,5,10,20)) {
@@ -595,14 +729,76 @@ for (i in 1:5) {
         tmp2 <- NULL
         for (l in 1:3) {
             tmp3 <- tmp[,l,i,1,2]
-            tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
+            #tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
             tmp2 <- cbind(tmp2, tmp3)
         }
-        boxplot(tmp2, col = rep("red", 3), xaxt = "n")
+        boxplot(tmp2, col = rep(redcol, 3), xaxt = "n")
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
         axis(1, 1:(length(noises)*3), rep(noises, 3))
-        axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c(paste0(j, " | ", i), "nem", "random"), line = 2, tick = FALSE, cex = 2)
-        abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
+        #axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c(paste0(j, " | ", i), "nem", "random"), line = 2, tick = FALSE, cex = 2)
+        ## abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
+        abline(h=1, lty = 3, col = "black", lwd = 2)
     }
+}
+
+for (i in 1:5) {
+    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*4)
+}
+
+Sgenes <- c(3,5,10,20)
+
+for (i in 1:4) {
+    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
+}
+
+for (i in 1:4) {
+    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.15 - (i-1)*1.21))
+}
+
+dev.off()
+
+pdf("sim_g1.pdf", width = 10, height = 8)
+
+par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
+
+for (i in 1:5) {
+    for (j in c(3,5,10,20)) {
+        tmp <- get(paste0("simres", j))
+        tmp2 <- NULL
+        for (l in 1:3) {
+            tmp3 <- tmp[,l,i,1,6]
+            #tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
+            tmp2 <- cbind(tmp2, tmp3)
+        }
+        boxplot(tmp2, col = rep(redcol, 3), xaxt = "n")
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
+        axis(1, 1:(length(noises)*3), rep(noises, 3))
+        #axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c(paste0(j, " | ", i), "nem", "random"), line = 2, tick = FALSE, cex = 2)
+        ## abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
+        abline(h=1, lty = 3, col = "black", lwd = 2)
+    }
+}
+
+for (i in 1:5) {
+    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*4)
+}
+
+Sgenes <- c(3,5,10,20)
+
+for (i in 1:4) {
+    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
+}
+
+for (i in 1:4) {
+    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.15 - (i-1)*1.21))
 }
 
 dev.off()

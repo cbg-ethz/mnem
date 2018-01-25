@@ -429,6 +429,14 @@ res[[5]]$data <- res[[4]]$data <- res[[3]]$data <- res[[2]]$data <- res[[1]]$dat
 
 load(paste0(dataset, "_mnem_", bigorsmall, "_final.rda"))
 
+cropres <- res
+
+cc7dres <- res
+
+p7dres <- res
+
+res2 <- list(cropres, cc7dres, p7dres)
+
 ## i <- 2
 
 ## llstmp <- c(lls[i, ], llmins[i, ])
@@ -438,6 +446,10 @@ load(paste0(dataset, "_mnem_", bigorsmall, "_final.rda"))
 ## plot(llstmp)
 
 ## get bics:
+
+setwd("~/Mount/Euler")
+
+load("bics.rda")
 
 maxk <- length(res)
 
@@ -449,41 +461,68 @@ library(Rgraphviz)
 library(epiNEM)
 library(naturalsort)
 
-bics <- rep(0, maxk)
-
-ll <- rep(0, maxk)
-
-for (i in 1:maxk) {
+pdf("PLR.pdf", width = 11, height = 3)
     
-    bics[i] <- getIC(res[[i]], useF = F, Fnorm = T)
+par(mfrow=c(1,3), oma = c(0,0,1,0), mar = rep(0,4))
 
-    ll[i] <- max(res[[i]]$ll)
+for (j in 1:3) {
+
+    res <- res2[[j]]
+    
+    bics <- bicsall[[j]] #rep(0, maxk)
+    
+    ll <- llall[[j]] #rep(0, maxk)
+    
+    ## for (i in 1:maxk) {
+        
+    ##     bics[i] <- getIC(res[[i]], useF = F, Fnorm = T)
+        
+    ##     ll[i] <- max(res[[i]]$ll)
+
+    ## }
+
+    bicsall[[j]] <- bics
+
+    llall[[j]] <- ll
+    
+    ll2 <- ll
+    
+    ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
+    
+    ll <- ll - min(ll) + min(bics)
+    
+    ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
+    
+    if (length(grep("perturbseq", dataset)) != 0) {
+        bigorsmall <- "" # for perturbseq
+    } else {
+        bigorsmall <- paste0("_", bigorsmall)
+    }
+    
+    ## pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_bic.pdf"), width = 7, height = 6)
+
+    par(mar=c(5,5,2,5))
+    plot(bics, type = "b", ylab = "", col = "red", xlab = "", yaxt = "n", ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
+    lines(ll, type = "b", col = "blue")
+    axis(4, ll3, round(seq(min(ll2), max(ll2), length.out = 5)), cex.axis = 1.7)
+    axis(2, ll3, round(ll3), cex.axis = 1.7)
+    axis(1, 1:maxk, 1:maxk)
+    mtext("penalized", side=2, line=3, cex = 1.2)
+    mtext("raw", side=4, line=3, cex = 1.2)
+    
+    mtext(LETTERS[j], side = 3, line = -1, outer = FALSE, cex = 2.5, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*0.27)
 
 }
 
-ll2 <- ll
+dev.off()
 
-ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
+pdf("PLR_legend.pdf", height = 4, width = 5)
 
-ll <- ll - min(ll) + min(bics)
+plot(0, xlim = c(0,100), ylim = c(0,100))
 
-ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
-
-if (length(grep("perturbseq", dataset)) != 0) {
-    bigorsmall <- "" # for perturbseq
-} else {
-    bigorsmall <- paste0("_", bigorsmall)
-}
-
-## pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_bic.pdf"), width = 7, height = 6)
-
-par(mar=c(5,5,2,5))
-plot(bics, type = "b", ylab = "modified log likelihood ratio", col = "red", xlab = "modified (red) and raw log likelihood (blue) as a function of number of components", yaxt = "n", ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
-lines(ll, type = "b", col = "blue")
-axis(4, ll3, round(seq(min(ll2), max(ll2), length.out = 5)))
-axis(2, ll3, round(ll3))
-axis(1, 1:maxk, 1:maxk)
-mtext("raw log likelihood ratio", side=4, line=3)
+legend(0, 100, c("raw log likelihood ratio", "penalized log likelihood ratio"), fill = ,
+       border = "transparent", cex = 1.25, lty = 1, pch = 1, col = c("blue", "red"))
 
 dev.off()
 
@@ -492,6 +531,56 @@ i <- which.min(bics)
 gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
 
 ## HeatmapOP(gamma, breaks = 100, bordercol = "transparent")
+
+## histograms:
+
+pdf("histograms.pdf", width = 11, height = 3)
+    
+par(mfrow=c(1,3), oma = c(0,0,1,0), mar = rep(0,4))
+
+for (j in 1:3) {
+
+    res <- res2[[j]]
+    
+    bics <- rep(0, maxk)
+    
+    ll <- rep(0, maxk)
+    
+    for (i in 1:maxk) {
+        
+        bics[i] <- getIC(res[[i]], useF = F, Fnorm = T)
+        
+        ll[i] <- max(res[[i]]$ll)
+
+    }
+
+    ll2 <- ll
+    
+    ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
+    
+    ll <- ll - min(ll) + min(bics)
+    
+    ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
+    
+    if (length(grep("perturbseq", dataset)) != 0) {
+        bigorsmall <- "" # for perturbseq
+    } else {
+        bigorsmall <- paste0("_", bigorsmall)
+    }
+    
+    i <- which.min(bics)
+
+    gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
+
+    par(mar=c(5,5,2,5))
+    hist(gamma, main = "Histogram of responsibilities", xlab = "responsibilities")
+    
+    mtext(LETTERS[j], side = 3, line = -2.3, outer = FALSE, cex = 2.5, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*0.27)
+
+}
+
+dev.off()
 
 pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_hist.pdf"), width = 5, height = 5)
 
