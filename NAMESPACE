@@ -3,6 +3,7 @@
 export(mnem)
 export(plot.mnem)
 export(plotDnf)
+export(simData)
 import(Rgraphviz)
 import(cluster)
 import(epiNEM)
