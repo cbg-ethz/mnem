@@ -1,12 +1,4 @@
-## ## tsting mpi01 49
-
-## out <- 1 + 1
-
-## save(out, file = "temp.rda")
-
-## stop("test")
-
-## ```r
+### job script to turn normalized count data in log likelihood ratios and apply mnem.
 
 source("mnem/R/mnems.r")
 source("mnem/R/mnems_low.r")
@@ -21,10 +13,6 @@ library(Rgraphviz)
 #dataset <- "perturbseq_cc7d"
 
 #dataset <- "perturbseq_p7d"
-
-#dataset <- "perturbseq_dc3"
-
-#dataset <- "perturbseq_dc0"
 
 args <- commandArgs()
 
@@ -91,37 +79,14 @@ if (dollr) {
 
     C <- which(colnames(data) %in% "")
 
-    densPar <- function(i, data, C) {
-        llrcol <- numeric(ncol(data))
-        for (j in which(!(colnames(data) %in% ""))) { # 1:ncol(data)) {
-            gene <- colnames(data)[j]
-            D <- which(colnames(data) %in% gene)
-            cdens <- density(data[i, C], n = 1024, from = min(c(data[i, C], data[i, D])), to = max(c(data[i, C], data[i, D])))
-            cdist <- which.min(abs(data[i, j] - cdens$x))
-            ddens <- density(data[i, D], n = 1024, from = min(c(data[i, C], data[i, D])), to = max(c(data[i, C], data[i, D])))
-            ddist <- which.min(abs(data[i, j] - ddens$x))
-            llrcol[j] <- log2(ddens$y[ddist]/cdens$y[cdist])
-        }
-        return(llrcol)
-    }
-    
-    ##library(ks) # why ?
     distrPar <- function(i, data, C) {
         llrcol <- numeric(ncol(data))
-        for (j in which(!(colnames(data) %in% ""))) { # 1:ncol(data)) {
+        for (j in which(!(colnames(data) %in% ""))) {
             gene <- colnames(data)[j]
             D <- which(colnames(data) %in% gene)
             cdistr <- ecdf(data[i, C])
-            ##cdistr2 <- kcde(data[i, C])
-            ##cdist <- which.min(abs(data[i, j] - cdistr$eval.points))
-            ##cdist <- order(abs(data[i, j] - cdistr$eval.points))[1:2]
             ddistr <- ecdf(data[i, D])
-            ##ddistr <- kcde(data[i, D])
-            ##ddist <- which.min(abs(data[i, j] - ddistr$eval.points))
-            ##ddist <- order(abs(data[i, j] - ddistr$eval.points))[1:2]
             llrcol[j] <- log2(min(ddistr(data[i, j]), 1 - ddistr(data[i, j]))/min(cdistr(data[i,j]), 1 - cdistr(data[i,j])))
-            ##llrcol[j] <- log2(min(ddistr$estimate[ddist], 1 - ddistr$estimate[ddist])/min(cdistr$estimate[cdist], 1 - cdistr$estimate[cdist]))
-            ##llrcol[j] <- log2(dist(ddistr$estimate[ddist])/dist(cdistr$estimate[cdist]))
         }
         return(llrcol)
     }
@@ -182,7 +147,7 @@ if (dosmall) {
         
     }
 
-    badgenes <- "Tcrlibrary"#|^RP" # really remove ribosomal protein genes?
+    badgenes <- "Tcrlibrary"
     badgenes <- grep(badgenes, rownames(lods))
 
     if (length(badgenes) > 0) {
@@ -191,11 +156,11 @@ if (dosmall) {
 
     sdev <- apply(lods, 1, sd)
 
-    lods <- lods[which(sdev > sd(lods)), ] ## this really?
+    lods <- lods[which(sdev > sd(lods)), ]
 
     n <- length(unique(colnames(lods)))
 
-    lods <- lods#/(sum(lods)/1023) # max(abs(lods))
+    lods <- lods
 
     bics <- rep(Inf, maxk)
 
@@ -203,16 +168,8 @@ if (dosmall) {
     
     for (k in 1:maxk) {
 
-        ## k <- 2
-        
         res[[k]] <- mnem(lods, starts = starts, type = "random", parallel = parallel, k = k, verbose = TRUE, converged = 10^-1, search = "modules")
         
-        ## bics[k] <- getIC(res[[k]], AIC = TRUE, degree = 0) 
-        
-        ## if (k > 2) {
-        ##     if (bics[k] > bics[(k-1)]) { break() }
-        ## }
-
         res[[k]]$data <- NULL
         
         save(res, file = paste0("cropseq/", dataset, "_mnem_small", addendum, ".rda"))
@@ -225,126 +182,13 @@ if (dosmall) {
 
 }
 
-############### do on the aggregated graph:
-
-if (dobig) {
-
-    load(paste0(dataset, "_kegg.rda"))
-    load(paste0(dataset, "_llr.rda"))
-
-    if (length(grep("perturbseq", dataset)) == 0) {
-
-        llr <- llr[, -grep("DHODH|MVD|TUBB", colnames(llr))]
-
-    }
-
-    llr <- t(apply(llr, 1, function(x) {
-        x[is.infinite(x)] <- max(x[!is.infinite(x)])
-        return(x)
-    }))
-
-    colnames(llr) <- toupper(colnames(llr))
-
-    if (length(grep("perturbseq", dataset)) == 0 | length(grep("dc", dataset)) > 0) {
-        kegg <- kadjagg
-        for (j in 1:nrow(genes)) {
-            colnames(kegg) <- gsub(paste("^", genes[j, 2], "$", sep = ""), genes[j, 1], colnames(kegg))
-            rownames(kegg) <- gsub(paste("^", genes[j, 2], "$", sep = ""), genes[j, 1], rownames(kegg))
-        }
-        lods <- llr[, which(colnames(llr) %in% colnames(kegg))]
-        lods2 <- llr[, -which(colnames(llr) %in% colnames(kegg))]
-    } else {
-        lods <- llr
-    }
-
-    badgenes <- "Tcrlibrary"#|^RP""
-    badgenes <- grep(badgenes, rownames(lods))
-
-    if (length(badgenes) > 0) {
-        lods <- lods[-badgenes, ]
-    }
-
-    n <- length(unique(colnames(lods)))
-
-    lods <- lods # max(abs(lods)) normalising the max to one does not seem to be enough... weird
-
-    bics <- rep(Inf, maxk)
-
-    res2 <- list()
-
-    res3 <- list()
-
-    for (i in 1:2) {
-
-        ## i <- 1
-
-        if (i == 2 & length(grep("perturbseq", dataset)) > 0) { break() }
-
-        res <- list()
-
-        if (i == 2) {
-
-            if (length(grep(badgenes, rownames(lods2))) > 0) {
-                lods2 <- lods2[-grep(badgenes, rownames(lods2)), ]
-            }
-
-            n <- length(unique(colnames(lods2)))
-
-            lods2 <- lods2/(sum(lods2)/1023) # max(abs(lods2))
-
-            lods <- lods2
-        }
-        
-        for (k in 1:maxk) {
-            
-            ## k <- 1
-            
-            res[[k]] <- mnem(lods, starts = starts, type = "random", parallel = parallel, k = k, verbose = TRUE, converged = 10^-1, search = "modules", modulesize = 5)
-
-            ## bics[k] <- getIC(res[[k]], AIC = TRUE, degree = 0) 
-            
-            ## if (k > 2) {
-            ##     if (bics[k] > bics[(k-1)]) { break() }
-            ## }
-
-            res[[k]]$data <- NULL
-
-            save(res, res3, file = paste0("cropseq/", dataset, "_mnem_big", addendum, ".rda"))
-
-        }
-
-        if (i == 1) {
-            res3 <- res
-        } else {
-            res2 <- res
-            res <- res3
-        }
-        
-    }
-
-    save(res, res2, file = paste0("cropseq/", dataset, "_mnem_big", addendum, ".rda"))
-
-    stop("big kegg done")
-
-}
-
 ###########################################
 
 stop()
 
 rm *.sh.*
-    
-##
-    
-##qsub -q mpi01.q@bs-dsvr50.ethz.ch -pe make 1 $file
 
-## on the grid:
-    
-## several starts on one core each:
-
-rm *.sh.*
-
-##
+## code to run the job script on hpc:
 
 module load repo/grid
 module load grid/grid
@@ -360,19 +204,13 @@ for i in `seq 1 100`; do
     rm $file
 done
 
-## on euler:
-
-## several starts on one core each:
-
-R
-q("no")
 module load r/3.4.0
 
 for i in `seq 2 100`; do
     cores=1
     file=Withsomeluck${i}.sh
     echo "R --slave --args 'dataset=cropseq' 'cores=$cores' 'run=$i' 'starts=1' 'dollr=0' 'dobig=1' 'dosmall=0' < mnem/vignettes/job.R" >> $file
-bsub -M 10000 -q normal.24h -n 1 -e logs/${file}_${i}_error.txt -o logs/${file}_${i}_output.txt < $file
+    bsub -M 10000 -q normal.24h -n 1 -e logs/${file}_${i}_error.txt -o logs/${file}_${i}_output.txt < $file
     rm $file
 done
 
@@ -437,15 +275,7 @@ p7dres <- res
 
 res2 <- list(cropres, cc7dres, p7dres)
 
-## i <- 2
-
-## llstmp <- c(lls[i, ], llmins[i, ])
-
-## llstmp <- llstmp[which(llstmp != 0)]
-
-## plot(llstmp)
-
-## get bics:
+## get pllr
 
 setwd("~/Mount/Euler")
 
@@ -469,17 +299,17 @@ for (j in 1:3) {
 
     res <- res2[[j]]
     
-    bics <- bicsall[[j]] #rep(0, maxk)
+    bics <- rep(0, maxk)
     
-    ll <- llall[[j]] #rep(0, maxk)
+    ll <- rep(0, maxk)
     
-    ## for (i in 1:maxk) {
+    for (i in 1:maxk) {
         
-    ##     bics[i] <- getIC(res[[i]], useF = F, Fnorm = T)
+        bics[i] <- getIC(res[[i]], useF = F, Fnorm = T)
         
-    ##     ll[i] <- max(res[[i]]$ll)
+        ll[i] <- max(res[[i]]$ll)
 
-    ## }
+    }
 
     bicsall[[j]] <- bics
 
@@ -494,13 +324,11 @@ for (j in 1:3) {
     ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
     
     if (length(grep("perturbseq", dataset)) != 0) {
-        bigorsmall <- "" # for perturbseq
+        bigorsmall <- ""
     } else {
         bigorsmall <- paste0("_", bigorsmall)
     }
     
-    ## pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_bic.pdf"), width = 7, height = 6)
-
     par(mar=c(5,5,2,5))
     plot(bics, type = "b", ylab = "", col = "red", xlab = "", yaxt = "n", ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
     lines(ll, type = "b", col = "blue")
@@ -637,39 +465,3 @@ pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_kegg.pdf"), width = 1
 plot.adj(kadjagg)
 
 dev.off()
-
-## get distance for kegg and combined result:
-
-library(bnstruct)
-#kadjagg2 <- transitive.closure(kadjagg[order(rownames(kadjagg)), order(colnames(kadjagg))], mat = T)
-kadjagg2 <- kadjagg[order(rownames(kadjagg)), order(colnames(kadjagg))]
-diag(kadjagg2) <- 0
-#resnem <- transitive.closure(annotAdj(res[[1]]$comp[[1]]$phi, lods), mat = TRUE)
-resnem <- annotAdj(res[[1]]$comp[[1]]$phi, lods)
-diag(resnem) <- 0
-shd(resnem, kadjagg2)
-
-resagg <- annotAdj(res[[i]]$comp[[1]]$phi, lods)
-for (j in 1:i) {
-    #resagg <- resagg + transitive.closure(res[[i]]$comp[[j]]$phi, mat = TRUE)
-    resagg <- resagg + res[[i]]$comp[[j]]$phi
-    print(shd(kadjagg2, res[[i]]$comp[[j]]$phi))
-}
-diag(resagg) <- 0
-resagg[which(resagg > 0)] <- 1
-
-shd(resagg, kadjagg2)
-
-par(mfrow=c(1,3))
-plot.adj(kadjagg2)
-plot.adj(resagg)
-plot.adj(resnem)
-
-annotAdj <- function(adj, data) {
-    Sgenes <- sort(unique(colnames(data)))
-    colnames(adj) <- rownames(adj) <- sort(Sgenes)
-    return(adj)
-}
-
-## ```
-

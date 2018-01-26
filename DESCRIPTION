@@ -2,14 +2,15 @@ Package: mnem
 Type: Package
 Title: Inferring a mixture of signaling pathways from single cell perturbation data.
 Version: 0.99.0
-Date: 2017-03-02
 Author: Martin Pirkl
 Maintainer: Martin Pirkl <martin.pirkl@bsse.ethz.ch>
-Depends: cluster, nem, epiNEM
+Depends: R (>= 3.4)
 Description: Given a single cell populations from different perturbation experiments mnem infers sub populations with different states for a signaling pathway.
 License: GPL-3
-biocViews: Software, signaling, pathways, networks, graphs, hyper, mixture
-Imports: cluster, nem, epiNEM, knitr
+Encoding: UTF-8
+LazyData: true
+biocViews: Pathways, SystemsBiology, NetworkInference, Network, Single-cell, CrispR, RNAi
+RoxygenNote: 6.0.1
+Imports: cluster, nem, epiNEM, knitr, graph, Rgraphviz
 VignetteBuilder: knitr
 Suggests: knitr
-RoxygenNote: 6.0.1

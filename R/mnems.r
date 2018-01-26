@@ -1,4 +1,10 @@
 
+annotAdj <- function(adj, data) {
+    Sgenes <- sort(unique(colnames(data)))
+    colnames(adj) <- rownames(adj) <- sort(Sgenes)
+    return(adj)
+}
+
 getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE, Fnorm = FALSE) {
     n <- ncol(x$data)
     if (useF) {
@@ -50,18 +56,6 @@ getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE
     return(bic)
 }
 
-#' function for visualizing graphs in normal form
-#' @param data
-#' @param \dots additional arguments
-#' @author Martin Pirkl
-#' @return Rgraphviz object
-#' @export
-#' @import
-#' Rgraphviz
-#' @examples
-#' library(bnem)
-#' g <- c("!A+B=G", "C=G", "!D=G", "C+D+E=G")
-#' plotDnf(g)
 getOmega <- function(data) {
     
     Sgenes <- unique(unlist(strsplit(colnames(data), "_")))
@@ -78,18 +72,6 @@ getOmega <- function(data) {
     return(Omega)
 }
 
-#' function for visualizing graphs in normal form
-#' @param data
-#' @param \dots additional arguments
-#' @author Martin Pirkl
-#' @return Rgraphviz object
-#' @export
-#' @import
-#' Rgraphviz
-#' @examples
-#' library(bnem)
-#' g <- c("!A+B=G", "C=G", "!D=G", "C+D+E=G")
-#' plotDnf(g)
 initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     n <- getSgeneN(data)
     nets <- list()
@@ -357,8 +339,55 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
     return(list(probs = bestprobs, subtopoX = bestsubtopoY))
 }
 
-mnem <- function(D, inference = "em", search = "greedy", start = NULL, method = "llr",
-                 parallel = NULL, reduce = FALSE, runs = 1, starts = 3, type = "random", # can be "cluster"
+#' learn mixture of networks from a single-ceel knock-down experiment
+#' @param D data with cells indexing the columns and features (E-genes) indexing the rows
+#' @param inference inference method "em" for expectation maximization, "greedy" or "genetic"
+#' @param search search method for single network inference "greedy", "exhaustive" or "modules"
+#' @param start initial network for greedy search
+#' @param method "llr" for log ratios as input
+#' @param parallel number of threads
+#' @param reduce logical - reduce search space for exhaustive search
+#' @param runs how many runs for greedy search
+#' @param starts how many starts for em
+#' @param type initialize with "random" probabilities or "cluster" the data
+#' @param p initial probabilities
+#' @param k number of components
+#' @param kmax maximum number of components when k=NULL is inferred
+#' @param verbose output
+#' @param max_iter maximum iteration if likelihood does not converge
+#' @param parallel2 if parallel=NULL, number of threads for component optimization
+#' @param converged absolute distance for convergence
+#' @param redSpace space for exhaustive search
+#' @param affinity 0 is default, 1 is for hard clustering
+#' @param evolution logical, penalty on difference of components
+#' @param subtopoX hard prior on theta
+#' @param ratio logical, if true data is log ratios, if false foldchanges
+#' @param logtype logarithm of the data
+#' @param initnets initial networks in a list
+#' @param popSize population size
+#' @param stallMax maximum number of stall generations till convergence
+#' @param elitism number of networks to keep during evolution
+#' @param maxGens maximum numbero f generations
+#' @param domean average the data (speed imporvment)
+#' @param modulsize max number of S-genes per module in module search
+#' @param compress compress networks after search
+#' @author Martin Pirkl
+#' @return optimized network for data fit
+#' @export
+#' @import
+#' epiNEM
+#' cluster
+#' nem
+#' knitr
+#' graph
+#' Rgraphviz
+#' @examples
+#' data <- matrix(rnorm(100*1000), 100, 1000)
+#' colnames(data) <- sample(paste0("S", 1:5), 1000, replace = TRUE)
+#' result <- mnem(data, k = 3)
+#' plot(result)
+mnem <- function(D, inference = "em", search = "modules", start = NULL, method = "llr",
+                 parallel = NULL, reduce = FALSE, runs = 1, starts = 3, type = "random",
                  p = NULL, k = NULL, kmax = 10, verbose = FALSE,
                  max_iter = 100, parallel2 = NULL, converged = 10^-1,
                  redSpace = NULL, affinity = 0, evolution = FALSE,
@@ -871,6 +900,45 @@ bootstrap <- function(x) {
     ## bootstrap on the components to get frequencies 
 }
 
+#' plot mnem result
+#' @param x mnem object
+#' @param oma outer margin
+#' @param main main text
+#' @param anno annotate cells
+#' @param cexAnno text size
+#' @param scale scale cells
+#' @param global global clustering
+#' @param egenes show egene attachments
+#' @param sep seperate clusters
+#' @param tsne use tsne
+#' @param affinity logical use hard clustering if true
+#' @param logtype log type of the data
+#' @param cells show ccell attachments
+#' @param pch cell symbol
+#' @param legend show legend
+#' @param showdata show data if true
+#' @param bestCell show probability of best fitting cell
+#' @param showprobs show probabilities
+#' @param shownull show null node
+#' @param ratio use log ratios (if true) or foldchanges
+#' @param method "llr" for ratios
+#' @param showweights shwo weights
+#' @author Martin Pirkl
+#' @return visualization of mnem result Rgraphviz
+#' @export
+#' @import
+#' epiNEM
+#' cluster
+#' nem
+#' knitr
+#' graph
+#' Rgraphviz
+#' tsne
+#' @examples
+#' data <- matrix(rnorm(100*1000), 100, 1000)
+#' colnames(data) <- sample(paste0("S", 1:5), 1000, replace = TRUE)
+#' result <- mnem(data, k = 3)
+#' plot(result)
 plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ratio = TRUE, method = "llr", showweights = TRUE, ...) {
 
     x2 <- x

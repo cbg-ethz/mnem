@@ -1,3 +1,4 @@
+## job script for simulations:
 
 args <- commandArgs()
 Sgenes <- as.numeric(gsub("Sgenes=", "", args[grep("Sgenes=", args)]))
