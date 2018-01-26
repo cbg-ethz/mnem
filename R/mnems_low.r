@@ -390,6 +390,33 @@ plot.mynem <- function(x, ...) {
 
 }
 
+#' simulate single cell data from a mixture of networks
+#' @param Sgenes number of Sgenes
+#' @param Egenes number of Egenes
+#' @param subsample percentage of the data to sample 1 = 100%
+#' @param Nems numberof components
+#' @param reps number of relicates, if set (not realistice for cells)
+#' @param mw mixture weights
+#' @param evolution evovling network, if set to true
+#' @param nCells number of cells
+#' @param uninform number of uninformative Egenes
+#' @param unitheta uniform theta, if true
+#' @author Martin Pirkl
+#' @return simulation object with meta information and data
+#' @export
+#' @import
+#' epiNEM
+#' cluster
+#' nem
+#' knitr
+#' graph
+#' Rgraphviz
+#' tsne
+#' @examples
+#' sim <- simData(Sgenes = 5, Egenes = 2, Nems = 3, mw = c(0.1,0.3,0.6))
+#' data <- sim$data
+#' result <- mnem(data, k = 3)
+#' plot(result)
 simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE) {

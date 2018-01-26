@@ -10,7 +10,7 @@ install.packages("devtools")
 
 library(devtools)
 
-install_bitbucket("cbg-ethz/mnem")
+install_github("cbg-ethz/mnem")
 
 library(mnem)
 ```
