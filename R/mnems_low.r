@@ -393,7 +393,7 @@ plot.mynem <- function(x, ...) {
 #' simulate single cell data from a mixture of networks
 #' @param Sgenes number of Sgenes
 #' @param Egenes number of Egenes
-#' @param subsample percentage of the data to sample 1 = 100%
+#' @param subsample percentage of the data to sample 1 = 100 percent
 #' @param Nems numberof components
 #' @param reps number of relicates, if set (not realistice for cells)
 #' @param mw mixture weights

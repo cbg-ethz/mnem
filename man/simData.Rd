@@ -13,7 +13,7 @@ simData(Sgenes = 5, Egenes = 1, subsample = 1, Nems = 2, reps = NULL,
 
 \item{Egenes}{number of Egenes}
 
-\item{subsample}{percentage of the data to sample 1 = 100%}
+\item{subsample}{percentage of the data to sample 1 = 100 percent}
 
 \item{Nems}{numberof components}
 
