@@ -62,6 +62,7 @@ tinem <- function(D, search = "greedy", start = NULL, method = "llr",
     
 }
 #' @noRd
+#' @export
 modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
                     verbose = FALSE, trans.close = TRUE, redSpace = NULL,
                     subtopo = NULL, ratio = TRUE, parallel = NULL, prior = NULL,
@@ -141,16 +142,19 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
     return(fullnet)
 }
 #' @noRd
+#' @export
 getSgeneN <- function(data) {
     Sgenes <- length(unique(unlist(strsplit(colnames(data), ","))))
     return(Sgenes)
 }
 #' @noRd
+#' @export
 getSgenes <- function(data) {
     Sgenes <- sort(as.numeric(unique(unlist(strsplit(colnames(data), ",")))))
     return(Sgenes)
 }
 #' @noRd
+#' @export
 mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
                   verbose = FALSE, redSpace = NULL,
@@ -376,6 +380,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     return(nem)
 }
 #' @noRd
+#' @export
 plot.mynem <- function(x, ...) {
     translate <- sort(unique(colnames(x$D)))
 
@@ -495,6 +500,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
     return(list(Nem = Nem, theta = theta, data = data, index = index))
 }
 #' @noRd
+#' @export
 hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
     Sgenes <- unique(colnames(a))
     ham <- numeric(ncol(b))
@@ -532,6 +538,7 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 
 ## functions from the nem package. update to use the native nem package functions!
 #' @noRd
+#' @export
 get.insertions = function(Phi, trans.close=TRUE){
     idx = which(Phi == 0)
     models = list()
@@ -547,6 +554,7 @@ get.insertions = function(Phi, trans.close=TRUE){
     models       
 }
 #' @noRd
+#' @export
 get.deletions = function(Phi){
     Phi = Phi - diag(ncol(Phi))
     idx = which(Phi == 1)
@@ -562,6 +570,7 @@ get.deletions = function(Phi){
     models       
 }
 #' @noRd
+#' @export
 get.reversions = function(Phi){
     idx = which(Phi + t(Phi) == 1, arr.ind=TRUE)
     models = list()
@@ -577,6 +586,7 @@ get.reversions = function(Phi){
     models       
 }
 #' @noRd
+#' @export
 enumerate.models <- function(x,name=NULL, trans.close=TRUE, verbose=TRUE) {
 
 if (length(x) == 1) {
@@ -622,8 +632,8 @@ if (length(x) == 1) {
   return(models)
 }
 
-### my functions:
 #' @noRd
+#' @export
 adj2dnf <- function(A) {
 
   dnf <- NULL
@@ -646,6 +656,7 @@ adj2dnf <- function(A) {
 
 }
 #' @noRd
+#' @export
 plot.adj <- function(x) {
     adj2graph <- function(adj.matrix) {
         V   <- rownames(adj.matrix)
@@ -662,6 +673,7 @@ plot.adj <- function(x) {
     plot(g)
 }
 #' @noRd
+#' @export
 graph2adj <- function(gR) {
     adj.matrix <- matrix(0,
                          length(nodes(gR)),
@@ -675,6 +687,7 @@ graph2adj <- function(gR) {
     return(adj.matrix)
 }
 #' @noRd
+#' @export
 scoreAdj <- function(D, adj, method = "llr", weights = NULL,
                      trans.close = TRUE, subtopo = NULL,
                      prior = NULL, ratio = TRUE) {
@@ -706,6 +719,7 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
 }
 
 #' @noRd
+#' @export
 adj2dnf <- function(A) {
 
   dnf <- NULL

@@ -1,11 +1,34 @@
 #' @noRd
+#' @export
 annotAdj <- function(adj, data) {
     Sgenes <- sort(unique(colnames(data)))
     colnames(adj) <- rownames(adj) <- sort(Sgenes)
     return(adj)
 }
-#' @noRd
-getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE, Fnorm = FALSE) {
+
+#' plot mnem result
+#' @param x mnem object
+#' @param man logical. manual data penalty
+#' @param degree different degree of complexity
+#' @param logtype logarithm type of the data
+#' @param pen penalty weight ofr the data
+#' @param useF use F (see publication) as complexity
+#' @param Fnorm normalize complexity of F
+#' @author Martin Pirkl
+#' @return penlized likelihood
+#' @export
+#' @examples
+#' sim <- simData(Sgenes = 5, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+#' data <- (sim$data - 0.5)/0.5
+#' data <- data + rnorm(length(data), 0, 1)
+#' pen <- numeric(3)
+#' result <- list()
+#' for (k in 1:3) {
+#' result[[k]] <- mnem(data, k = k, starts = 10)
+#' pen[k] <- getIC(result[[k]])
+#' }
+#' print(pen)
+getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE, Fnorm = FALSE) {
     n <- ncol(x$data)
     if (useF) {
         for (i in 1:length(x$comp)) {
@@ -48,14 +71,15 @@ getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE
         }
     }
     LL <- max(x$ll)*log(logtype)
-    if (AIC) {
-        bic <- pen*fpar - 2*LL
+    if (man) {
+        ic <- pen*fpar - 2*LL
     } else {
-        bic <- log(n)*fpar - 2*LL
+        ic <- log(n)*fpar - 2*LL
     }
-    return(bic)
+    return(ic)
 }
 #' @noRd
+#' @export
 getOmega <- function(data) {
     
     Sgenes <- unique(unlist(strsplit(colnames(data), "_")))
@@ -72,6 +96,7 @@ getOmega <- function(data) {
     return(Omega)
 }
 #' @noRd
+#' @export
 initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     n <- getSgeneN(data)
     nets <- list()
@@ -93,6 +118,7 @@ initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     return(init)
 }
 #' @noRd
+#' @export
 initps <- function(data, ks, k, starts = 3) {
     ## based on the clustering for each knock-down, we estimate non-random membership values for each start of the em:
     clusters <- list()
@@ -146,6 +172,7 @@ initps <- function(data, ks, k, starts = 3) {
     return(probscl)
 }
 #' @noRd
+#' @export
 modData <- function(D) {
     require(naturalsort)
     SgeneN <- getSgeneN(D)
@@ -161,6 +188,7 @@ modData <- function(D) {
     return(D)
 }
 #' @noRd
+#' @export
 learnk <- function(data, kmax = 10, verbose = FALSE) {
     ks <- numeric(length(unique(colnames(data))))
     lab <- list()
@@ -200,6 +228,7 @@ learnk <- function(data, kmax = 10, verbose = FALSE) {
     return(list(ks = ks, k = k, lab = lab))
 }
 #' @noRd
+#' @export
 getLL <- function(x, logtype = 2, mw = NULL) {
     if (is.null(mw)) { mw = rep(1, nrow(x))/nrow(x) }
     x <- logtype^x
@@ -207,6 +236,7 @@ getLL <- function(x, logtype = 2, mw = NULL) {
     return(sum(log(apply(x, 2, sum))/log(logtype)))
 }
 #' @noRd
+#' @export
 getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL) {
     if (is.null(mw)) { mw <- rep(1, nrow(x))/nrow(x) }
     if (affinity == 1) {
@@ -240,6 +270,7 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL) {
     return(y)
 }
 #' @noRd
+#' @export
 estimateSubtopo <- function(data) {
     effectsums <- effectsds <- matrix(0, nrow(data), length(unique(colnames(data))))
     for (i in 1:length(unique(colnames(data)))) {
@@ -256,6 +287,7 @@ estimateSubtopo <- function(data) {
     return(subtopoX)
 }
 #' @noRd
+#' @export
 getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, converged = 10^-2, subtopoX = NULL, ratio = TRUE, logtype = 2) {
     if (is.null(subtopoX)) {
         subtopoX <- estimateSubtopo(data)
@@ -383,6 +415,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
 #' Rgraphviz
 #' naturalsort
 #' flexclust
+#' snowfall
 #' @examples
 #' sim <- simData(Sgenes = 5, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
@@ -841,6 +874,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
     return(res)
 }
 #' @noRd
+#' @export
 sortAdj <- function(res, list = FALSE) {
     resmat <- NULL
     for (i in 1:length(res)) {
@@ -865,6 +899,7 @@ sortAdj <- function(res, list = FALSE) {
     return(list(res = res2, order = resorder))
 }
 #' @noRd
+#' @export
 calcEvopen <- function(res) {
     evopen <- 0
     for (i in 1:(length(res)-1)) {
@@ -874,6 +909,7 @@ calcEvopen <- function(res) {
     return(evopen)
 }
 #' @noRd
+#' @export
 llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     require(flexclust)
     if (is.null(weights)) {
@@ -891,6 +927,7 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     return(score)
 }
 #' @noRd
+#' @export
 modAdj <- function(adj, D) {
     Sgenes <- naturalsort(unique(colnames(D)))
     SgeneN <- getSgeneN(D)
@@ -900,6 +937,7 @@ modAdj <- function(adj, D) {
     return(adj)
 }
 #' @noRd
+#' @export
 bootstrap <- function(x) {
     ## bootstrap on the components to get frequencies 
 }
