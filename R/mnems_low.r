@@ -393,7 +393,7 @@ plot.mynem <- function(x, ...) {
 #' simulate single cell data from a mixture of networks
 #' @param Sgenes number of Sgenes
 #' @param Egenes number of Egenes
-#' @param subsample percentage of the data to sample 1 = 100 percent
+#' @param subsample range to subsample data. 1 means the full simulated data is used.
 #' @param Nems numberof components
 #' @param reps number of relicates, if set (not realistice for cells)
 #' @param mw mixture weights
@@ -530,6 +530,7 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
     return(ham)
 }
 
+## functions from the nem package. update to use the native nem package functions!
 get.insertions = function(Phi, trans.close=TRUE){
     idx = which(Phi == 0)
     models = list()
@@ -620,6 +621,7 @@ if (length(x) == 1) {
   return(models)
 }
 
+### my functions:
 adj2dnf <- function(A) {
 
   dnf <- NULL
@@ -789,8 +791,7 @@ adj2dnf <- function(A) {
 #' library(bnem)
 #' g <- c("!A+B=G", "C=G", "!D=G", "C+D+E=G")
 #' plotDnf(g)
-plotDnf <-
-function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(), inhibitors = c(), connected = TRUE,  CNOlist = NULL, cex = NULL, fontsize = NULL, labelsize = NULL, type = 2, lwd = 2, edgelwd = 2, legend = 0, x = 0, y = 0, xjust = 0, yjust = 0, width = 1.5, height = 1, rankdir = "TB", rank = "same", layout = "dot", main = "", sub = "", cex.main = 1.5, cex.sub = 1, col.sub = "grey", fontcolor = NULL, nodestates = NULL, simulate = NULL, andcolor = "transparent", edgecol = NULL, labels = NULL, labelcol = "blue", nodelabel = NULL, nodecol = NULL, bordercol = NULL, nodeshape = NULL, verbose = FALSE, edgestyle = NULL, nodeheight = NULL, nodewidth = NULL, edgewidth = NULL, lty = NULL, hierarchy = NULL, showall = FALSE, nodefontsize = NULL, edgehead = NULL, edgelabel = NULL, edgetail = NULL, bool = TRUE, draw = TRUE, ...) {
+plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(), inhibitors = c(), connected = TRUE,  CNOlist = NULL, cex = NULL, fontsize = NULL, labelsize = NULL, type = 2, lwd = 2, edgelwd = 2, legend = 0, x = 0, y = 0, xjust = 0, yjust = 0, width = 1.5, height = 1, rankdir = "TB", rank = "same", layout = "dot", main = "", sub = "", cex.main = 1.5, cex.sub = 1, col.sub = "grey", fontcolor = NULL, nodestates = NULL, simulate = NULL, andcolor = "transparent", edgecol = NULL, labels = NULL, labelcol = "blue", nodelabel = NULL, nodecol = NULL, bordercol = NULL, nodeshape = NULL, verbose = FALSE, edgestyle = NULL, nodeheight = NULL, nodewidth = NULL, edgewidth = NULL, lty = NULL, hierarchy = NULL, showall = FALSE, nodefontsize = NULL, edgehead = NULL, edgelabel = NULL, edgetail = NULL, bool = TRUE, draw = TRUE, ...) {
   ## see graphvizCapabilities()$layoutTypes for supported layouts
 
   if (!bool & length(grep("\\+", dnf)) > 0) {
