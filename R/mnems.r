@@ -343,7 +343,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
 #' @param D data with cells indexing the columns and features (E-genes) indexing the rows
 #' @param inference inference method "em" for expectation maximization, "greedy" or "genetic"
 #' @param search search method for single network inference "greedy", "exhaustive" or "modules"
-#' @param start initial network for greedy search
+#' @param start A list of n lists of k networks for n starts of the EM and k components
 #' @param method "llr" for log ratios or foldchanges as input (see ratio)
 #' @param parallel number of threads
 #' @param reduce logical - reduce search space for exhaustive search
@@ -438,7 +438,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
     }
     ## if we start with specific membership values or networks we do not do several runs:
     if (!is.null(parallel)) { parallel2 <- NULL }
-    if (!is.null(start) | !is.null(p)) { starts <- length(start); k <- max(c(nrow(p), length(start))) }
+    if (!is.null(start) | !is.null(p)) { starts <- length(start); k <- max(c(nrow(p), length(start[[1]]))) }
     init <- start
     res1 <- NULL
     mw <- rep(1, k)/k
@@ -447,7 +447,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
     ## learn "mixture" of k = 1 or k > 1:
     if (k == 1) {
         if (!is.null(init)) {
-            start <- start[[1]]
+            start <- start[[1]][[1]]
         }
         if (!is.null(parallel) & is.null(parallel2)) { parallel2 <- parallel }
         print("no evidence for sub populations or k set to 1")

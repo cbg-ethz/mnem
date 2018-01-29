@@ -20,7 +20,7 @@ mnem(D, inference = "em", search = "modules", start = NULL,
 
 \item{search}{search method for single network inference "greedy", "exhaustive" or "modules"}
 
-\item{start}{initial network for greedy search}
+\item{start}{A list of n lists of k networks for n starts of the EM and k components}
 
 \item{method}{"llr" for log ratios or foldchanges as input (see ratio)}
 
