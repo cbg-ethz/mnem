@@ -1,10 +1,10 @@
-
+#' @noRd
 annotAdj <- function(adj, data) {
     Sgenes <- sort(unique(colnames(data)))
     colnames(adj) <- rownames(adj) <- sort(Sgenes)
     return(adj)
 }
-
+#' @noRd
 getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE, Fnorm = FALSE) {
     n <- ncol(x$data)
     if (useF) {
@@ -55,7 +55,7 @@ getIC <- function(x, AIC = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE
     }
     return(bic)
 }
-
+#' @noRd
 getOmega <- function(data) {
     
     Sgenes <- unique(unlist(strsplit(colnames(data), "_")))
@@ -71,7 +71,7 @@ getOmega <- function(data) {
 
     return(Omega)
 }
-
+#' @noRd
 initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     n <- getSgeneN(data)
     nets <- list()
@@ -92,7 +92,7 @@ initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     }
     return(init)
 }
-
+#' @noRd
 initps <- function(data, ks, k, starts = 3) {
     ## based on the clustering for each knock-down, we estimate non-random membership values for each start of the em:
     clusters <- list()
@@ -145,7 +145,7 @@ initps <- function(data, ks, k, starts = 3) {
     
     return(probscl)
 }
-
+#' @noRd
 modData <- function(D) {
     require(naturalsort)
     SgeneN <- getSgeneN(D)
@@ -160,7 +160,7 @@ modData <- function(D) {
     rownames(D) <- as.numeric(1:nrow(D))
     return(D)
 }
-
+#' @noRd
 learnk <- function(data, kmax = 10, verbose = FALSE) {
     ks <- numeric(length(unique(colnames(data))))
     lab <- list()
@@ -199,14 +199,14 @@ learnk <- function(data, kmax = 10, verbose = FALSE) {
     k <- min(kmax, max(ks))
     return(list(ks = ks, k = k, lab = lab))
 }
-
+#' @noRd
 getLL <- function(x, logtype = 2, mw = NULL) {
     if (is.null(mw)) { mw = rep(1, nrow(x))/nrow(x) }
     x <- logtype^x
     x <- x*mw
     return(sum(log(apply(x, 2, sum))/log(logtype)))
 }
-
+#' @noRd
 getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL) {
     if (is.null(mw)) { mw <- rep(1, nrow(x))/nrow(x) }
     if (affinity == 1) {
@@ -239,7 +239,7 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL) {
     y[which(is.na(y) == TRUE)] <- 0
     return(y)
 }
-
+#' @noRd
 estimateSubtopo <- function(data) {
     effectsums <- effectsds <- matrix(0, nrow(data), length(unique(colnames(data))))
     for (i in 1:length(unique(colnames(data)))) {
@@ -255,7 +255,7 @@ estimateSubtopo <- function(data) {
     subtopoX[which(is.na(subtopoX) == TRUE)] <- 1
     return(subtopoX)
 }
-
+#' @noRd
 getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, converged = 10^-2, subtopoX = NULL, ratio = TRUE, logtype = 2) {
     if (is.null(subtopoX)) {
         subtopoX <- estimateSubtopo(data)
@@ -384,10 +384,10 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
 #' naturalsort
 #' flexclust
 #' @examples
-#' sim <- simData(Sgenes = 4, Egenes = 2, Nems = 3, mw = c(0.1,0.3,0.6))
+#' sim <- simData(Sgenes = 5, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
-#' data <- data + rnorm(length(data), 0, 0.5)
-#' result <- mnem(data, k = 3)
+#' data <- data + rnorm(length(data), 0, 1)
+#' result <- mnem(data, k = 2, starts = 10)
 #' plot(result)
 mnem <- function(D, inference = "em", search = "modules", start = NULL, method = "llr",
                  parallel = NULL, reduce = FALSE, runs = 1, starts = 3, type = "random",
@@ -840,7 +840,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
     class(res) <- "mnem"
     return(res)
 }
-
+#' @noRd
 sortAdj <- function(res, list = FALSE) {
     resmat <- NULL
     for (i in 1:length(res)) {
@@ -864,7 +864,7 @@ sortAdj <- function(res, list = FALSE) {
     }
     return(list(res = res2, order = resorder))
 }
-
+#' @noRd
 calcEvopen <- function(res) {
     evopen <- 0
     for (i in 1:(length(res)-1)) {
@@ -873,7 +873,7 @@ calcEvopen <- function(res) {
     evopen <- -evopen#/(k-1)
     return(evopen)
 }
-
+#' @noRd
 llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     require(flexclust)
     if (is.null(weights)) {
@@ -890,7 +890,7 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     }
     return(score)
 }
-
+#' @noRd
 modAdj <- function(adj, D) {
     Sgenes <- naturalsort(unique(colnames(D)))
     SgeneN <- getSgeneN(D)
@@ -899,7 +899,7 @@ modAdj <- function(adj, D) {
     }
     return(adj)
 }
-
+#' @noRd
 bootstrap <- function(x) {
     ## bootstrap on the components to get frequencies 
 }
@@ -939,9 +939,10 @@ bootstrap <- function(x) {
 #' Rgraphviz
 #' tsne
 #' @examples
-#' data <- matrix(rnorm(100*1000), 100, 1000)
-#' colnames(data) <- sample(paste0("S", 1:5), 1000, replace = TRUE)
-#' result <- mnem(data, k = 3)
+#' sim <- simData(Sgenes = 5, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+#' data <- (sim$data - 0.5)/0.5
+#' data <- data + rnorm(length(data), 0, 1)
+#' result <- mnem(data, k = 2, starts = 10)
 #' plot(result)
 plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ratio = TRUE, method = "llr", showweights = TRUE, ...) {
 

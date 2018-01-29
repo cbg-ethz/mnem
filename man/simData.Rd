@@ -36,10 +36,10 @@ simulation object with meta information and data
 simulate single cell data from a mixture of networks
 }
 \examples{
-sim <- simData(Sgenes = 5, Egenes = 2, Nems = 3, mw = c(0.1,0.3,0.6))
+sim <- simData(Sgenes = 5, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 data <- (sim$data - 0.5)/0.5
-data <- data + rnorm(length(data), 0, 0.5)
-result <- mnem(data, k = 3)
+data <- data + rnorm(length(data), 0, 1)
+result <- mnem(data, k = 2, starts = 10)
 plot(result)
 }
 \author{

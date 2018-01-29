@@ -61,7 +61,7 @@ tinem <- function(D, search = "greedy", start = NULL, method = "llr",
     return(res)
     
 }
-
+#' @noRd
 modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
                     verbose = FALSE, trans.close = TRUE, redSpace = NULL,
                     subtopo = NULL, ratio = TRUE, parallel = NULL, prior = NULL,
@@ -140,17 +140,17 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
     fullnet <- fullnet[order(as.numeric(rownames(fullnet))), order(as.numeric(colnames(fullnet)))]
     return(fullnet)
 }
-
+#' @noRd
 getSgeneN <- function(data) {
     Sgenes <- length(unique(unlist(strsplit(colnames(data), ","))))
     return(Sgenes)
 }
-
+#' @noRd
 getSgenes <- function(data) {
     Sgenes <- sort(as.numeric(unique(unlist(strsplit(colnames(data), ",")))))
     return(Sgenes)
 }
-
+#' @noRd
 mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
                   verbose = FALSE, redSpace = NULL,
@@ -375,7 +375,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     class(nem) <- "mynem"
     return(nem)
 }
-
+#' @noRd
 plot.mynem <- function(x, ...) {
     translate <- sort(unique(colnames(x$D)))
 
@@ -387,7 +387,7 @@ plot.mynem <- function(x, ...) {
     }
 
     plot.adj(adj)
-
+    
 }
 
 #' simulate single cell data from a mixture of networks
@@ -413,10 +413,10 @@ plot.mynem <- function(x, ...) {
 #' Rgraphviz
 #' tsne
 #' @examples
-#' sim <- simData(Sgenes = 5, Egenes = 2, Nems = 3, mw = c(0.1,0.3,0.6))
+#' sim <- simData(Sgenes = 5, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
-#' data <- data + rnorm(length(data), 0, 0.5)
-#' result <- mnem(data, k = 3)
+#' data <- data + rnorm(length(data), 0, 1)
+#' result <- mnem(data, k = 2, starts = 10)
 #' plot(result)
 simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
@@ -494,7 +494,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
     }
     return(list(Nem = Nem, theta = theta, data = data, index = index))
 }
-
+#' @noRd
 hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
     Sgenes <- unique(colnames(a))
     ham <- numeric(ncol(b))
@@ -531,6 +531,7 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 }
 
 ## functions from the nem package. update to use the native nem package functions!
+#' @noRd
 get.insertions = function(Phi, trans.close=TRUE){
     idx = which(Phi == 0)
     models = list()
@@ -545,7 +546,7 @@ get.insertions = function(Phi, trans.close=TRUE){
     } 
     models       
 }
-
+#' @noRd
 get.deletions = function(Phi){
     Phi = Phi - diag(ncol(Phi))
     idx = which(Phi == 1)
@@ -560,7 +561,7 @@ get.deletions = function(Phi){
     } 
     models       
 }
-
+#' @noRd
 get.reversions = function(Phi){
     idx = which(Phi + t(Phi) == 1, arr.ind=TRUE)
     models = list()
@@ -575,7 +576,7 @@ get.reversions = function(Phi){
     } 
     models       
 }
-
+#' @noRd
 enumerate.models <- function(x,name=NULL, trans.close=TRUE, verbose=TRUE) {
 
 if (length(x) == 1) {
@@ -622,6 +623,7 @@ if (length(x) == 1) {
 }
 
 ### my functions:
+#' @noRd
 adj2dnf <- function(A) {
 
   dnf <- NULL
@@ -643,7 +645,7 @@ adj2dnf <- function(A) {
   return(dnf)
 
 }
-
+#' @noRd
 plot.adj <- function(x) {
     adj2graph <- function(adj.matrix) {
         V   <- rownames(adj.matrix)
@@ -659,7 +661,7 @@ plot.adj <- function(x) {
     g <- adj2graph(x)
     plot(g)
 }
-
+#' @noRd
 graph2adj <- function(gR) {
     adj.matrix <- matrix(0,
                          length(nodes(gR)),
@@ -672,7 +674,7 @@ graph2adj <- function(gR) {
     }
     return(adj.matrix)
 }
-
+#' @noRd
 scoreAdj <- function(D, adj, method = "llr", weights = NULL,
                      trans.close = TRUE, subtopo = NULL,
                      prior = NULL, ratio = TRUE) {
@@ -703,7 +705,7 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     return(list(score = score, subtopo = subtopo, subweights = subweights))
 }
 
-
+#' @noRd
 adj2dnf <- function(A) {
 
   dnf <- NULL
