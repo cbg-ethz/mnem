@@ -13,7 +13,7 @@ simData(Sgenes = 5, Egenes = 1, subsample = 1, Nems = 2, reps = NULL,
 
 \item{Egenes}{number of Egenes}
 
-\item{subsample}{percentage of the data to sample 1 = 100 percent}
+\item{subsample}{range to subsample data. 1 means the full simulated data is used.}
 
 \item{Nems}{numberof components}
 
@@ -38,6 +38,7 @@ simulate single cell data from a mixture of networks
 \examples{
 sim <- simData(Sgenes = 5, Egenes = 2, Nems = 3, mw = c(0.1,0.3,0.6))
 data <- sim$data
+data <- data + rnorm(length(data), 0, 0.5)
 result <- mnem(data, k = 3)
 plot(result)
 }
