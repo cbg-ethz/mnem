@@ -120,9 +120,9 @@ binoises <- c(0.01, 0.1, 0.2, 0.5)
 
 acc <- acc2 <- sens <- spec <- mwcor <- numeric(runs)
 
-Sgenes <- 15
+Sgenes <- 3
 Egenes <- 2
-nem <- 2
+nem <- 3
 maxk <- 5
 starts <- 1
 search <- "modules"

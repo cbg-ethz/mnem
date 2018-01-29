@@ -344,7 +344,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
 #' @param inference inference method "em" for expectation maximization, "greedy" or "genetic"
 #' @param search search method for single network inference "greedy", "exhaustive" or "modules"
 #' @param start initial network for greedy search
-#' @param method "llr" for log ratios as input
+#' @param method "llr" for log ratios or foldchanges as input (see ratio)
 #' @param parallel number of threads
 #' @param reduce logical - reduce search space for exhaustive search
 #' @param runs how many runs for greedy search
@@ -381,9 +381,12 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
 #' knitr
 #' graph
 #' Rgraphviz
+#' naturalsort
+#' flexclust
 #' @examples
-#' data <- matrix(rnorm(100*1000), 100, 1000)
-#' colnames(data) <- sample(paste0("S", 1:5), 1000, replace = TRUE)
+#' sim <- simData(Sgenes = 4, Egenes = 2, Nems = 3, mw = c(0.1,0.3,0.6))
+#' data <- (sim$data - 0.5)/0.5
+#' data <- data + rnorm(length(data), 0, 0.5)
 #' result <- mnem(data, k = 3)
 #' plot(result)
 mnem <- function(D, inference = "em", search = "modules", start = NULL, method = "llr",
@@ -872,6 +875,7 @@ calcEvopen <- function(res) {
 }
 
 llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
+    require(flexclust)
     if (is.null(weights)) {
         weights <- rep(1, ncol(data))
     }

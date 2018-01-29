@@ -22,7 +22,7 @@ mnem(D, inference = "em", search = "modules", start = NULL,
 
 \item{start}{initial network for greedy search}
 
-\item{method}{"llr" for log ratios as input}
+\item{method}{"llr" for log ratios or foldchanges as input (see ratio)}
 
 \item{parallel}{number of threads}
 
@@ -83,8 +83,9 @@ optimized network for data fit
 learn mixture of networks from a single-ceel knock-down experiment
 }
 \examples{
-data <- matrix(rnorm(100*1000), 100, 1000)
-colnames(data) <- sample(paste0("S", 1:5), 1000, replace = TRUE)
+sim <- simData(Sgenes = 4, Egenes = 2, Nems = 3, mw = c(0.1,0.3,0.6))
+data <- (sim$data - 0.5)/0.5
+data <- data + rnorm(length(data), 0, 0.5)
 result <- mnem(data, k = 3)
 plot(result)
 }
