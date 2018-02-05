@@ -416,6 +416,10 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
 #' naturalsort
 #' flexclust
 #' snowfall
+#' grid
+#' lattice
+#' modeltools
+#' stats4
 #' @examples
 #' sim <- simData(Sgenes = 5, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
