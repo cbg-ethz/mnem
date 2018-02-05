@@ -1,5 +1,5 @@
 ---
-title: "Micture Nested Effects Models  \n
+title: "Mixture Nested Effects Models  \n
 Inferring networks from sub-populations of single cells."
 author: "Martin Pirkl, Niko Beerenwinkel"
 date: "`r Sys.Date()`"
@@ -11,16 +11,22 @@ vignette: >
     %\VignetteEncoding{UTF-8}
 ---
 
-	# M&NEM
+# Mixture Nested Effects Models (M&NEM)
 
-  Single cell RNA-seq data sets from pooled CrispR screens provide the possibility to analyzse heterogeneous cell populations. We extended the original Nested Effects Models (NEM) to Mixture Nested Effects Models (M&NEM) to identify not one causal signalling, but several ones, each based on the information of a sub-population of cells.
+Single cell RNA-seq data sets from pooled CrispR screens provide the possibility to analyzse heterogeneous cell populations. We extended the original Nested Effects Models (NEM) to Mixture Nested Effects Models (M&NEM) to identify not one causal signalling, but several ones, each based on the information of a sub-population of cells.
 
-  ## Install
+## Install
 
-  Download and install the package manually or use 'devtools'.
+Download and install the package manually or use 'devtools'.
 
-  
-```r
+```{r, global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE)
+fig.cap1 <- "Accuracy of the networks and number of components."
+fig.cap2 <- "Accuracy of the networks."
+fig.cap3 <- "Accuracy for number of components. Greater than 1 means too many were inferred. Less than 1 means to few."
+fig.cap4 <- "Distance of inferred to ground truth mixture weights."
+```
+```{r}
 install.packages("devtools")
 
 library(devtools)
@@ -32,39 +38,13 @@ library(mnem)
   
 ## Simulations
 
-  We simulate cells based on a ground truth mixture of networks. We use M&NEM to infer an optimal network from the data and compare the result ot the ground truth.
+We simulate cells based on a ground truth mixture of networks. We use M&NEM to infer an optimal network from the data and compare the result ot the ground truth.
 
-	```{r, eval = FALSE}
-
-runs <- 100
-maxk <- 5
-par(mfrow=c(1,maxk))
-mixrand <- matrix(0, runs, maxk)
-for (j in 1:5) {
-    nem <- j
-    tmp <- numeric(runs)
-    for (i in 1:runs) {
-        mw <- runif(nem, 0.1, 1)
-        mw <- mw/sum(mw)
-        nem2 <- sample(1:5, 1)
-        mw2 <- runif(nem2, 0.1, 1)
-        mw2 <- mw2/sum(mw2)
-        tmp[i] <- dist(rbind(mw, mw2))
-    }
-    hist(tmp)
-    abline(v=mean(tmp), col = "red")
-    abline(v=median(tmp), col = "blue")
-    mixrand[, j] <- tmp
-}
-par(mfrow=c(1,1))
-
-boxplot(mixrand, col = "grey", main = "random", xlab = "components K")
-
-## variable parameters:
+```{r, eval = FALSE}
 runs <- 100
 noises <- c(1, 2.5, 5)
 
-acc <- acc2 <- sens <- spec <- mwcor <- numeric(runs)
+acc <- comps <- mws <- numeric(runs)
 
 Sgenes <- 5
 Egenes <- 2
@@ -105,6 +85,7 @@ for (run in 1:length(acc)) {
     res <- res2[[which.min(bics)]]
     end <- Sys.time()
     print(end - start)
+    comps[run] <- which.min(bics)
     
     resfull <- NULL
     for (i in 1:length(res$comp)) {
@@ -119,13 +100,14 @@ for (run in 1:length(acc)) {
     }
     acc[run] <- hamSim(resfull, simfull, symmetric = TRUE)
 }
-
+par(mfrow=c(1,2)
+plot(acc)
+plot(comps)    
 ```
 
-	We randomly draw mixture weights as a comparison to our inferred weights.
+We randomly draw mixture weights as a comparison to our inferred weights.
 	
-	```r
- 
+```{r}
 runs <- 100
 maxk <- 5
 mixrand <- matrix(0, runs, maxk)
@@ -148,9 +130,13 @@ boxplot(mixrand, col = "grey", main = "random", xlab = "components K")
 	
 Evaluation of the simulation results by accuracy of the networks, mixture weights and number of components.
 
-	   ```r
+```{r, fig.height=12, fig.width=12, fig.cap=fig.cap2}
+data(sim)
 
-    data(sim)
+simres3 <- sim[[1]]
+simres5 <- sim[[2]]
+simres10 <- sim[[3]]
+simres20 <- sim[[4]]
   
 meancol2 <- rgb(1,0,0)
 
@@ -171,7 +157,6 @@ for (i in 1:5) {
         for (k in c(1,2)) {
             for (l in 1:3) {
                 tmp3 <- tmp[,l,i,k,3]
-                #tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
                 tmp2 <- cbind(tmp2, tmp3)
             }
         }
@@ -179,8 +164,6 @@ for (i in 1:5) {
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
         axis(1, 1:(length(noises)*3), rep(noises, 3))
-        ## axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c("mnem", "nem", "random"), line = 2, tick = FALSE, cex = 2)
-        ## abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
         abline(v=c(length(noises)+0.5), lty = 3, col = "black", lwd = 2)
     }
 }
@@ -211,7 +194,8 @@ for (i in 1:4) {
     mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
-
+```
+```{r, fig.height=12, fig.width=12, fig.cap=fig.cap3}
 mar <- 1.5
 
 par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
@@ -222,15 +206,12 @@ for (i in 1:5) {
         tmp2 <- NULL
         for (l in 1:3) {
             tmp3 <- tmp[,l,i,1,2]
-            #tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
             tmp2 <- cbind(tmp2, tmp3)
         }
         boxplot(tmp2, col = rep(redcol, 3), xaxt = "n")
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
         axis(1, 1:(length(noises)*3), rep(noises, 3))
-        #axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c(paste0(j, " | ", i), "nem", "random"), line = 2, tick = FALSE, cex = 2)
-        ## abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
         abline(h=1, lty = 3, col = "black", lwd = 2)
     }
 }
@@ -251,7 +232,8 @@ for (i in 1:4) {
     mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.15 - (i-1)*1.21))
 }
-
+```
+```{r, fig.height=12, fig.width=12, fig.cap=fig.cap4}
 par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
 
 for (i in 1:5) {
@@ -259,16 +241,12 @@ for (i in 1:5) {
         tmp <- get(paste0("simres", j))
         tmp2 <- NULL
         for (l in 1:3) {
-            tmp3 <- tmp[,l,i,1,6]
-            #tmp3[which(tmp3 == 0)] <- mean(tmp3[which(tmp3 != 0)])
             tmp2 <- cbind(tmp2, tmp3)
         }
         boxplot(tmp2, col = rep(redcol, 3), xaxt = "n")
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
         axis(1, 1:(length(noises)*3), rep(noises, 3))
-        #axis(1, c(length(noises)/2 + 0.5, length(noises)/2*3 + 0.5, length(noises)/2*5 + 0.5), c(paste0(j, " | ", i), "nem", "random"), line = 2, tick = FALSE, cex = 2)
-        ## abline(v=c(length(noises)+0.5, length(noises)*2+0.5), lty = 3, col = "black", lwd = 2)
         abline(h=1, lty = 3, col = "black", lwd = 2)
     }
 }
@@ -289,10 +267,18 @@ for (i in 1:4) {
     mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.15 - (i-1)*1.21))
 }
+```
+
+## Application
+
+We apply M&NEM to three different data sets from two different pooled CRISPR screens, Crop-Seq (Datlinger **et al.**, 2017) and Perturb-Seq (Dixit **et al.**, 2016).
+
+```{r}
 
 ```
-	## Application
 
-	We apply M&NEM to three different data sets from two different pooled CRISPR screens, Crop-Seq (Datlinger **et al.**, 2017) and Perturb-Seq (Dixit **et al.**, 2016).
+# Session information
 
-	
+```{r}
+sessionInfo()
+```
