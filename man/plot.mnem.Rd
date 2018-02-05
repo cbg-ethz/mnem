@@ -55,6 +55,8 @@ plot.mnem(x, oma = c(3, 1, 1, 3), main = "M&NEM", anno = TRUE,
 \item{method}{"llr" for ratios}
 
 \item{showweights}{shwo weights}
+
+\item{...}{additional parameters}
 }
 \value{
 visualization of mnem result Rgraphviz

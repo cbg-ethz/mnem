@@ -5,7 +5,7 @@ author: "Martin Pirkl, Niko Beerenwinkel"
 date: "`r Sys.Date()`"
 output: BiocStyle::pdf_document
 vignette: >
-    %\VignetteIndexEntry{menm}
+    %\VignetteIndexEntry{tinnem}
     %\VignetteEngine{knitr::rmarkdown}
     %\VignetteEncoding{UTF-8}
 ---

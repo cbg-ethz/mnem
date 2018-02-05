@@ -72,9 +72,9 @@ mnem(D, inference = "em", search = "modules", start = NULL,
 
 \item{domean}{average the data (speed imporvment)}
 
-\item{compress}{compress networks after search}
+\item{modulesize}{max number of S-genes per module in module search}
 
-\item{modulsize}{max number of S-genes per module in module search}
+\item{compress}{compress networks after search}
 }
 \value{
 optimized network for data fit

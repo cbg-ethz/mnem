@@ -1,3 +1,15 @@
+---
+title: "Network analysis of infection screens."
+author: "Martin Pirkl, Niko Beerenwinkel"
+date: "`r Sys.Date()`"
+graphics: yes
+output: BiocStyle::pdf_document
+vignette: >
+    %\VignetteIndexEntry{tixnem}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
 ```sh
 ## run job
 

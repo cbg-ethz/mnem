@@ -174,7 +174,6 @@ initps <- function(data, ks, k, starts = 3) {
 #' @noRd
 #' @export
 modData <- function(D) {
-    require(naturalsort)
     SgeneN <- getSgeneN(D)
     Sgenes <- naturalsort(unique(colnames(D)))
     if (!all(is.numeric(Sgenes))) {
@@ -401,7 +400,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
 #' @param elitism number of networks to keep during evolution
 #' @param maxGens maximum numbero f generations
 #' @param domean average the data (speed imporvment)
-#' @param modulsize max number of S-genes per module in module search
+#' @param modulesize max number of S-genes per module in module search
 #' @param compress compress networks after search
 #' @author Martin Pirkl
 #' @return optimized network for data fit
@@ -410,7 +409,6 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
 #' epiNEM
 #' cluster
 #' nem
-#' knitr
 #' graph
 #' Rgraphviz
 #' naturalsort
@@ -915,7 +913,6 @@ calcEvopen <- function(res) {
 #' @noRd
 #' @export
 llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
-    require(flexclust)
     if (is.null(weights)) {
         weights <- rep(1, ncol(data))
     }
@@ -969,6 +966,7 @@ bootstrap <- function(x) {
 #' @param ratio use log ratios (if true) or foldchanges
 #' @param method "llr" for ratios
 #' @param showweights shwo weights
+#' @param ... additional parameters
 #' @author Martin Pirkl
 #' @return visualization of mnem result Rgraphviz
 #' @export
@@ -976,7 +974,6 @@ bootstrap <- function(x) {
 #' epiNEM
 #' cluster
 #' nem
-#' knitr
 #' graph
 #' Rgraphviz
 #' tsne
