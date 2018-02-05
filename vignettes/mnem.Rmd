@@ -34,7 +34,7 @@ library(mnem)
 
 We simulate cells based on a ground truth mixture of networks. We use M&NEM to infer an optimal network from the data and compare the result ot the ground truth.
 
-```{r, eval = FALSE}
+```{r}
 runs <- 100
 noises <- c(1, 2.5, 5)
 
@@ -47,7 +47,8 @@ maxk <- 5
 starts <- 10
 noise <- 1
 nCells <- 1000
-
+```
+```{r, eval = FALSE}
 for (run in 1:length(acc)) {
     mw <- runif(nem, 0.1, 1)
     mw <- mw/sum(mw)
@@ -1013,10 +1014,10 @@ Martin Pirkl, Niko Beerenwinkel (2018).
 Single cell network analysis with a mixture of Nested Effects Models  
 bioRxiv 258202; doi: https://doi.org/10.1101/258202  
 
-Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and Bock, C. (2017).
+Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and Bock, C. (2017).  
 Pooled crispr screening with single-cell transcriptome readout.  
 Nature Methods, 14, 297 EP –.
 
-Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P., Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R., Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and Regev, A. (2016).
-Perturb-seq: Dissecting molecular circuits with scalable single-cell rna profiling of pooled genetic screens.
+Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P., Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R., Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and Regev, A. (2016).  
+Perturb-seq: Dissecting molecular circuits with scalable single-cell rna profiling of pooled genetic screens.  
 Cell, 167(7), 1853–1866.e17.

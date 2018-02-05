@@ -17,12 +17,11 @@ vignette: >
 ```{r, global_options, include=FALSE}
 knitr::opts_chunk$set(message=FALSE)
 ```
-```{r}
+```{r, eval = FALSE}
 
 library(nem)
 library(graph)
-source("~/Documents/mnem/R/mnems.r")
-source("~/Documents/mnem/R/mnems_low.r")
+library(mnem)
 
 noises <- c(0, 0.5, 1, 2)
 
@@ -43,8 +42,6 @@ timeseries <- data[, sample(1:ncol(data), steps, replace = TRUE)]
 data <- data + rnorm(length(sim$data), 0, noises[noise])
 
 timeseries <- timeseries + rnorm(steps, 0, noises[noise])
-
-source("~/Documents/mnem/R/mnems_low.r")
 
 res <- tinem(data, timeseries = timeseries, verbose = TRUE, evolution = F)#TRUE)
 

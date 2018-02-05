@@ -10,7 +10,7 @@ vignette: >
     %\VignetteEncoding{UTF-8}
 ---
 
-```sh
+```{r, eval = FALSE}
 ## run job
 
 stop()
@@ -47,7 +47,7 @@ bsub -M 20000 -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=20000
 
 ```
 
-```r
+```{r, eval = FALSE}
 
 ## here comes addtional tix R code, which is not run on any grid:
 
@@ -57,8 +57,7 @@ biocLite(c("nem", "graph", "cluster", "snow", "snowfall", "epiNEM", "KEGG.db", "
 
 ##
 
-source("mnem/R/mnems.r")
-source("mnem/R/mnems_low.r")
+library(mnem)
 
 library(nem)
 library(graph)
