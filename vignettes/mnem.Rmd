@@ -4,7 +4,10 @@ Inferring networks from sub-populations of single cells."
 author: "Martin Pirkl, Niko Beerenwinkel"
 date: "`r Sys.Date()`"
 graphics: yes
-output: BiocStyle::pdf_document
+output:
+	fig_caption: yes
+	pdf_document:
+	fig_caption: yes
 vignette: >
     %\VignetteIndexEntry{mnem}
     %\VignetteEngine{knitr::rmarkdown}
@@ -17,22 +20,25 @@ Single cell RNA-seq data sets from pooled CrispR screens provide the possibility
 
 ## Install
 
-Download and install the package manually or use 'devtools'.
-
+Download and install the package manually or use the R package 'devtools'.
+```{r style, echo = FALSE, results = 'asis'}
+BiocStyle::markdown()
+```
 ```{r, global_options, include=FALSE}
 knitr::opts_chunk$set(message=FALSE)
 fig.cap1 <- "Accuracy of the networks and number of components."
 fig.cap2 <- "Accuracy of the networks."
 fig.cap3 <- "Accuracy for number of components. Greater than 1 means too many were inferred. Less than 1 means to few."
 fig.cap4 <- "Distance of inferred to ground truth mixture weights."
+#output: BiocStyle::pdf_document
 ```
-```{r}
+```{r, warning=FALSE}
 library(mnem)
 ```
   
 ## Simulations
 
-We simulate cells based on a ground truth mixture of networks. We use M&NEM to infer an optimal network from the data and compare the result ot the ground truth.
+We simulate cells based on a ground truth mixture of networks. We use M&NEM to infer an optimal network from the data and compare the result ot the ground truth. For large scale simulation see section 'Data generation' at the end of the vignette.
 
 ```{r}
 runs <- 100
@@ -94,15 +100,12 @@ for (run in 1:length(acc)) {
         resadj[[i]]$adj <- res$comp[[i]]$phi
     }
     acc[run] <- hamSim(resfull, simfull, symmetric = TRUE)
-}
-par(mfrow=c(1,2)
-plot(acc)
-plot(comps)    
+}  
 ```
 
-We randomly draw mixture weights as a comparison to our inferred weights.
+We randomly draw mixture weights and components as a comparison to our inferred weights.
 	
-```{r, warning=FALSE, fig.cap="Distance between groudn truth and random mixture weights for different numbers of components."}
+```{r plot, fig.width = 4, fig.height = 4, warning=FALSE, fig.cap = "Random mixture weights. Distance between groudn truth and random mixture weights for different numbers of components."}
 runs <- 100
 maxk <- 5
 mixrand <- matrix(0, runs, maxk)
@@ -235,14 +238,17 @@ for (i in 1:5) {
     for (j in c(3,5,10,20)) {
         tmp <- get(paste0("simres", j))
         tmp2 <- NULL
-        for (l in 1:3) {
-            tmp2 <- cbind(tmp2, tmp3)
+        for (k in c(1,2)) {
+            for (l in 1:3) {
+                tmp3 <- tmp[,l,i,k,6]
+                tmp2 <- cbind(tmp2, tmp3)
+            }
         }
-        boxplot(tmp2, col = rep(redcol, 3), xaxt = "n")
+        boxplot(tmp2, col = c(rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0,1))
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
         axis(1, 1:(length(noises)*3), rep(noises, 3))
-        abline(h=1, lty = 3, col = "black", lwd = 2)
+        abline(v=c(length(noises)+0.5), lty = 3, col = "black", lwd = 2)
     }
 }
 
@@ -259,20 +265,32 @@ for (i in 1:4) {
 }
 
 for (i in 1:4) {
+    mtext("NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(2.97 - (i-1)*1.2))
+}
+
+for (i in 1:4) {
+    mtext("M&NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.5 - (i-1)*1.2))
+}
+
+for (i in 1:4) {
     mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.15 - (i-1)*1.21))
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
 ```
 
 ## Application
 
-We apply M&NEM to three different data sets from two different pooled CRISPR screens, Crop-Seq (Datlinger **et al.**, 2017) and Perturb-Seq (Dixit **et al.**, 2016).
+We apply M&NEM to three different data sets from two different pooled CRISPR screens, Crop-Seq (Datlinger *et al.*, 2017) and Perturb-Seq (Dixit *et al.*, 2016).
 
-```{r, eval=FALSE}
+```{r, fig.height = 3, fig.width = 11}
 
-load("bics.rda")
+data(app)
 
-maxk <- length(res)
+res2 <- app
+
+maxk <- 5
 
 source("mnem/R/mnems.r")
 source("mnem/R/mnems_low.r")
@@ -282,8 +300,6 @@ library(Rgraphviz)
 library(epiNEM)
 library(naturalsort)
 
-pdf("PLR.pdf", width = 11, height = 3)
-    
 par(mfrow=c(1,3), oma = c(0,0,1,0), mar = rep(0,4))
 
 for (j in 1:3) {
@@ -333,28 +349,18 @@ for (j in 1:3) {
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*0.27)
 
 }
-
-dev.off()
-
-pdf("PLR_legend.pdf", height = 4, width = 5)
-
+```
+```{r, fig.height = 4, fig.width = 5}
 plot(0, xlim = c(0,100), ylim = c(0,100))
 
 legend(0, 100, c("raw log likelihood ratio", "penalized log likelihood ratio"), fill = ,
        border = "transparent", cex = 1.25, lty = 1, pch = 1, col = c("blue", "red"))
-
-dev.off()
-
+```
+```{r, fig.height = 3, fig.width = 11}
 i <- which.min(bics)
 
 gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
 
-## HeatmapOP(gamma, breaks = 100, bordercol = "transparent")
-
-## histograms:
-
-pdf("histograms.pdf", width = 11, height = 3)
-    
 par(mfrow=c(1,3), oma = c(0,0,1,0), mar = rep(0,4))
 
 for (j in 1:3) {
@@ -399,66 +405,35 @@ for (j in 1:3) {
 
 }
 
-dev.off()
-
-pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_hist.pdf"), width = 5, height = 5)
-
+```
+```{r, fig.height = 3, fig.width = 11}
 hist(gamma, main = "Histogram of responsibilities", xlab = "responsibilities")
-
-dev.off()
+```
+```{r, fig.height = 30, fig.width = 10}
 
 i <- which.min(bics)
-
-pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_gamma.pdf"), width = 30, height = 10)
 
 gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
 
 HeatmapOP(gamma, breaks = 100, bordercol="transparent", cexCol = 0.4, xrot = 45, Rowv = F)
-
-dev.off()
-
-pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network.pdf"), width = 30, height = 10)
-
+```
+```{r, fig.height = 10, fig.width = 30}
 plot(res[[i]])
-
-dev.off()
-
-pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network_overfit.pdf"), width = 30, height = 10)
-
+```
+```{r, fig.height = 10, fig.width = 30}
 plot(res[[(i+1)]])
 
-dev.off()
-
-if (length(grep("cc7d", dataset)) == 0) {
-    pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network_wo.pdf"), width = 10, height = 7)
-} else {
-    pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network_wo.pdf"), width = 14, height = 14) # cc7d
-}
-
+```
+```{r, fig.height = 10, fig.width = 12}
 plot(res[[i]], egenes = F, bestCell=F, cells = F, showweights = F)
-
-dev.off()
-
-if (length(grep("p7d", dataset)) == 1) {
-    pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network_overfit_wo.pdf"), width = 8, height = 5)
-    plot(res[[(i+1)]], egenes = F, bestCell=F, cells = F, showweights = F)
-    dev.off()
-}
-
-if (length(grep("cc7d", dataset)) == 1) {
-    pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_network_overfit_wo.pdf"), width = 11.5, height = 8.5)
-    plot(res[[(i+1)]], egenes = F, bestCell=F, cells = F, showweights = F)
-    dev.off()
-}
-
-pdf(paste0(gsub("perturbseq_", "", dataset), bigorsmall, "_kegg.pdf"), width = 10, height = 10)
-
-plot.adj(kadjagg)
-
-dev.off() 
+```
+```{r, fig.height = 8, fig.width = 10}
+plot(res[[(i+1)]], egenes = F, bestCell=F, cells = F, showweights = F)
 ```
 
 # Data generation
+
+The following code was used to generate the data for the simulation and application results.
   
 ```{r, eval=FALSE}
 data <- read.csv("GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv", stringsAsFactors = FALSE)
@@ -987,7 +962,6 @@ res <- resMax
 
 res[[5]]$data <- res[[4]]$data <- res[[3]]$data <- res[[2]]$data <- res[[1]]$data <- lods
 
-
 ## save(res, file = paste0(dataset, "_mnem_", bigorsmall, "_final.rda"))
 
 load(paste0(dataset, "_mnem_", bigorsmall, "_final.rda"))
@@ -999,6 +973,15 @@ cc7dres <- res
 p7dres <- res
 
 res2 <- list(cropres, cc7dres, p7dres)
+
+## reduce data size as much as possible:
+
+for (i in 1:3) {
+    res2[[i]][[1]]$data <- res2[[i]][[1]]$data[1:2, ]
+    for (j in 2:5) {
+        res2[[i]][[j]]$data <- NULL
+    }
+}
 
 ```
 	

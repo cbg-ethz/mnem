@@ -31,5 +31,5 @@ plot(result)
 
 Martin Pirkl, Niko Beerenwinkel (2018)  
 Single cell network analysis with a mixture of Nested Effects Models  
-bioRxiv 258202; doi: https://doi.org/10.1101/258202
+bioRxiv 258202; doi: https://doi.org/10.1101/258202  
 url: https://www.biorxiv.org/content/early/2018/02/02/258202
