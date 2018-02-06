@@ -61,7 +61,7 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE
                 fpar <- fpar + sum(tmp != 0)
             }
             if (degree > 1 & (degree != 3)) {
-                fpar <- fpar + length(x$comp)*nrow(x$data)
+                fpar <- fpar + length(x$comp)*length(x$comp[[1]]$theta)
             }
         } else {
             fpar <- (length(x$comp[[1]]$phi)+length(x$comp[[1]]$theta))*length(x$comp)
