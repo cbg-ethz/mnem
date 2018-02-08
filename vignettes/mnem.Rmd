@@ -23,10 +23,13 @@ BiocStyle::markdown()
 ```
 ```{r, global_options, include=FALSE}
 knitr::opts_chunk$set(message=FALSE)
-fig.cap1 <- "Accuracy of the networks and number of components."
-fig.cap2 <- "Accuracy of the networks."
-fig.cap3 <- "Accuracy for number of components. Greater than 1 means too many were inferred. Less than 1 means to few."
+fig.cap1 <- "Accuracy for randomly drawn number of components and mixture weights.."
+fig.cap2 <- "Accuracy for the networks."
+fig.cap3 <- "Accuracy for the number of components."
 fig.cap4 <- "Distance of inferred to ground truth mixture weights."
+fig.cap5 <- "Penelized and raw log likelihood ratios."
+fig.cap6 <- "Histograms of the responsibilities."
+fig.cap7 <- "Highest scoring mixtures."
 ```
 ```{r, warning=FALSE}
 library(mnem)

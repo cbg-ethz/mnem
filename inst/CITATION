@@ -1,4 +1,4 @@
-citHeader("To cite bnem in publications use:")
+citHeader("To cite mnem in publications use:")
 
 citEntry(entry = "Article",
   title        = "Single cell network analysis with a mixture of Nested Effects Models.",
