@@ -30,6 +30,8 @@ fig.cap4 <- "Distance of inferred to ground truth mixture weights."
 fig.cap5 <- "Penelized and raw log likelihood ratios."
 fig.cap6 <- "Histograms of the responsibilities."
 fig.cap7 <- "Highest scoring mixtures."
+
+#output: BiocStyle::pdf_document
 ```
 ```{r, warning=FALSE}
 library(mnem)
@@ -52,8 +54,11 @@ maxk <- 5
 starts <- 10
 noise <- 1
 nCells <- 1000
-```
-```{r, eval = FALSE}
+```	
+```{r, eval = FALSE, include=FALSE}
+
+acc <- comps <- mws <- numeric(runs)
+
 for (run in 1:length(acc)) {
     mw <- runif(nem, 0.1, 1)
     mw <- mw/sum(mw)
@@ -100,29 +105,6 @@ for (run in 1:length(acc)) {
     }
     acc[run] <- hamSim(resfull, simfull, symmetric = TRUE)
 }  
-```
-
-We randomly draw mixture weights and components as a comparison to our inferred weights.
-	
-```{r, fig.width = 4, fig.height = 4, warning=FALSE, fig.cap = fig.cap1}
-runs <- 100
-maxk <- 5
-mixrand <- matrix(0, runs, maxk)
-for (j in 1:5) {
-    nem <- j
-    tmp <- numeric(runs)
-    for (i in 1:runs) {
-        mw <- runif(nem, 0.1, 1)
-        mw <- mw/sum(mw)
-        nem2 <- sample(1:5, 1)
-        mw2 <- runif(nem2, 0.1, 1)
-        mw2 <- mw2/sum(mw2)
-        tmp[i] <- dist(rbind(mw, mw2))
-    }
-    mixrand[, j] <- tmp
-}
-
-boxplot(mixrand, col = "grey", main = "random", xlab = "components K")
 ```
 	
 Evaluation of the simulation results by accuracy of the networks, mixture weights and number of components.
@@ -279,6 +261,30 @@ for (i in 1:4) {
 }
 ```
 
+We randomly draw mixture weights and components as a comparison to our inferred weights.
+
+```{r, fig.cap = "test", fig.width = 4, fig.height = 4, warning=FALSE, fig.cap = fig.cap1}
+runs <- 100
+maxk <- 5
+mixrand <- matrix(0, runs, maxk)
+for (j in 1:5) {
+    nem <- j
+    tmp <- numeric(runs)
+    for (i in 1:runs) {
+        mw <- runif(nem, 0.1, 1)
+        mw <- sort(mw/sum(mw))
+        mw2 <- c(rep(0, 5 - length(mw)), mw)
+        nem2 <- sample(1:5, 1)
+        mw2 <- runif(nem2, 0.1, 1)
+        mw2 <- sort(mw2/sum(mw2))
+        mw2 <- c(rep(0, 5 - length(mw2)), mw2)
+        tmp[i] <- dist(rbind(mw, mw2))
+    }
+    mixrand[, j] <- tmp
+}
+boxplot(mixrand, col = "grey", main = "random", xlab = "components K")
+```
+	
 ## Application
 
 We apply M&NEM to three different data sets from two different pooled CRISPR screens, Crop-Seq (Datlinger *et al.*, 2017) and Perturb-Seq (Dixit *et al.*, 2016).
@@ -419,9 +425,9 @@ for (j in 1:3) {
         bics[i] <- getIC(res[[i]])
         
         ll[i] <- max(res[[i]]$ll)
-
+        
     }
-
+    
     ll2 <- ll
     
     ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
