@@ -516,7 +516,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
             if (!is.null(parallel)) {
                 transitive.closure <- nem::transitive.closure
                 transitive.reduction <- nem::transitive.reduction
-                sfInit(parallel = T, cpus = parallel)
+                sfInit(parallel = TRUE, cpus = parallel)
                 sfExport("modules", "mw", "ratio", "getSgeneN", "modData", "sortAdj", "calcEvopen", "evolution", "transitive.reduction", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "transitive.closure", "max_iter", "verbose", "llrScore", "search", "redSpace", "affinity", "getProbs", "probscl", "method")#, "start", "better", "traClo", "method", "scoreAdj", "weights", "transitive.closure")
             }
             do_inits <- function(s) {
@@ -731,7 +731,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                              ratio = ratio, probscl = probscl,
                              reduce = reduce, redSpace = redSpace)
         } else {
-            sfInit(parallel = T, cpus = parallel)
+            sfInit(parallel = TRUE, cpus = parallel)
             transitive.closure <- nem::transitive.closure
             transitive.reduction <- nem::transitive.reduction
             sfExport("modules", "transitive.closure", "transitive.reduction", "starts", "initps", "n", "getSgeneN", "modData", "sortAdj", "calcEvopen", "checkProbs", "evolution", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "max_iter", "verbose", "llrScore", "redSpace", "affinity", "getProbs")
@@ -772,7 +772,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                              reduce = reduce, redSpace = redSpace,
                              popSize = popSize, stallMax = stallMax, elitism = elitism, maxGens = maxGens)
         } else {
-            sfInit(parallel = T, cpus = parallel)
+            sfInit(parallel = TRUE, cpus = parallel)
             transitive.closure <- nem::transitive.closure
             transitive.reduction <- nem::transitive.reduction
             sfExport("modules", "transitive.closure", "transitive.reduction", "starts", "initps", "n", "getSgeneN", "modData", "sortAdj", "calcEvopen", "checkProbs", "evolution", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "max_iter", "verbose", "llrScore", "redSpace", "affinity", "getProbs")

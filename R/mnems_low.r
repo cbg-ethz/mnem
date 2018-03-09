@@ -1,7 +1,44 @@
+clustNEM <- function(data, k = 2:5) {
+    smax <- 0
+    K <- 1
+    res <- NULL
+    for (i in k) {
+        d <- (1 - cor(data))/2
+        d <- as.dist(d)
+        kres <- kmeans(d, i)
+        sres <- silhouette(kres$cluster, d)
+        print(sum(sres[, 3]))
+        if (sum(sres[, 3]) > smax) {
+            Kres <- kres
+            K <- i
+            smax <- sum(sres[, 3])
+        }
+    }
+    res <- list()
+    for (i in 1:K) {
+        if (sum(Kres$cluster == i) > 1) {
+            res[[i]] <- mynem(data[, which(Kres$cluster == i)])
+            rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <- unique(sort(names(which(Kres$cluster == i))))
+        } else {
+            res[[i]] <- list()
+            res[[i]]$adj <- matrix(1, 1, 1)
+            rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <- names(which(Kres$cluster == i))
+        }
+    }
+    res$comp <- list()
+    res$mw <- numeric(K)
+    for (i in 1:K) {
+        res$comp[[i]] <- list()
+        res$comp[[i]]$phi <- res[[i]]$adj
+        res$mw[i] <- sum(Kres$cluster == i)/ncol(data)
+    }
+    res$probs <- matrix(res$mw, K, ncol(data))
+    return(res)
+}
+
 ## ideas:
 ## just use the time data for one static network, done!
 ## assume an evolving network:
-
 tinem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1, verbose = FALSE, redSpace = NULL,
                   trans.close = TRUE, subtopo = NULL, prior = NULL, ratio = TRUE, timeseries = NULL, max_iter = 100, evolution = TRUE) {
@@ -207,7 +244,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     if (!is.null(parallel)) {
         transitive.closure <- nem::transitive.closure
         transitive.reduction <- nem::transitive.reduction
-        sfInit(parallel = T, cpus = parallel)
+        sfInit(parallel = TRUE, cpus = parallel)
         sfExport("modules", "D", "start", "better", "traClo", "method", "scoreAdj",
                  "weights", "transitive.closure", "llrScore",
                  "transitive.reduction")
@@ -250,10 +287,10 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 }
                 scores[is.na(scores)] <- 0
                 best <- models[[which.max(scores)]]
-                best <- traClo(best, mat = T)
+                best <- traClo(best, mat = TRUE)
                 if (max(scores, na.rm = TRUE) > oldscore | (max(scores, na.rm = TRUE) == oldscore & sum(better == 1) > sum(best == 1))) {
                     better <- best
-                    better <- traClo(better, mat = T)
+                    better <- traClo(better, mat = TRUE)
                     oldscore <- max(scores)
                     allscores <- c(allscores, oldscore)
                 } else {
@@ -319,7 +356,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 createFull <- function(i) {
                     bivec <- dec2bin(i-1)
                     bivec <- c(rep(0, n*n - length(bivec)), bivec)
-                    adj <- traClo(matrix(bivec, n, n), mat = T)
+                    adj <- traClo(matrix(bivec, n, n), mat = TRUE)
                     diag(adj) <- 1
                     return(paste(as.vector(adj), collapse = ""))
                 }
@@ -328,7 +365,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 } else {
                     spaceFull <- do.call("c", sfLapply(1:spaceExp, createFull))
                 }
-                spaceUnique <- (1:spaceExp)[-which(duplicated(spaceFull) == T)]
+                spaceUnique <- (1:spaceExp)[-which(duplicated(spaceFull) == TRUE)]
                 redSpace <- spaceUnique
                 ## if (verbose) { print(paste("different equivalence classes: ", length(spaceUnique), sep = "")) }
             } else {
@@ -339,7 +376,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         doScores <- function(i) {
             bivec <- dec2bin(i-1)
             bivec <- c(rep(0, n*n - length(bivec)), bivec)
-            adj <- traClo(matrix(bivec, n, n), mat = T)
+            adj <- traClo(matrix(bivec, n, n), mat = TRUE)
             diag(adj) <- 1
             colnames(adj) <- rownames(adj) <- Sgenes
             score <- scoreAdj(D, adj, method = method, weights = weights,
@@ -431,7 +468,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
     theta <- list()
     for (i in 1:Nems) {
         if (i == 1 | !evolution) {
-            adj <- matrix(sample(c(0,1), Sgenes^2, replace = T), Sgenes, Sgenes)
+            adj <- matrix(sample(c(0,1), Sgenes^2, replace = TRUE), Sgenes, Sgenes)
             adj <- adj[order(apply(adj, 1, sum), decreasing = TRUE), order(apply(adj, 2, sum), decreasing = FALSE)]
             adj[lower.tri(adj)] <- 0
             diag(adj) <- 1
