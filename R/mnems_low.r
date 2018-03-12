@@ -18,7 +18,7 @@ clustNEM <- function(data, k = 2:5, ...) {
     for (i in 1:K) {
         if (sum(Kres$cluster == i) > 1) {
             res[[i]] <- mynem(data[, which(Kres$cluster == i)], ...)
-            rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <- unique(sort(names(which(Kres$cluster == i))))
+            rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <- unique(naturalsort(names(which(Kres$cluster == i))))
         } else {
             res[[i]] <- list()
             res[[i]]$adj <- matrix(1, 1, 1)
