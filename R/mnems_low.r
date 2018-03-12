@@ -27,9 +27,18 @@ clustNEM <- function(data, k = 2:5, ...) {
     }
     res$comp <- list()
     res$mw <- numeric(K)
+    Sgenes <- length(unique(colnames(data)))
     for (i in 1:K) {
         res$comp[[i]] <- list()
-        res$comp[[i]]$phi <- res[[i]]$adj
+        tmp <- res[[i]]$adj
+        if (nrow(tmp) < Sgenes) {
+            print("test")
+            smiss <- unique(colnames(data)[-which(colnames(data) %in% colnames(tmp))])
+            tmp <- rbind(cbind(tmp, matrix(0, nrow = nrow(tmp), ncol = length(smiss))), matrix(0, nrow = length(smiss), ncol = ncol(tmp) + length(smiss)))
+            colnames(tmp)[(dim(res[[i]]$adj)+1):nrow(tmp)] <- rownames(tmp)[(dim(res[[i]]$adj)+1):nrow(tmp)] <- smiss
+            tmp <- tmp[order(rownames(tmp)), order(colnames(tmp))]
+        }
+        res$comp[[i]]$phi <- tmp
         res$mw[i] <- sum(Kres$cluster == i)/ncol(data)
     }
     res$probs <- matrix(res$mw, K, ncol(data))
