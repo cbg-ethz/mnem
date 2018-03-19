@@ -431,7 +431,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                  redSpace = NULL, affinity = 0, evolution = FALSE,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
                  popSize = 10, stallMax = 2, elitism = NULL, maxGens = Inf,
-                 domean = TRUE, modulesize = 5, compress = FALSE) {
+                 domean = TRUE, modulesize = 5, compress = FALSE, increase = TRUE) {
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
         redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)], search = "exhaustive", reduce = TRUE, verbose = verbose, parallel = c(parallel, parallel2), subtopo = subtopoX, ratio = ratio, domean = FALSE, modulesize = modulesize)$redSpace
     }
@@ -571,7 +571,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                 count <- 0
                 time0 <- TRUE
                 probsold <- probs
-                while ((ll - llold > converged & count < max_iter) | time0) {
+                while ((((ll - llold > converged & increase) | (abs(ll - llold) > converged & !increase) & count < max_iter) | time0) {
                     if (!time0) {
                         if (ll - bestll > 0) {
                             bestll <- ll; bestres <- res1; bestprobs <- probs
@@ -680,8 +680,8 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                 if (ll - bestll > 0) {
                     bestll <- ll; bestres <- res1; bestprobs <- probs
                 }
-                if (abs(ll - llold) > converged | llold > ll) { # llold > ll probably hardly happens but when it does it prob goes into a cycle for 100 iterations
-                    if (verbose) {
+                if (abs(ll - llold) > converged | llold > ll) { # llold > ll probably hardly happens but when it does it prob goes into a cycle for 100 iterations. not necesssarily. e.g. with modulesearch I do not give the last optimum as a starting network and cannot guarantee ll increase. improve modulesearch to add a starting network....
+                    if (verbose & (increase | max_iter <= count)) {
                         print("no convergence")
                     }
                 }

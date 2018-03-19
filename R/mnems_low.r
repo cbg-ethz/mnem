@@ -17,7 +17,7 @@ clustNEM <- function(data, k = 2:5, ...) {
     res <- list()
     for (i in 1:K) {
         if (sum(Kres$cluster == i) > 1) {
-            res[[i]] <- mynem(data[, which(Kres$cluster == i)], ...)
+            res[[i]] <- mynem(data[, which(Kres$cluster == i)])#, ...)
             rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <- unique(naturalsort(names(which(Kres$cluster == i))))
         } else {
             res[[i]] <- list()
@@ -31,6 +31,7 @@ clustNEM <- function(data, k = 2:5, ...) {
     for (i in 1:K) {
         res$comp[[i]] <- list()
         tmp <- res[[i]]$adj
+        the next if biases towards clustNEM
         if (nrow(tmp) < Sgenes) {
             print("test")
             smiss <- unique(colnames(data)[-which(colnames(data) %in% colnames(tmp))])
@@ -109,7 +110,7 @@ tinem <- function(D, search = "greedy", start = NULL, method = "llr",
 }
 #' @noRd
 #' @export
-modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
+modules <- function(D, method = "llr", weights = NULL, reduce = FALSE, start = NULL,
                     verbose = FALSE, trans.close = TRUE, redSpace = NULL,
                     subtopo = NULL, ratio = TRUE, parallel = NULL, prior = NULL,
                     modulesize = 4, search = "exhaustive", domean = TRUE) {
@@ -159,7 +160,12 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
         if (verbose) { print(paste(c("calculating module", subset), collapse = " ")) }
         if (length(subset) > 1) {
             subdata <- data[, which(colnames(data) %in% subset)]
-            tmp <- mynem(subdata, search = search, method = method,
+            if (is.null(start)) {
+                start2 <- start
+            } else {
+                start2 <- start[which(rownames(start) %in% subset), which(colnames(start) %in% subset)]
+            }
+            tmp <- mynem(subdata, search = search, method = method, start = start2,
                          parallel = parallel, reduce = reduce,
                          weights = weights[which(colnames(data) %in% subset)], verbose = verbose,
                          redSpace = redSpace, trans.close = trans.close,
@@ -212,7 +218,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         } else {
             search <- "greedy"
         }
-        start <- modules(D, method = method, weights = weights, reduce = reduce, verbose = verbose,
+        start <- modules(D, method = method, weights = weights, reduce = reduce, verbose = verbose, start = start,
                          trans.close = trans.close, redSpace = redSpace, subtopo = subtopo,
                          ratio = ratio, parallel = parallel, prior = prior,
                          modulesize = modulesize, search = search, domean = domean)
