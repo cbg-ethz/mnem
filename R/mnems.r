@@ -571,7 +571,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                 count <- 0
                 time0 <- TRUE
                 probsold <- probs
-                while ((((ll - llold > converged & increase) | (abs(ll - llold) > converged & !increase) & count < max_iter) | time0) {
+                while ((((ll - llold > converged & increase) | (abs(ll - llold) > converged & !increase) & count < max_iter)) | time0) {
                     if (!time0) {
                         if (ll - bestll > 0) {
                             bestll <- ll; bestres <- res1; bestprobs <- probs

@@ -31,7 +31,7 @@ clustNEM <- function(data, k = 2:5, ...) {
     for (i in 1:K) {
         res$comp[[i]] <- list()
         tmp <- res[[i]]$adj
-        the next if biases towards clustNEM
+        ## the next if biases towards clustNEM
         if (nrow(tmp) < Sgenes) {
             print("test")
             smiss <- unique(colnames(data)[-which(colnames(data) %in% colnames(tmp))])
