@@ -17,7 +17,7 @@ clustNEM <- function(data, k = 2:5, ...) {
     res <- list()
     for (i in 1:K) {
         if (sum(Kres$cluster == i) > 1) {
-            res[[i]] <- mynem(data[, which(Kres$cluster == i)])#, ...)
+            res[[i]] <- mynem(data[, which(Kres$cluster == i)], ...)
             rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <- unique(naturalsort(names(which(Kres$cluster == i))))
         } else {
             res[[i]] <- list()
@@ -218,10 +218,12 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         } else {
             search <- "greedy"
         }
-        start <- modules(D, method = method, weights = weights, reduce = reduce, verbose = verbose, start = start,
-                         trans.close = trans.close, redSpace = redSpace, subtopo = subtopo,
-                         ratio = ratio, parallel = parallel, prior = prior,
-                         modulesize = modulesize, search = search, domean = domean)
+        if (length(unique(colnames(D))) > modulesize) {
+            start <- modules(D, method = method, weights = weights, reduce = reduce, verbose = verbose, start = start,
+                             trans.close = trans.close, redSpace = redSpace, subtopo = subtopo,
+                             ratio = ratio, parallel = parallel, prior = prior,
+                             modulesize = modulesize, search = search, domean = domean)
+        }
         if (search %in% "exhaustive") {
             search <- "greedy"
         }
