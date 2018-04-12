@@ -1,3 +1,88 @@
+
+nemEst <- function(data, maxiter = 100, start = NULL, gtn = NULL, sumf = mean, alpha = 1, cut = 0) {
+    if (sum(duplicated(colnames(data)) == TRUE) > 0) {
+        data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
+        for (j in unique(colnames(data))) {
+            data2[, j] <- apply(data[, which(colnames(data) %in% j), drop = FALSE], 1, sumf)
+        }
+    } else {
+        data2 <- data
+    }
+    R <- data2[, naturalsort(colnames(data2))] 
+    n <- ncol(R)
+    R2 <- t(R)%*%R
+    if (alpha != 1) {
+        C <- cor(R)
+        C <- C2 <- solve(C)
+        for (r in 1:nrow(C)) {
+            C[r, ] <- C[r, ]/(C2[r, r]^0.5)
+        }
+        for (c in 1:ncol(C)) {
+            C[, c] <- C[, c]/(C2[c, c]^0.5)
+        }
+        diag(C) <- 1
+        Cz <- apply(C, c(1,2), function(x) return(0.5*log((1+x)/(1-x))))
+        diag(Cz) <- 0
+        Cp <- pnorm(((nrow(R) - n - 2 - 3)^0.5)*Cz)
+        idx <- which(Cp <= alpha)
+        Cp[idx] <- 1
+        Cp[-idx] <- 0
+    } else {
+        Cp <- 1
+    }
+    phibest <- phi <- matrix(0, n, n)
+    rownames(phi) <- colnames(phi) <- colnames(R)
+    E <- apply(R, 2, sum)
+    phi <- phi[order(E, decreasing = TRUE), order(E, decreasing = TRUE)]
+    phi[upper.tri(phi)] <- 1
+    phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
+    phi <- transitive.closure(phi, mat = TRUE)
+    E <- phi
+    E <- E*Cp
+    phi <- phi*0
+    diag(phi) <- 1
+    iter <- 0
+    lls <- NULL
+    llbest <- -Inf
+    stop <- FALSE
+    while(!stop & iter < maxiter) {
+        iter <- iter + 1
+        P <- R%*%cbind(phi, 0)
+        subtopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(P, 1, function(x) return(which.max(x)))))
+        theta <- t(R)*0
+        theta[cbind(subtopo, 1:ncol(theta))] <- 1
+        ll <- sum(diag(theta%*%P))
+        if (ll %in% lls | all(phi == phibest)) {
+            stop <- TRUE
+        }
+        if (llbest < ll) {
+            phibest <- phi
+            llbest <- ll
+            numbest <- iter
+        }
+        lls <- c(lls, ll)
+        nogenes <- which(apply(theta, 1, sum) == 0)
+        nozeros <- which(t(P) > 0, arr.ind = TRUE)
+        nozeros <- nozeros[which(nozeros[, 1] %in% nogenes), ]
+        theta[nozeros] <- 1
+        O <- t(R)%*%t(theta)
+        R2pos <- R2*O*sign(R2)
+        cutpos <- cut*max(abs(R2pos))
+        R2pos[which(phi == 1 | t(phi) == 1 | E == 0)] <- -Inf
+        R2neg <- R2*O*sign(R2)
+        cutneg <- cut*max(abs(R2neg))
+        R2neg[which(phi == 0)] <- Inf
+        phi[which(R2pos > cutpos)] <- 1
+        phi[which(R2neg < cutneg)] <- 0
+        phi <- transitive.closure(phi, mat = TRUE)
+    }
+    phi <- phibest
+    P <- R%*%cbind(phi, 0)
+    subtopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(P, 1, function(x) return(which.max(x)))))
+    theta <- t(R)*0
+    theta[cbind(subtopo, 1:ncol(theta))] <- 1
+    return(list(phi = phi, theta = theta, iter = iter, lls = lls, num = numbest))
+}
 clustNEM <- function(data, k = 2:5, ...) {
     smax <- 0
     K <- 1
@@ -478,14 +563,14 @@ plot.mynem <- function(x, ...) {
 #' plot(result)
 simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
-                    nCells = 1000, uninform = 0, unitheta = FALSE) {
+                    nCells = 1000, uninform = 0, unitheta = FALSE, edgeprob = 0.5) {
     Nem <- list()
     data <- NULL
     index <- NULL
     theta <- list()
     for (i in 1:Nems) {
         if (i == 1 | !evolution) {
-            adj <- matrix(sample(c(0,1), Sgenes^2, replace = TRUE), Sgenes, Sgenes)
+            adj <- matrix(sample(c(0,1), Sgenes^2, replace = TRUE, prob = c(1-edgeprob, edgeprob)), Sgenes, Sgenes)
             adj <- adj[order(apply(adj, 1, sum), decreasing = TRUE), order(apply(adj, 2, sum), decreasing = FALSE)]
             adj[lower.tri(adj)] <- 0
             diag(adj) <- 1
