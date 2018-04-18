@@ -1,5 +1,7 @@
 
-nemEst <- function(data, maxiter = 100, start = NULL, gtn = NULL, sumf = mean, alpha = 1, cut = 0) {
+nemEst <- function(data, maxiter = 100, start = NULL,
+                   gtn = NULL, sumf = mean, alpha = 1, cut = 0,
+                   kernel = "cosim") { # kernels can be cosim or cor
     if (sum(duplicated(colnames(data)) == TRUE) > 0) {
         data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
         for (j in unique(colnames(data))) {
@@ -10,7 +12,13 @@ nemEst <- function(data, maxiter = 100, start = NULL, gtn = NULL, sumf = mean, a
     }
     R <- data2[, naturalsort(colnames(data2))] 
     n <- ncol(R)
-    R2 <- t(R)%*%R
+    if (kernel %in% "cosim") {
+        R2 <- t(R)%*%R
+    }
+    if (kernel %in% "cor") {
+        R2 <- cor(R)
+    }
+    if (!(kernel %in% c("cosim", "cor"))) { stop("kernel neither set to 'cosim' nor 'cor'.") }
     if (alpha != 1) {
         C <- cor(R)
         C <- C2 <- solve(C)
@@ -21,7 +29,7 @@ nemEst <- function(data, maxiter = 100, start = NULL, gtn = NULL, sumf = mean, a
             C[, c] <- C[, c]/(C2[c, c]^0.5)
         }
         diag(C) <- 1
-        Cz <- apply(C, c(1,2), function(x) return(0.5*log((1+x)/(1-x))))
+        Cz <- apply(C, c(1,2), function(x) return(0.5*log((1+x)/(1-x)))) # conditional independence test with fisher-transform
         diag(Cz) <- 0
         Cp <- pnorm(((nrow(R) - n - 2 - 3)^0.5)*Cz)
         idx <- which(Cp <= alpha)
