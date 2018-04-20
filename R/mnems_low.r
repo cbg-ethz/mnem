@@ -1,7 +1,6 @@
-
 nemEst <- function(data, maxiter = 100, start = NULL,
                    gtn = NULL, sumf = mean, alpha = 1, cut = 0,
-                   kernel = "cosim") { # kernels can be cosim or cor
+                   kernel = "cosim", fun = "sign") { # kernels can be cosim or cor # fun can be add, mult or sign
     if (sum(duplicated(colnames(data)) == TRUE) > 0) {
         data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
         for (j in unique(colnames(data))) {
@@ -73,11 +72,18 @@ nemEst <- function(data, maxiter = 100, start = NULL,
         nozeros <- which(t(P) > 0, arr.ind = TRUE)
         nozeros <- nozeros[which(nozeros[, 1] %in% nogenes), ]
         theta[nozeros] <- 1
-        O <- t(R)%*%t(theta)
-        R2pos <- R2*O*sign(R2)
+        O <- t(R)%*%t(phi%*%theta) # should I use F there or just theta?
+        if (fun %in% "sign") {
+            R2pos <- R2neg <- R2*O*sign(R2)
+        } else if (fun %in% "mult") {
+            R2pos <- R2neg <- R2*O
+        } else if (fun %in% "add") {
+            R2pos <- R2neg <- R2+O
+        } else {
+            stop("unknown function 'fun'; has to be either of 'sign', 'mult' or 'add'.")
+        }
         cutpos <- cut*max(abs(R2pos))
         R2pos[which(phi == 1 | t(phi) == 1 | E == 0)] <- -Inf
-        R2neg <- R2*O*sign(R2)
         cutneg <- cut*max(abs(R2neg))
         R2neg[which(phi == 0)] <- Inf
         phi[which(R2pos > cutpos)] <- 1
