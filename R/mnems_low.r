@@ -62,7 +62,9 @@ nemEst <- function(data, maxiter = 100, start = NULL,
         if (ll %in% lls | all(phi == phibest)) {
             stop <- TRUE
         }
-        if (monoton & ll < lls[length(lls)]) { stop <- TRUE }
+        if (monoton & iter > 1) {
+            if (ll < lls[length(lls)]) { stop <- TRUE }
+        }
         if (llbest < ll) {
             phibest <- phi
             llbest <- ll
