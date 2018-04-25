@@ -1,6 +1,6 @@
 nemEst <- function(data, maxiter = 100, start = NULL,
                    gtn = NULL, sumf = mean, alpha = 1, cut = 0,
-                   kernel = "cosim", fun = "sign") { # kernels can be cosim or cor # fun can be add, mult or sign
+                   kernel = "cosim", fun = "sign", monoton = FALSE) { # kernels can be cosim or cor # fun can be add, mult or sign
     if (sum(duplicated(colnames(data)) == TRUE) > 0) {
         data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
         for (j in unique(colnames(data))) {
@@ -62,6 +62,7 @@ nemEst <- function(data, maxiter = 100, start = NULL,
         if (ll %in% lls | all(phi == phibest)) {
             stop <- TRUE
         }
+        if (monoton & ll < lls[length(lls)]) { stop <- TRUE }
         if (llbest < ll) {
             phibest <- phi
             llbest <- ll
