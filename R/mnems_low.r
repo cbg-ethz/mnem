@@ -1,6 +1,21 @@
+nempca <- function(R) {
+    K <- t(R)%*%R*0
+    for (i in 1:ncol(R)) {
+        for (j in 1:ncol(R)) {
+            Ri <- R[, i]
+            Rj <- R[, j]
+            Rj[which(Ri > 0 & Rj < 0)] <- 1
+            K[i, j] <- t(Ri)%*%Rj
+        }
+    }
+    K <- (K + t(K))/2
+    return(K)
+}
+
 nemEst <- function(data, maxiter = 100, start = NULL,
                    gtn = NULL, sumf = mean, alpha = 1, cut = 0,
-                   kernel = "cosim", fun = "sign", monoton = FALSE) { # kernels can be cosim or cor # fun can be add, mult or sign
+                   kernel = "cosim", monoton = FALSE,
+                   useCut = TRUE, useF = FALSE) { # kernels can be cosim or cor # fun can be add, mult or sign
     if (sum(duplicated(colnames(data)) == TRUE) > 0) {
         data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
         for (j in unique(colnames(data))) {
@@ -46,8 +61,13 @@ nemEst <- function(data, maxiter = 100, start = NULL,
     phi <- transitive.closure(phi, mat = TRUE)
     E <- phi
     E <- E*Cp
-    phi <- phi*0
-    diag(phi) <- 1
+    if (is.null(start)) {
+        phi <- phi*0
+        diag(phi) <- 1
+    } else {
+        phi <- start
+    }
+    O <- phi*0
     iter <- 0
     lls <- NULL
     llbest <- -Inf
@@ -58,6 +78,7 @@ nemEst <- function(data, maxiter = 100, start = NULL,
         subtopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(P, 1, function(x) return(which.max(x)))))
         theta <- t(R)*0
         theta[cbind(subtopo, 1:ncol(theta))] <- 1
+        Oold <- O
         ll <- sum(diag(theta%*%P))
         if (ll %in% lls | all(phi == phibest)) {
             stop <- TRUE
@@ -75,22 +96,21 @@ nemEst <- function(data, maxiter = 100, start = NULL,
         nozeros <- which(t(P) > 0, arr.ind = TRUE)
         nozeros <- nozeros[which(nozeros[, 1] %in% nogenes), ]
         theta[nozeros] <- 1
-        O <- t(R)%*%t(phi%*%theta) # should I use F there or just theta?
-        if (fun %in% "sign") {
-            R2pos <- R2neg <- R2*O*sign(R2)
-        } else if (fun %in% "mult") {
-            R2pos <- R2neg <- R2*O
-        } else if (fun %in% "add") {
-            R2pos <- R2neg <- R2+O
+        if (useF) {
+            O <- t(R)%*%t(phi%*%theta)
         } else {
-            stop("unknown function 'fun'; has to be either of 'sign', 'mult' or 'add'.")
+            O <- t(R)%*%t(theta) # seems to work better
         }
-        cutpos <- cut*max(abs(R2pos))
-        R2pos[which(phi == 1 | t(phi) == 1 | E == 0)] <- -Inf
-        cutneg <- cut*max(abs(R2neg))
-        R2neg[which(phi == 0)] <- Inf
-        phi[which(R2pos > cutpos)] <- 1
-        phi[which(R2neg < cutneg)] <- 0
+        if (useCut) {
+            cutoff <- cut*max(abs(O))
+            phi[which(O > cutoff & E == 1)] <- 1
+            phi[which(O < cutoff)] <- 0
+        } else {
+            O <- t(R)%*%t(phi%*%theta) # Sgene -> E-gene -> S-gene => S-gene -> S-gene?
+            supertopo <- as.numeric(apply(O, 1, function(x) return(which.max(x))))
+            phi <- phi*0
+            phi[cbind(supertopo, 1:ncol(phi))] <- 1
+        }
         phi <- transitive.closure(phi, mat = TRUE)
     }
     phi <- phibest
