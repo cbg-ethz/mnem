@@ -1,4 +1,15 @@
-nempca <- function(R) {
+
+andgrep <- function(patterns, targets, fun = grep) {
+    found <- as.numeric(names(which(table(unlist(lapply(patterns, fun, targets))) == length(patterns))))
+    return(found)
+}
+
+notgrep <- function(pattern, targets) {
+    found <- (1:length(targets))[-grep(pattern, targets)]
+    return(found)
+}
+
+kernelnem <- function(R) {
     K <- t(R)%*%R*0
     for (i in 1:ncol(R)) {
         for (j in 1:ncol(R)) {
@@ -12,10 +23,10 @@ nempca <- function(R) {
     return(K)
 }
 
-nemEst <- function(data, maxiter = 100, start = NULL,
-                   gtn = NULL, sumf = mean, alpha = 1, cut = 0,
+nemEst <- function(data, maxiter = 100, start = "full",
+                   sumf = mean, alpha = 1, cut = 0,
                    kernel = "cosim", monoton = FALSE,
-                   useCut = TRUE, useF = FALSE) { # kernels can be cosim or cor # fun can be add, mult or sign
+                   useCut = TRUE, useF = TRUE) { # kernels can be cosim or cor # fun can be add, mult or sign
     if (sum(duplicated(colnames(data)) == TRUE) > 0) {
         data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
         for (j in unique(colnames(data))) {
@@ -33,7 +44,7 @@ nemEst <- function(data, maxiter = 100, start = NULL,
         R2 <- cor(R)
     }
     if (!(kernel %in% c("cosim", "cor"))) { stop("kernel neither set to 'cosim' nor 'cor'.") }
-    if (alpha != 1) {
+    if (alpha < 1) {
         C <- cor(R)
         C <- C2 <- solve(C)
         for (r in 1:nrow(C)) {
@@ -45,36 +56,45 @@ nemEst <- function(data, maxiter = 100, start = NULL,
         diag(C) <- 1
         Cz <- apply(C, c(1,2), function(x) return(0.5*log((1+x)/(1-x)))) # conditional independence test with fisher-transform
         diag(Cz) <- 0
-        Cp <- pnorm(((nrow(R) - n - 2 - 3)^0.5)*Cz)
-        idx <- which(Cp <= alpha)
+        Cz <- pnorm(((nrow(R) - n - 2 - 3)^0.5)*Cz)
+        idx <- which(Cz <= alpha)
+        Cp <- Cz
         Cp[idx] <- 1
         Cp[-idx] <- 0
     } else {
         Cp <- 1
+        Cz <- 0
     }
     phibest <- phi <- matrix(0, n, n)
     rownames(phi) <- colnames(phi) <- colnames(R)
-    E <- apply(R, 2, sum)
-    phi <- phi[order(E, decreasing = TRUE), order(E, decreasing = TRUE)]
+    E0 <- apply(R, 2, sum)
+    phi <- phi[order(E0, decreasing = TRUE), order(E0, decreasing = TRUE)]
     phi[upper.tri(phi)] <- 1
     phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
     phi <- transitive.closure(phi, mat = TRUE)
     E <- phi
     E <- E*Cp
-    if (is.null(start)) {
+    if (any(start %in% "full")) {
+        phi <- phi
+    } else if (any(start %in% "rand")) {
+        phi <- phi*0
+        diag(phi) <- 1
+        phi[1:length(phi)] <- sample(c(0,1), length(phi), replace = TRUE)
+    } else if (any(start %in% "null")) {
         phi <- phi*0
         diag(phi) <- 1
     } else {
         phi <- start
     }
     O <- phi*0
-    iter <- 0
+    iter <- Oold <- 0
     lls <- NULL
     llbest <- -Inf
     stop <- FALSE
     while(!stop & iter < maxiter) {
         iter <- iter + 1
         P <- R%*%cbind(phi, 0)
+        P[, grep("_", colnames(phi))] <- min(P)
         subtopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(P, 1, function(x) return(which.max(x)))))
         theta <- t(R)*0
         theta[cbind(subtopo, 1:ncol(theta))] <- 1
@@ -88,38 +108,54 @@ nemEst <- function(data, maxiter = 100, start = NULL,
         }
         if (llbest < ll) {
             phibest <- phi
+            thetabest <- theta
             llbest <- ll
             numbest <- iter
+            Obest <- O
         }
         lls <- c(lls, ll)
+        ## we have to fill up the theta, however, this seems to worsen convergence and also places incorrect ones, needs improvement:
         nogenes <- which(apply(theta, 1, sum) == 0)
         nozeros <- which(t(P) > 0, arr.ind = TRUE)
         nozeros <- nozeros[which(nozeros[, 1] %in% nogenes), ]
         theta[nozeros] <- 1
+        theta[grep("_", colnames(phi)), ] <- 0
         if (useF) {
             O <- t(R)%*%t(phi%*%theta)
         } else {
-            O <- t(R)%*%t(theta) # seems to work better
+            O <- t(R)%*%t(theta)
         }
         if (useCut) {
             cutoff <- cut*max(abs(O))
             phi[which(O > cutoff & E == 1)] <- 1
-            phi[which(O < cutoff)] <- 0
+            phi[which(O <= cutoff)] <- 0
+            phi <- transitive.closure(phi, mat = TRUE)
         } else {
-            O <- t(R)%*%t(phi%*%theta) # Sgene -> E-gene -> S-gene => S-gene -> S-gene?
-            supertopo <- as.numeric(apply(O, 1, function(x) return(which.max(x))))
+            O <- O*E
+            supertopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(O, 1, function(x) return(which.max(x)))))
             phi <- phi*0
             phi[cbind(supertopo, 1:ncol(phi))] <- 1
+            phi <- transitive.closure(phi, mat = TRUE)
         }
-        phi <- transitive.closure(phi, mat = TRUE)
     }
-    phi <- phibest
-    P <- R%*%cbind(phi, 0)
-    subtopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(P, 1, function(x) return(which.max(x)))))
-    theta <- t(R)*0
-    theta[cbind(subtopo, 1:ncol(theta))] <- 1
-    return(list(phi = phi, theta = theta, iter = iter, lls = lls, num = numbest))
+    for (i in which(phibest == 1)) {
+        tmp <- phibest
+        tmp[i] <- 0
+        if (sum(diag(tmp%*%theta%*%R)) >= llbest) {
+            phi <- tmp
+        }
+    }
+    phibest[, which(apply(thetabest, 1, sum) == 0)] <- 0
+    diag(phibest) <- 1
+    ll <- sum(diag(phi%*%theta%*%R))
+    nem <- list(phi = phibest, theta = thetabest, iter = iter, ll = ll, lls = lls, num = numbest, C = Cz, O = Obest, E = E0)
+    class(nem) <- "nemEst"
+    return(nem)
 }
+
+print.nemEst <- function(nem) {
+}
+
 clustNEM <- function(data, k = 2:5, ...) {
     smax <- 0
     K <- 1
@@ -981,1006 +1017,1008 @@ adj2dnf <- function(A) {
 #' @examples
 #' g <- c("!A+B=G", "C=G", "!D=G", "C+D+E=G")
 #' plotDnf(g)
-plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(), inhibitors = c(), connected = TRUE,  CNOlist = NULL, cex = NULL, fontsize = NULL, labelsize = NULL, type = 2, lwd = 2, edgelwd = 2, legend = 0, x = 0, y = 0, xjust = 0, yjust = 0, width = 1.5, height = 1, rankdir = "TB", rank = "same", layout = "dot", main = "", sub = "", cex.main = 1.5, cex.sub = 1, col.sub = "grey", fontcolor = NULL, nodestates = NULL, simulate = NULL, andcolor = "transparent", edgecol = NULL, labels = NULL, labelcol = "blue", nodelabel = NULL, nodecol = NULL, bordercol = NULL, nodeshape = NULL, verbose = FALSE, edgestyle = NULL, nodeheight = NULL, nodewidth = NULL, edgewidth = NULL, lty = NULL, hierarchy = NULL, showall = FALSE, nodefontsize = NULL, edgehead = NULL, edgelabel = NULL, edgetail = NULL, bool = TRUE, draw = TRUE, ...) {
-  ## see graphvizCapabilities()$layoutTypes for supported layouts
-
-  if (!bool & length(grep("\\+", dnf)) > 0) {
-    dnf <- dnf[-grep("\\+", dnf)]
-  }
-
-  graph <- dnf
-
-  if (!is.null(hierarchy)) {
-    if (!showall) {
-      nodes <- unique(unlist(strsplit(unlist(strsplit(dnf, "=")), "\\+")))
-      for (i in 1:length(hierarchy)) {
-        hierarchy[[i]] <- intersect(hierarchy[[i]], nodes)
-      }
+plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(), inhibitors = c(), connected = TRUE,  CNOlist = NULL, cex = NULL, fontsize = NULL, labelsize = NULL, type = 2, lwd = 1, edgelwd = 1, legend = 0, x = 0, y = 0, xjust = 0, yjust = 0, width = 1, height = 1, rankdir = "TB", rank = "same", layout = "dot", main = "", sub = "", cex.main = 1.5, cex.sub = 1, col.sub = "grey", fontcolor = NULL, nodestates = NULL, simulate = NULL, andcolor = "transparent", edgecol = NULL, labels = NULL, labelcol = "blue", nodelabel = NULL, nodecol = NULL, bordercol = NULL, nodeshape = NULL, verbose = FALSE, edgestyle = NULL, nodeheight = NULL, nodewidth = NULL, edgewidth = NULL, lty = NULL, hierarchy = NULL, showall = FALSE, nodefontsize = NULL, edgehead = NULL, edgelabel = NULL, edgetail = NULL, bool = TRUE, draw = TRUE, ...) {
+    if (is.matrix(dnf)) {
+        dnf <- adj2dnf(transitive.reduction(dnf))
     }
-    graph2 <- NULL
-    for (i in graph) {
-      input <- unlist(strsplit(i, "="))
-      output <- input[2]
-      input <- gsub("!", "", unlist(strsplit(input[1], "\\+")))
-      for (j in input) {
-        graph2 <- c(graph2, paste(j, output, sep = "="))
-      }
-      graph2 <- unique(graph2)
+
+    if (!bool & length(grep("\\+", dnf)) > 0) {
+        dnf <- dnf[-grep("\\+", dnf)]
     }
-    hgraph <- NULL
-    hgraph2 <- NULL
-    for (i in 1:(length(hierarchy)-1)) {
-      for (j in hierarchy[[i]]) {
-        for (k in hierarchy[[i+1]]) {
-          hgraph <- c(hgraph, paste(j, k, sep = "="))
-          hgraph2 <- c(hgraph2, paste(k, j, sep = "="))
-        }
-      }
-    }
-    if (sum(hgraph %in% graph2) > 0) {
-      hgraph <- hgraph[-which(hgraph %in% graph2)]
-    }
-    if (sum(hgraph2 %in% graph2) > 0) {
-      hgraph <- hgraph[-which(hgraph2 %in% graph2)]
-    }
-    dnf <- c(graph, hgraph)
-    ## update all the parameters e.g. edgestyle...
-    if (is.null(edgecol)) {
-      edgecol <- c(rep("black", length(grep("\\+", graph))+length(unlist(strsplit(graph, "\\+")))), rep("transparent", length(hgraph)))
-      dnf2 <- dnf
-      if (length(grep("\\+", dnf2)) > 0) {
-        dnf2[-grep("\\+", dnf2)] <- gsub("=", "", dnf2[-grep("\\+", dnf2)])
-      } else {
-        dnf2 <- gsub("=", "", dnf2)
-      }
-      edgecol[grep("!", unlist(strsplit(unlist(strsplit(dnf2, "\\+")), "=")))] <- "red"
-    } else {
-      if (length(edgecol) == 1) {
-        edgecol <- c(rep(edgecol, length(grep("\\+", graph))+length(unlist(strsplit(graph, "\\+")))), rep("transparent", length(hgraph)))
-      } else {
-        edgecol <- c(edgecol, rep("transparent", length(hgraph)))
-      }
-    }
-  } else {
-    if (is.null(lty) & !is.null(dnf)) {
-      lty <- c(rep("solid", length(grep("\\+", graph))+length(unlist(strsplit(graph, "\\+")))))
-    }
-  }
 
-  graph <- dnf
+    graph <- dnf
 
-  dolegend <- FALSE
-  if (is.null(dnf)) {
-    dnf <- c("A=B")
-    dolegend <- TRUE
-  }
-  
-  if (!is.null(simulate)) {
-    nodestates <- simulateDnf(graph, stimuli = simulate$stimuli, inhibitors = simulate$inhibitors)
-  }
-  
-  if (is.null(freq)) {
-    use.freq = FALSE
-  } else {
-    use.freq = TRUE
-    if (is.null(labels)) {
-      labels <- as.character(round(freq, 2)*100)
-    }
-  }
-  if (is.null(labels)) {
-    labels <- rep("", length(dnf))
-  }
-  
-  if (is.null(fontsize)) {
-    fontsize <- ""
-  }
-  if (is.null(labelsize)) {
-    labelsize <- fontsize
-  }
-
-  if (!is.null(CNOlist)) {
-    if (length(stimuli) == 0) {
-      stimuli <- colnames(CNOlist@stimuli)
-    }
-    if (length(signals) == 0) {
-      signals <- colnames(CNOlist@signals[[1]])
-    }
-    if(length(inhibitors) == 0) {
-      inhibitors <- colnames(CNOlist@inhibitors)
-    }
-  }
-
-  if (connected) {
-    Vneg <- unique(c(c(unique(unlist(strsplit(unlist(strsplit(dnf, "=")), "\\+"))))))
-    if (length(grep("\\+", dnf)) > 0) {
-      Vneg <- c(Vneg, paste("and", 1:length(grep("\\+", dnf)), sep = ""))
-    }
-    V <- unique(gsub("!", "", Vneg))
-    stimuli <- intersect(stimuli, V)
-    signals <- intersect(signals, V)
-    inhibitors <- intersect(inhibitors, V)
-  } else {
-    Vneg <- unique(c(c(unique(unlist(strsplit(unlist(strsplit(dnf, "=")), "\\+")))), stimuli, signals, inhibitors))
-    if (length(grep("\\+", dnf)) > 0) {
-      Vneg <- c(Vneg, paste("and", 1:length(grep("\\+", dnf)), sep = ""))
-    }
-    V <- unique(gsub("!", "", Vneg))
-  }
-
-  V <- sort(V)
-  
-  Vneg <- c(V, Vneg[grep("!", Vneg)])
-
-  if (!is.null(nodecol)) {
-    if (length(nodecol) == 1 & !is.list(nodecol)) {
-      nodecol.tmp <- nodecol
-      nodecol <- list()
-      for (i in V) {
-        if (length(grep("and", i)) == 0) {
-          nodecol[[i]] <- nodecol.tmp
-        }
-      }
-    }
-  }
-
-  if (!is.null(bordercol)) {
-    if (length(bordercol) == 1 & !is.list(bordercol)) {
-      bordercol.tmp <- bordercol
-      bordercol <- list()
-      for (i in V) {
-        if (length(grep("and", i)) == 0) {
-          bordercol[[i]] <- bordercol.tmp
-        }
-      }
-    }
-  }
-
-  E <- list()
-
-  for (i in V) {
-    E[[i]] <- list()
-  }
-
-  Eneg <- list()
-
-  for (i in Vneg) {
-    Eneg[[i]] <- list()
-  }
-
-  count <- 0
-  
-  for (i in dnf) {
-    tmp <- unlist(strsplit(i, "="))
-    if (length(tmp)==1) {
-      Eneg[[tmp]][["edges"]] <- c(Eneg[[tmp]][["edges"]], NULL)
-      tmp <- gsub("!", "", tmp)
-      E[[tmp]][["edges"]] <- c(E[[tmp]][["edges"]], NULL)
-    } else {
-      tmp2 <- unlist(strsplit(tmp[1], "\\+"))
-      if (length(tmp2) > 1) {
-        count <- count + 1
-        Eneg[[paste("and", count, sep = "")]][["edges"]] <- c(Eneg[[paste("and", count, sep = "")]][["edges"]], which(Vneg %in% tmp[2]))
-        E[[paste("and", count, sep = "")]][["edges"]] <- c(E[[paste("and", count, sep = "")]][["edges"]], which(V %in% tmp[2]))
-        for (j in tmp2) {
-          Eneg[[j]][["edges"]] <- c(Eneg[[j]][["edges"]], which(Vneg %in% paste("and", count, sep = "")))
-          j <- gsub("!", "", j)
-          E[[j]][["edges"]] <- c(E[[j]][["edges"]], which(V %in% paste("and", count, sep = "")))
-        }
-      } else {
-        Eneg[[tmp2]][["edges"]] <- c(Eneg[[tmp2]][["edges"]], which(Vneg %in% tmp[2]))
-        tmp2 <- gsub("!", "", tmp2)
-        E[[tmp2]][["edges"]] <- c(E[[tmp2]][["edges"]], which(V %in% tmp[2]))
-      }
-    }
-  }
-
-  g <- new("graphNEL",nodes=V,edgeL=E,edgemode="directed")
-
-  gneg <- new("graphNEL",nodes=Vneg,edgeL=Eneg,edgemode="directed")
-
-  nodes <- buildNodeList(g)
-
-  edges <- buildEdgeList(g)
-  
-  nodesneg <- buildNodeList(gneg)
-
-  edgesneg <- buildEdgeList(gneg)
-
-  edgesnew <- list()
-  
-  for (i in sort(names(edges))) {
-    edgesnew <- c(edgesnew, edges[[i]])
-  }
-
-  names(edgesnew) <- sort(names(edges))
-
-  edges <- edgesnew
-
-  edgesnegnew <- list()
-  
-  for (i in names(edgesneg)) {#[order(gsub("!", "", names(edgesneg)))]) {
-    edgesnegnew <- c(edgesnegnew, edgesneg[[i]])
-  }
-
-  names(edgesnegnew) <- names(edgesneg)#[order(gsub("!", "", names(edgesneg)))]
-
-  edgesneg <- edgesnegnew
-
-  if (verbose) {
-    print(paste("order of nodes: ", paste(names(nodes), collapse = ", "), sep = ""))
-    print(paste("order of edges: ", paste(names(edges), collapse = ", "), sep = ""))
-  }
-
-  edges <- edgesneg
-  names(edges) <- gsub("!", "", names(edges))
-
-  for (i in 1:length(edges)) {
-    edges[[i]]@from <- gsub("!", "", edges[[i]]@from)
-  }
-  
-  nodeshape2 <- nodeshape
-  nodeshape <- list()
-  if (length(nodeshape2) == 1 & !(is.list(nodeshape2))) {
-    for (i in 1:length(nodes)) {
-      nodeshape[[nodes[[i]]@name]] <- nodeshape2
-    }
-  } else {
-    nodeshape <- nodeshape2
-  }
-  
-  for (i in 1:length(nodes)) {
-    nodes[[i]]@attrs$height <- height
-    nodes[[i]]@attrs$width <- width
-    if (!is.null(nodelabel[[nodes[[i]]@name]])) {
-      nodes[[i]]@attrs$name <- nodelabel[[nodes[[i]]@name]]
-    }
-    if (!is.null(nodeheight[[nodes[[i]]@name]])) {
-      nodes[[i]]@attrs$height <- nodeheight[[nodes[[i]]@name]]
-    }
-    if (!is.null(nodewidth[[nodes[[i]]@name]])) {
-      nodes[[i]]@attrs$width <- nodewidth[[nodes[[i]]@name]]
-    }
-    if (length(grep("and", nodes[[i]]@name)) > 0) {
-      if (is.null(nodelabel)) {
-        nodelabel <- list()
-      }
-      nodelabel[[nodes[[i]]@name]] <- "AND"
-      nodes[[i]]@attrs$label <- ""
-      nodes[[i]]@attrs$fontcolor <- andcolor
-      if (is.null(bordercol[[nodes[[i]]@name]])) {
-        nodes[[i]]@attrs$color <- "grey"
-      } else {
-        nodes[[i]]@attrs$color <- bordercol[[nodes[[i]]@name]]
-      }
-      if (is.null(nodeshape[[nodes[[i]]@name]])) {
-        nodes[[i]]@attrs$shape <- "box"
-      } else {
-        nodes[[i]]@attrs$shape <- nodeshape[[nodes[[i]]@name]]
-      }
-      if (is.null(nodecol[[nodes[[i]]@name]])) {
-        nodes[[i]]@attrs$fillcolor <- "grey"
-      } else {
-        nodes[[i]]@attrs$fillcolor <- nodecol[[nodes[[i]]@name]]
-      }
-      nodes[[i]]@attrs$width <- "0.5"
-      nodes[[i]]@attrs$height <- "0.5"
-        if (type == 2) {
-          nodes[[i]]@attrs$fontsize <- "0"
-        } else {
-          nodes[[i]]@attrs$fontsize <- "0"
-        }
-    } else {
-      nodes[[i]]@attrs$fontsize <- as.character(fontsize)
-      if (is.null(nodecol[[nodes[[i]]@name]])) {
-        nodes[[i]]@attrs$fillcolor <- "white"
-      } else {
-        nodes[[i]]@attrs$fillcolor <- nodecol[[nodes[[i]]@name]]
-      }
-      if (is.null(nodeshape[[nodes[[i]]@name]])) {
-        nodes[[i]]@attrs$shape <- "ellipse"
-      } else {
-        nodes[[i]]@attrs$shape <- nodeshape[[nodes[[i]]@name]]
-      }
-      if (is.null(bordercol[[nodes[[i]]@name]])) {
-        nodes[[i]]@attrs$color <- "black"
-      } else {
-        nodes[[i]]@attrs$color <- bordercol[[nodes[[i]]@name]]
-      }
-      if (names(nodes)[i] %in% stimuli & is.null(nodeshape[[nodes[[i]]@name]])) {
-        if (type == 2) {
-          nodes[[i]]@attrs$shape <- "diamond"
-        } else {
-          nodes[[i]]@attrs$shape <- "box"
-        }
-      }
-      if (names(nodes)[i] %in% signals & is.null(nodecol[[nodes[[i]]@name]])) {
-        nodes[[i]]@attrs$fillcolor <- "lightblue"
-      }
-      if (names(nodes)[i] %in% inhibitors & is.null(bordercol[[nodes[[i]]@name]])) {
-        nodes[[i]]@attrs$color <- "red"
-      }
-    }
-    if (!is.null(nodestates)) {
-      if (sum(names(nodestates) %in% nodes[[i]]@name) == 1) {
-        if (nodestates[which(names(nodestates) %in% nodes[[i]]@name)] == 0) {
-          if (is.null(nodecol[[nodes[[i]]@name]])) {
-            nodes[[i]]@attrs$fillcolor <- "white"
-          }
-          if (is.null(bordercol[[nodes[[i]]@name]])) {
-            nodes[[i]]@attrs$color <- "black"
-          }
-        }
-        if (nodestates[which(names(nodestates) %in% nodes[[i]]@name)] == 1) {
-          if (is.null(nodecol[[nodes[[i]]@name]])) {
-            nodes[[i]]@attrs$fillcolor <- "green"
-          }
-          if (is.null(bordercol[[nodes[[i]]@name]])) {
-            nodes[[i]]@attrs$color <- "black"
-          }
-        }
-      }
-    }
-  }
-  if (length(edges) > 0) {
-    for (i in 1:length(edges)) {
-      edges[[i]]@attrs$fontsize <- as.character(labelsize)
-      if (length(grep("and", names(edges)[i])) > 0) {
-        tmp <- unlist(strsplit(names(edges)[i], "~"))
-        k <- grep("and", tmp)
-        inputN <- length(grep(tmp[k], edges))
-        k <- as.numeric(gsub("and", "", tmp[k]))
-        ## try to get the index of the correct edgecol:
-        k2 <- grep("\\+", dnf)[k]
-        if (grep("and", tmp) == 2) {
-          inputN2 <- which(gsub("!", "", unlist(strsplit(gsub("=.*", "", dnf[k2]), "\\+"))) %in% tmp[1])
-        } else {
-          inputN2 <- length(unlist(strsplit(gsub("=.*", "", dnf[k2]), "\\+"))) + 1
-        }
-        if (k2 == 1) {
-          edgecolindex <- inputN2
-        } else {
-          if (length(grep("\\+", graph[1:(k2-1)])) == 0) {
-            edgecolindex <- length(graph[1:(k2-1)]) + inputN2
-          } else {
-            edgecolindex <- length(unlist(strsplit(dnf[1:(k2-1)], "\\+"))) + length(grep("\\+", dnf[1:(k2-1)])) + inputN2
-          }
-        }
-        ## end
-        inputN2 <- grep(tmp[1], unlist(strsplit(dnf[grep("\\+", dnf)[k]], "\\+")))-1
-        edges[[i]]@attrs$style <- lty[grep("\\+", dnf)[k]]
-        edges[[i]]@attrs$label <- labels[grep("\\+", dnf)[k]]
-        if (use.freq) {
-          edges[[i]]@attrs$weight <- freq[grep("\\+", dnf)[k]]
-          edges[[i]]@attrs$fontcolor <- "blue"
-        }
-        if (!is.null(edgewidth)) {
-          edges[[i]]@attrs$weight <- edgewidth[grep("\\+", dnf)[k]]
-        }
-        if (!is.null(edgestyle)) {
-          if (!is.na(edgestyle[grep("\\+", dnf)[k]])) {
-            edges[[i]]@attrs$style <- edgestyle[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
-          }
-        }
-        if (!is.null(edgelabel)) {
-          if (!is.na(edgelabel[grep("\\+", dnf)[k]])) {
-            edges[[i]]@attrs$label <- edgelabel[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
-          }
-        }
-        if (length(grep("!", names(edgesneg)[i])) > 0) {
-          edges[[i]]@attrs$arrowhead <- "tee"
-          edges[[i]]@attrs$color <- "red"
-          if (!is.null(edgecol)) {
-            if (!is.na(edgecol[grep("\\+", dnf)[k]])) {
-              edges[[i]]@attrs$color <- edgecol[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
+    if (!is.null(hierarchy)) {
+        if (!showall) {
+            nodes <- unique(unlist(strsplit(unlist(strsplit(dnf, "=")), "\\+")))
+            for (i in 1:length(hierarchy)) {
+                hierarchy[[i]] <- intersect(hierarchy[[i]], nodes)
             }
-          }
-          if (!is.null(edgehead)) {
-            if (!is.na(edgehead[grep("\\+", dnf)[k]])) {
-              edges[[i]]@attrs$arrowhead <- edgehead[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
-            }
-          }
-          if (!is.null(edgetail)) {
-            if (!is.na(edgetail[grep("\\+", dnf)[k]])) {
-              edges[[i]]@attrs$arrowtail <- edgetail[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
-            }
-          }
-        } else {
-          edges[[i]]@attrs$arrowhead <- "open"
-          edges[[i]]@attrs$color <- "black"
-          if (gsub("and.*", "and", tmp[1]) %in% "and") {
-            if (!is.null(edgecol)) {
-              if (!is.na(edgecol[grep("\\+", dnf)[k]])) {
-                edges[[i]]@attrs$color <- edgecol[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k])])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k])])) > 1)]
-              }
-            }
-            if (!is.null(edgehead)) {
-              if (!is.na(edgehead[grep("\\+", dnf)[k]])) {
-                edges[[i]]@attrs$arrowhead <- edgehead[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k])])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k])])) > 1)]
-              }
-            }
-            if (!is.null(edgetail)) {
-              if (!is.na(edgetail[grep("\\+", dnf)[k]])) {
-                edges[[i]]@attrs$arrowtail <- edgetail[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k])])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k])])) > 1)]
-              }
-            }
-          } else {
-            if (!is.null(edgecol)) {
-              if (!is.na(edgecol[grep("\\+", dnf)[k]])) {
-                edges[[i]]@attrs$color <- edgecol[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
-              }
-            }
-            if (!is.null(edgehead)) {
-              if (!is.na(edgehead[grep("\\+", dnf)[k]])) {
-                edges[[i]]@attrs$arrowhead <- edgehead[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
-              }
-            }
-            if (!is.null(edgetail)) {
-              if (!is.na(edgetail[grep("\\+", dnf)[k]])) {
-                edges[[i]]@attrs$arrowtail <- edgetail[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
-              }
-            }
-          }
         }
-      } else {
-        tmp <- unlist(strsplit(names(edges)[i], "~"))
-        ## try to get the index of the correct edgecol:
-        if (length(grep("!", names(edgesneg)[i])) == 0) {
-          k2 <- grep(paste("^", tmp[1], "=", tmp[2], sep = ""), dnf)
-        } else {
-          k2 <- grep(paste("^!", tmp[1], "=", tmp[2], sep = ""), dnf)
+        graph2 <- NULL
+        for (i in graph) {
+            input <- unlist(strsplit(i, "="))
+            output <- input[2]
+            input <- gsub("!", "", unlist(strsplit(input[1], "\\+")))
+            for (j in input) {
+                graph2 <- c(graph2, paste(j, output, sep = "="))
+            }
+            graph2 <- unique(graph2)
         }
-        if (k2 == 1) {
-          edgecolindex <- k2
-        } else {
-          if (length(grep("\\+", dnf[1:(k2-1)])) == 0) {
-            edgecolindex <- k2
-          } else {
-            edgecolindex <- length(unlist(strsplit(dnf[1:(k2-1)], "\\+"))) + length(grep("\\+", dnf[1:(k2-1)])) + 1
-          }
+        hgraph <- NULL
+        hgraph2 <- NULL
+        for (i in 1:(length(hierarchy)-1)) {
+            for (j in hierarchy[[i]]) {
+                for (k in hierarchy[[i+1]]) {
+                    hgraph <- c(hgraph, paste(j, k, sep = "="))
+                    hgraph2 <- c(hgraph2, paste(k, j, sep = "="))
+                }
+            }
         }
-        ## end
-        if (length(grep("!", names(edgesneg)[i])) > 0) {
-          edges[[i]]@attrs$style <- lty[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
-          edges[[i]]@attrs$label <- labels[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
-          if (use.freq) {
-            edges[[i]]@attrs$weight <- freq[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
-            edges[[i]]@attrs$fontcolor <- "blue"
-          }
-          if (!is.null(edgewidth)) {
-            edges[[i]]@attrs$weight <- edgewidth[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
-          }
-          if (!is.null(edgestyle)) {
-            if (!is.na(edgestyle[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
-              edges[[i]]@attrs$style <- edgestyle[edgecolindex] # [grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
-            }
-          }
-          if (!is.null(edgelabel)) {
-            if (!is.na(edgelabel[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
-              edges[[i]]@attrs$label <- edgelabel[edgecolindex] # [grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
-            }
-          }
-          edges[[i]]@attrs$arrowhead <- "tee"
-          edges[[i]]@attrs$color <- "red"
-          if (!is.null(edgecol)) {
-            if (!is.na(edgecol[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
-              edges[[i]]@attrs$color <- edgecol[edgecolindex] # [grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
-            }
-          }
-          if (!is.null(edgehead)) {
-            if (!is.na(edgehead[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
-              edges[[i]]@attrs$arrowhead <- edgehead[edgecolindex] # [grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
-            }
-          }
-          if (!is.null(edgetail)) {
-            if (!is.na(edgetail[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
-              edges[[i]]@attrs$arrowtail <- edgetail[edgecolindex] # [grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
-            }
-          }
-        } else {
-          edges[[i]]@attrs$style <- lty[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
-          edges[[i]]@attrs$label <- labels[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
-          if (use.freq) {
-            edges[[i]]@attrs$weight <- freq[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
-            edges[[i]]@attrs$fontcolor <- "blue"
-          }
-          if (!is.null(edgewidth)) {
-            edges[[i]]@attrs$weight <- edgewidth[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
-          }
-          if (!is.null(edgestyle)) {
-            if (!is.na(edgestyle[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
-              edges[[i]]@attrs$style <- edgestyle[edgecolindex] # [grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
-            }
-          }
-          if (!is.null(edgelabel)) {
-            if (!is.na(edgelabel[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
-              edges[[i]]@attrs$label <- edgelabel[edgecolindex] # [grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
-            }
-          }
-          edges[[i]]@attrs$arrowhead <- "open"
-          edges[[i]]@attrs$color <- "black"
-          if (!is.null(edgecol)) {
-            if (!is.na(edgecol[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
-              edges[[i]]@attrs$color <- edgecol[edgecolindex] # [grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
-            }
-          }
-          if (!is.null(edgehead)) {
-            if (!is.na(edgehead[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
-              edges[[i]]@attrs$arrowhead <- edgehead[edgecolindex] # [grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
-            }
-          }
-          if (!is.null(edgetail)) {
-            if (!is.na(edgetail[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
-              edges[[i]]@attrs$arrowtail <- edgetail[edgecolindex] # [grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
-            }
-          }
+        if (sum(hgraph %in% graph2) > 0) {
+            hgraph <- hgraph[-which(hgraph %in% graph2)]
         }
-      }
-    }
-  }
-  if (type == 1) {
-  
-    g2 <- agopen(name="boolean", nodes=nodes, recipEdges = "distinct", edges=edges, edgeMode="undirected", attrs=list(edge = list(), graph = list(lwd = lwd, rankdir = rankdir), node=list(lwd = lwd, fixedsize=FALSE)))
-
-    plot(g2, "dot", lwd = lwd, ...)
-
-  } else {
-
-    arrowheads <- character()
-    arrowtails <- character()
-    arrowcolors <- character()
-    arrowlabels <- character()
-    arrowlwd <- character()
-    arrowlty <- character()
-    arrowfontsize <- character()
-    if (length(edges) > 0) {
-      for (i in 1:length(edges)) {
-        if (length(edges[[i]]@attrs$style) == 0) { edges[[i]]@attrs$style <- "solid" }
-        arrowlty <- c(arrowlty, edges[[i]]@attrs$style)
-        arrowheads <- c(arrowheads, edges[[i]]@attrs$arrowhead)
-        if (!is.null(edgetail)) {
-          arrowtails <- c(arrowtails, edges[[i]]@attrs$arrowtail)
-        } else {
-          arrowtails <- c(arrowtails, "none")
+        if (sum(hgraph2 %in% graph2) > 0) {
+            hgraph <- hgraph[-which(hgraph2 %in% graph2)]
         }
-        arrowcolors <- c(arrowcolors, edges[[i]]@attrs$color)
-        arrowfontsize <- c(arrowfontsize, edges[[i]]@attrs$fontsize)
-        arrowlwd <- c(arrowlwd, edges[[i]]@attrs$weight)
-        arrowlabels <- c(arrowlabels, edges[[i]]@attrs$label)
-      }
-    }
-    arrowlwd <- as.numeric(arrowlwd)
-    
-    graph.trans <- NULL
-    and.count <- 0
-    for (i in dnf) {
-      if (length(grep("\\+", i)) > 0) {
-        and.count <- and.count + 1
-        output <- unlist(strsplit(i, "="))
-        input <- unlist(strsplit(output[1], "\\+"))
-        output <- output[2]
-        for (i in input) {
-          graph.trans <- c(graph.trans, paste(gsub("!", "", i), "~", paste("and", and.count, sep = ""), sep = ""))
-        }
-        graph.trans <- c(graph.trans, paste(paste("and", and.count, sep = ""), "~", output, sep = ""))
-      } else {
-        put <- unlist(strsplit(i, "="))
-        graph.trans <- c(graph.trans, paste(gsub("!", "", put[1]), "~", put[2], sep = ""))
-      }
-    }
-
-    if (length(edgecol) == length(arrowcolors)) {
-      edgecol <- edgecol[order(match(graph.trans, names(edges)))]
-      arrowcolors <- edgecol
-    }
-    
-    nodeshapes <- character()
-    nodecolors <- character()
-    nodeheight <- character()
-    nodewidth <- character()
-    nodecolor <- character()
-    
-    for (i in 1:length(nodes)) {
-      nodeshapes <- c(nodeshapes, nodes[[i]]@attrs$shape)
-      nodecolors <- c(nodecolors, nodes[[i]]@attrs$fillcolor)
-      nodeheight <- c(nodeheight, nodes[[i]]@attrs$height)
-      nodewidth <- c(nodewidth, nodes[[i]]@attrs$width)
-      nodecolor <- c(nodecolor, nodes[[i]]@attrs$color)
-    }
-
-    nodeheight[which(nodeheight == "0.4")] <- "0.2"
-
-    if (is.null(lty) & is.null(edgestyle)) {
-      arrowlty <- rep("solid", length(edges))
-    }
-    
-    if (use.freq) {
-      if (is.null(lty)) {
-        if (edgestyle) {
-          arrowlty[which(as.numeric(arrowlabels) < 66)] <- "dashed"
-          arrowlty[which(as.numeric(arrowlabels) < 33)] <- "dotted"
-        }
-      }
-      arrowlwd <- arrowlwd - min(arrowlwd)
-      arrowlwd <- as.character((arrowlwd/max(arrowlwd)+0.1)*2*edgelwd)
-    } else {
-      if (is.null(edgewidth)) {
-        arrowlwd <- rep(edgelwd, length(edges))
-      }
-    }
-
-    if (is.null(edgewidth) & is.null(edgelabel)) {
-      arrowlabels <- rep("", length(edges))
-    }
-    
-    if (length(arrowlty) == 0) {
-      arrowlty <- rep("solid", length(edges))
-    }
-    if (length(arrowlwd) == 0) {
-      arrowlwd <- rep(lwd, length(edges))
-    }
-    
-    names(arrowfontsize) <- names(arrowheads) <- names(arrowtails) <- names(arrowcolors) <- names(arrowlwd) <- names(arrowlty) <- names(arrowlabels) <- names(edges)
-
-    names(nodecolor) <- names(nodewidth) <- names(nodeheight) <- names(nodeshapes) <- names(nodecolors) <- names(nodes)
-
-    if (length(unique(names(edges))) < length(names(edges))) {
-      for (i in names(edges)[-which(duplicated(names(edges)) == TRUE)]) {
-        getpos <- grep(paste("^", i, "$", sep = ""), names(edges))
-        if (length(getpos) > 1) {
-          if (use.freq) {
-            if (arrowheads[getpos[1]] %in% "tee") {
-              arrowlabels[getpos[1]] <- paste(paste(c("-", "+"), arrowlabels[getpos], sep = ""), collapse = "\n")
+        dnf <- c(graph, hgraph)
+        ## update all the parameters e.g. edgestyle...
+        if (is.null(edgecol)) {
+            edgecol <- c(rep("black", length(grep("\\+", graph))+length(unlist(strsplit(graph, "\\+")))), rep("transparent", length(hgraph)))
+            dnf2 <- dnf
+            if (length(grep("\\+", dnf2)) > 0) {
+                dnf2[-grep("\\+", dnf2)] <- gsub("=", "", dnf2[-grep("\\+", dnf2)])
             } else {
-              arrowlabels[getpos[1]] <- paste(paste(c("+", "-"), arrowlabels[getpos], sep = ""), collapse = "\n")
+                dnf2 <- gsub("=", "", dnf2)
             }
-          } else {
-            if (is.null(edgelabel)) {
-              arrowlabels[getpos[1]] <- ""
+            edgecol[grep("!", unlist(strsplit(unlist(strsplit(dnf2, "\\+")), "=")))] <- "red"
+        } else {
+            if (length(edgecol) == 1) {
+                edgecol <- c(rep(edgecol, length(grep("\\+", graph))+length(unlist(strsplit(graph, "\\+")))), rep("transparent", length(hgraph)))
+            } else {
+                edgecol <- c(edgecol, rep("transparent", length(hgraph)))
             }
-          }
-          arrowheads[getpos[1]] <- "odiamond"
-          if (is.null(edgecol)) {
-            arrowcolors[getpos[1]] <- "black"
-          } else {
-            if (is.na(edgecol[getpos[1]])) {
-              arrowcolors[getpos[1]] <- "black"
-            }
-          }
-          arrowlwd[getpos[1]] <- as.character(mean(as.numeric(arrowlwd[getpos])))
         }
-      }
+    } else {
+        if (is.null(lty) & !is.null(dnf)) {
+            lty <- c(rep("solid", length(grep("\\+", graph))+length(unlist(strsplit(graph, "\\+")))))
+        }
     }
-    if (length(labels) == length(arrowlabels) & is.null(edgelabel)) {
-      arrowlabels[!is.na(labels)] <- labels[!is.na(labels)]
-    }
-    if (length(edgecol) == 1) {
-      arrowcolors <- rep(edgecol, length(arrowcolors))
-      names(arrowcolors) <- names(arrowlabels)
+
+    graph <- dnf
+
+    dolegend <- FALSE
+    if (is.null(dnf)) {
+        dnf <- c("A=B")
+        dolegend <- TRUE
     }
     
-    if (legend == 1 | legend == 3) {
-      if (dolegend) {
-        start <- 1
-        g@nodes <- c("LEGEND:", "STIMULUS", "INHIBITOR", "SIGNAL", "NOTHING", "active", "inactive")
-        g@edgeL <- list()
-        g@edgeData@data <- list()
-      } else {
-        start <- length(g@nodes) + 1
-        g@nodes <- c(g@nodes, "LEGEND:", "STIMULUS", "INHIBITOR", "SIGNAL", "NOTHING", "active", "inactive")
-      }
-      g@edgeL[["LEGEND:"]] <- list()
-      g@edgeL[["STIMULUS"]] <- list()
-      g@edgeL[["INHIBITOR"]] <- list()
-      g@edgeL[["SIGNAL"]] <- list()
-      g@edgeL[["NOTHING"]] <- list()
-      g@edgeL[["active"]] <- list()
-      g@edgeL[["inactive"]] <- list()
-      g@edgeL[["LEGEND:"]][["edges"]] <- as.integer(start+1)
-      g@edgeL[["STIMULUS"]][["edges"]] <- as.integer(start+2)
-      g@edgeL[["INHIBITOR"]][["edges"]] <- as.integer(start+3)
-      g@edgeL[["SIGNAL"]][["edges"]] <- as.integer(start+4)
-      g@edgeL[["NOTHING"]][["edges"]] <- as.integer(start+5)
-      g@edgeL[["active"]][["edges"]] <- c(as.integer(start+6), as.integer(start+4))
-      g@edgeL[["inactive"]][["edges"]] <- as.integer(start+5)
-      g@edgeData@data[["LEGEND:|STIMULUS"]] <- list()
-      g@edgeData@data[["STIMULUS|INHIBITOR"]] <- list()
-      g@edgeData@data[["INHIBITOR|SIGNAL"]] <- list()
-      g@edgeData@data[["SIGNAL|NOTHING"]] <- list()
-      g@edgeData@data[["NOTHING|active"]] <- list()
-      g@edgeData@data[["active|inactive"]] <- list()
-      g@edgeData@data[["active|NOTHING"]] <- list()
-      g@edgeData@data[["inactive|active"]] <- list()
-      g@edgeData@data[["LEGEND:|STIMULUS"]][["weight"]] <- 1
-      g@edgeData@data[["STIMULUS|INHIBITOR"]][["weight"]] <- 1
-      g@edgeData@data[["INHIBITOR|SIGNAL"]][["weight"]] <- 1
-      g@edgeData@data[["SIGNAL|NOTHING"]][["weight"]] <- 1
-      g@edgeData@data[["NOTHING|active"]][["weight"]] <- 1
-      g@edgeData@data[["active|inactive"]][["weight"]] <- 1
-      g@edgeData@data[["active|NOTHING"]][["weight"]] <- 1
-      g@edgeData@data[["inactive|active"]][["weight"]] <- 1
-      arrowheads <- c(arrowheads, "LEGEND:~STIMULUS" = "none", "STIMULUS~INHIBITOR" = "open", "INHIBITOR~SIGNAL" = "tee", "SIGNAL~NOTHING" = "odiamond", "NOTHING~active" = "open", "active~inactive" = "tee", "active~NOTHING" = "tee", "inactive~active" = "open")
-      arrowcolors <- c(arrowcolors, "LEGEND:~STIMULUS" = "transparent", "STIMULUS~INHIBITOR" = "black", "INHIBITOR~SIGNAL" = "red", "SIGNAL~NOTHING" = "blue", "NOTHING~active" = "black", "active~inactive" = "red", "active~NOTHING" = "red", "inactive~active" = "black")
-      arrowlabels <- c(arrowlabels, "LEGEND:~STIMULUS" = "", "STIMULUS~INHIBITOR" = "    positive", "INHIBITOR~SIGNAL" = "    negative", "SIGNAL~NOTHING" = "    ambiguous\npositive\nnegative", "NOTHING~active" = "    bidirectional\ndifferent", "active~inactive" = "    bidirectional\ndifferent", "active~NOTHING" = "", "inactive~active" = "")
-      nodecolors <- c(nodecolors, "LEGEND:" = "white", "STIMULUS" = "white", "INHIBITOR" = "white", "SIGNAL" = "lightblue", "NOTHING" = "white", "active" = "green", "inactive" = "white")
-      nodeheight <- c(nodeheight, "LEGEND:" = 0, "STIMULUS" = as.character(max(nodeheight)), "INHIBITOR" = as.character(max(nodeheight)), "SIGNAL" = as.character(max(nodeheight)), "NOTHING" = as.character(max(nodeheight)), "active" = as.character(max(nodeheight)), "inactive" = as.character(max(nodeheight)))
-      nodewidth <- c(nodewidth, "LEGEND:" = as.character(max(nodewidth)), "STIMULUS" = as.character(max(nodewidth)), "INHIBITOR" = as.character(max(nodewidth)), "SIGNAL" = as.character(max(nodewidth)), "NOTHING" = as.character(max(nodewidth)), "active" = as.character(max(nodewidth)), "inactive" = as.character(max(nodewidth)))
-      if (type == 2) {
-        nodeshapes <- c(nodeshapes, "LEGEND:" = "box", "STIMULUS" = "diamond", "INHIBITOR" = "ellipse", "SIGNAL" = "ellipse", "NOTHING" = "ellipse", "active" = "ellipse", "inactive" = "ellipse")
-      } else {
-        nodeshapes <- c(nodeshapes, "LEGEND:" = "box", "STIMULUS" = "box", "INHIBITOR" = "ellipse", "SIGNAL" = "ellipse", "NOTHING" = "ellipse", "active" = "ellipse", "inactive" = "ellipse")
-      }
-      nodecolor <- c(nodecolor, "LEGEND:" = "white", "STIMULUS" = "black", "INHIBITOR" = "red", "SIGNAL" = "black", "NOTHING" = "black", "active" = "black", "inactive" = "black")
-      dnf <- c(dnf, "NOTHING=active", "!active=NOTHING", "!active=inactive", "inactive=active")
+    if (!is.null(simulate)) {
+        nodestates <- simulateDnf(graph, stimuli = simulate$stimuli, inhibitors = simulate$inhibitors)
     }
-    nodelabels <- names(nodecolor)
-    names(nodelabels) <- nodelabels
-    for (i in 1:length(nodelabel)) {
-      nodelabels[which(names(nodelabels) %in% names(nodelabel)[i])] <- nodelabel[i]
+    
+    if (is.null(freq)) {
+        use.freq = FALSE
+    } else {
+        use.freq = TRUE
+        if (is.null(labels)) {
+            labels <- as.character(round(freq, 2)*100)
+        }
     }
-    nodefontsizes <- NULL
-    if (!is.null(nodefontsize)) {
-      nodefontsizes <- rep(14, length(nodelabels))
-      names(nodefontsizes) <- names(nodelabels)
-      for (i in 1:length(nodefontsize)) {
-        nodefontsizes[which(names(nodefontsizes) %in% names(nodefontsize)[i])] <- nodefontsize[[i]]
-      }
+    if (is.null(labels)) {
+        labels <- rep("", length(dnf))
     }
-    g <- layoutGraph(g, edgeAttrs = list(arrowhead = arrowheads, color = arrowcolors, label = arrowlabels, arrowtail = arrowtails), nodeAttrs = list(labels = nodelabels, color = nodecolor, height = nodeheight, width = nodewidth, shape = nodeshapes, fillcolor = nodecolors), layoutType=layout)
-    graph.par(list(graph=list(main = main, sub = sub, cex.main = cex.main, cex.sub = cex.sub, col.sub = col.sub), edges=list(textCol = labelcol, lwd = edgelwd, fontsize = labelsize), nodes=list(lwd = lwd, fontsize = fontsize, cex = cex)))
-    edgeRenderInfo(g) <- list(lty = arrowlty, lwd = arrowlwd, label = arrowlabels)
+    
+    if (is.null(fontsize)) {
+        fontsize <- ""
+    }
+    if (is.null(labelsize)) {
+        labelsize <- fontsize
+    }
+
+    if (!is.null(CNOlist)) {
+        if (length(stimuli) == 0) {
+            stimuli <- colnames(CNOlist@stimuli)
+        }
+        if (length(signals) == 0) {
+            signals <- colnames(CNOlist@signals[[1]])
+        }
+        if(length(inhibitors) == 0) {
+            inhibitors <- colnames(CNOlist@inhibitors)
+        }
+    }
+
+    if (connected) {
+        Vneg <- unique(c(c(unique(unlist(strsplit(unlist(strsplit(dnf, "=")), "\\+"))))))
+        if (length(grep("\\+", dnf)) > 0) {
+            Vneg <- c(Vneg, paste("and", 1:length(grep("\\+", dnf)), sep = ""))
+        }
+        V <- unique(gsub("!", "", Vneg))
+        stimuli <- intersect(stimuli, V)
+        signals <- intersect(signals, V)
+        inhibitors <- intersect(inhibitors, V)
+    } else {
+        Vneg <- unique(c(c(unique(unlist(strsplit(unlist(strsplit(dnf, "=")), "\\+")))), stimuli, signals, inhibitors))
+        if (length(grep("\\+", dnf)) > 0) {
+            Vneg <- c(Vneg, paste("and", 1:length(grep("\\+", dnf)), sep = ""))
+        }
+        V <- unique(gsub("!", "", Vneg))
+    }
+
+    V <- sort(V)
+    
+    Vneg <- c(V, Vneg[grep("!", Vneg)])
+
+    if (!is.null(nodecol)) {
+        if (length(nodecol) == 1 & !is.list(nodecol)) {
+            nodecol.tmp <- nodecol
+            nodecol <- list()
+            for (i in V) {
+                if (length(grep("and", i)) == 0) {
+                    nodecol[[i]] <- nodecol.tmp
+                }
+            }
+        }
+    }
+
+    if (!is.null(bordercol)) {
+        if (length(bordercol) == 1 & !is.list(bordercol)) {
+            bordercol.tmp <- bordercol
+            bordercol <- list()
+            for (i in V) {
+                if (length(grep("and", i)) == 0) {
+                    bordercol[[i]] <- bordercol.tmp
+                }
+            }
+        }
+    }
+
+    E <- list()
+
+    for (i in V) {
+        E[[i]] <- list()
+    }
+
+    Eneg <- list()
+
+    for (i in Vneg) {
+        Eneg[[i]] <- list()
+    }
+
+    count <- 0
+    
+    for (i in dnf) {
+        tmp <- unlist(strsplit(i, "="))
+        if (length(tmp)==1) {
+            Eneg[[tmp]][["edges"]] <- c(Eneg[[tmp]][["edges"]], NULL)
+            tmp <- gsub("!", "", tmp)
+            E[[tmp]][["edges"]] <- c(E[[tmp]][["edges"]], NULL)
+        } else {
+            tmp2 <- unlist(strsplit(tmp[1], "\\+"))
+            if (length(tmp2) > 1) {
+                count <- count + 1
+                Eneg[[paste("and", count, sep = "")]][["edges"]] <- c(Eneg[[paste("and", count, sep = "")]][["edges"]], which(Vneg %in% tmp[2]))
+                E[[paste("and", count, sep = "")]][["edges"]] <- c(E[[paste("and", count, sep = "")]][["edges"]], which(V %in% tmp[2]))
+                for (j in tmp2) {
+                    Eneg[[j]][["edges"]] <- c(Eneg[[j]][["edges"]], which(Vneg %in% paste("and", count, sep = "")))
+                    j <- gsub("!", "", j)
+                    E[[j]][["edges"]] <- c(E[[j]][["edges"]], which(V %in% paste("and", count, sep = "")))
+                }
+            } else {
+                Eneg[[tmp2]][["edges"]] <- c(Eneg[[tmp2]][["edges"]], which(Vneg %in% tmp[2]))
+                tmp2 <- gsub("!", "", tmp2)
+                E[[tmp2]][["edges"]] <- c(E[[tmp2]][["edges"]], which(V %in% tmp[2]))
+            }
+        }
+    }
+
+    g <- new("graphNEL",nodes=V,edgeL=E,edgemode="directed")
+
+    gneg <- new("graphNEL",nodes=Vneg,edgeL=Eneg,edgemode="directed")
+
+    nodes <- buildNodeList(g)
+
+    edges <- buildEdgeList(g)
+    
+    nodesneg <- buildNodeList(gneg)
+
+    edgesneg <- buildEdgeList(gneg)
+
+    edgesnew <- list()
+    
+    for (i in sort(names(edges))) {
+        edgesnew <- c(edgesnew, edges[[i]])
+    }
+
+    names(edgesnew) <- sort(names(edges))
+
+    edges <- edgesnew
+
+    edgesnegnew <- list()
+    
+    for (i in names(edgesneg)) {#[order(gsub("!", "", names(edgesneg)))]) {
+        edgesnegnew <- c(edgesnegnew, edgesneg[[i]])
+    }
+
+    names(edgesnegnew) <- names(edgesneg)#[order(gsub("!", "", names(edgesneg)))]
+
+    edgesneg <- edgesnegnew
+
+    if (verbose) {
+        print(paste("order of nodes: ", paste(names(nodes), collapse = ", "), sep = ""))
+        print(paste("order of edges: ", paste(names(edges), collapse = ", "), sep = ""))
+    }
+
+    edges <- edgesneg
+    names(edges) <- gsub("!", "", names(edges))
+
+    for (i in 1:length(edges)) {
+        edges[[i]]@from <- gsub("!", "", edges[[i]]@from)
+    }
+    
+    nodeshape2 <- nodeshape
+    nodeshape <- list()
+    if (length(nodeshape2) == 1 & !(is.list(nodeshape2))) {
+        for (i in 1:length(nodes)) {
+            nodeshape[[nodes[[i]]@name]] <- nodeshape2
+        }
+    } else {
+        nodeshape <- nodeshape2
+    }
+    
+    for (i in 1:length(nodes)) {
+        nodes[[i]]@attrs$height <- height
+        nodes[[i]]@attrs$width <- width
+        if (!is.null(nodelabel[[nodes[[i]]@name]])) {
+            nodes[[i]]@attrs$name <- nodelabel[[nodes[[i]]@name]]
+        }
+        if (!is.null(nodeheight[[nodes[[i]]@name]])) {
+            nodes[[i]]@attrs$height <- nodeheight[[nodes[[i]]@name]]
+        }
+        if (!is.null(nodewidth[[nodes[[i]]@name]])) {
+            nodes[[i]]@attrs$width <- nodewidth[[nodes[[i]]@name]]
+        }
+        if (length(grep("and", nodes[[i]]@name)) > 0) {
+            if (is.null(nodelabel)) {
+                nodelabel <- list()
+            }
+            nodelabel[[nodes[[i]]@name]] <- "AND"
+            nodes[[i]]@attrs$label <- ""
+            nodes[[i]]@attrs$fontcolor <- andcolor
+            if (is.null(bordercol[[nodes[[i]]@name]])) {
+                nodes[[i]]@attrs$color <- "grey"
+            } else {
+                nodes[[i]]@attrs$color <- bordercol[[nodes[[i]]@name]]
+            }
+            if (is.null(nodeshape[[nodes[[i]]@name]])) {
+                nodes[[i]]@attrs$shape <- "box"
+            } else {
+                nodes[[i]]@attrs$shape <- nodeshape[[nodes[[i]]@name]]
+            }
+            if (is.null(nodecol[[nodes[[i]]@name]])) {
+                nodes[[i]]@attrs$fillcolor <- "grey"
+            } else {
+                nodes[[i]]@attrs$fillcolor <- nodecol[[nodes[[i]]@name]]
+            }
+            nodes[[i]]@attrs$width <- "0.5"
+            nodes[[i]]@attrs$height <- "0.5"
+            if (type == 2) {
+                nodes[[i]]@attrs$fontsize <- "0"
+            } else {
+                nodes[[i]]@attrs$fontsize <- "0"
+            }
+        } else {
+            nodes[[i]]@attrs$fontsize <- as.character(fontsize)
+            if (is.null(nodecol[[nodes[[i]]@name]])) {
+                nodes[[i]]@attrs$fillcolor <- "white"
+            } else {
+                nodes[[i]]@attrs$fillcolor <- nodecol[[nodes[[i]]@name]]
+            }
+            if (is.null(nodeshape[[nodes[[i]]@name]])) {
+                nodes[[i]]@attrs$shape <- "ellipse"
+            } else {
+                nodes[[i]]@attrs$shape <- nodeshape[[nodes[[i]]@name]]
+            }
+            if (is.null(bordercol[[nodes[[i]]@name]])) {
+                nodes[[i]]@attrs$color <- "black"
+            } else {
+                nodes[[i]]@attrs$color <- bordercol[[nodes[[i]]@name]]
+            }
+            if (names(nodes)[i] %in% stimuli & is.null(nodeshape[[nodes[[i]]@name]])) {
+                if (type == 2) {
+                    nodes[[i]]@attrs$shape <- "diamond"
+                } else {
+                    nodes[[i]]@attrs$shape <- "box"
+                }
+            }
+            if (names(nodes)[i] %in% signals & is.null(nodecol[[nodes[[i]]@name]])) {
+                nodes[[i]]@attrs$fillcolor <- "lightblue"
+            }
+            if (names(nodes)[i] %in% inhibitors & is.null(bordercol[[nodes[[i]]@name]])) {
+                nodes[[i]]@attrs$color <- "red"
+            }
+        }
+        if (!is.null(nodestates)) {
+            if (sum(names(nodestates) %in% nodes[[i]]@name) == 1) {
+                if (nodestates[which(names(nodestates) %in% nodes[[i]]@name)] == 0) {
+                    if (is.null(nodecol[[nodes[[i]]@name]])) {
+                        nodes[[i]]@attrs$fillcolor <- "white"
+                    }
+                    if (is.null(bordercol[[nodes[[i]]@name]])) {
+                        nodes[[i]]@attrs$color <- "black"
+                    }
+                }
+                if (nodestates[which(names(nodestates) %in% nodes[[i]]@name)] == 1) {
+                    if (is.null(nodecol[[nodes[[i]]@name]])) {
+                        nodes[[i]]@attrs$fillcolor <- "green"
+                    }
+                    if (is.null(bordercol[[nodes[[i]]@name]])) {
+                        nodes[[i]]@attrs$color <- "black"
+                    }
+                }
+            }
+        }
+    }
     if (length(edges) > 0) {
-      for (i in names(g@renderInfo@edges$direction)) {
-        input <- unlist(strsplit(i, "~"))
-        output <- input[2]
-        input <- input[1]
-        ambig <- FALSE
-        if (paste("!", input, "=", output, sep = "") %in% dnf & paste("", input, "=", output, sep = "") %in% dnf) {
-          ambig <- TRUE
+        for (i in 1:length(edges)) {
+            edges[[i]]@attrs$fontsize <- as.character(labelsize)
+            if (length(grep("and", names(edges)[i])) > 0) {
+                tmp <- unlist(strsplit(names(edges)[i], "~"))
+                k <- grep("and", tmp)
+                inputN <- length(grep(tmp[k], edges))
+                k <- as.numeric(gsub("and", "", tmp[k]))
+                ## try to get the index of the correct edgecol:
+                k2 <- grep("\\+", dnf)[k]
+                if (grep("and", tmp) == 2) {
+                    inputN2 <- which(gsub("!", "", unlist(strsplit(gsub("=.*", "", dnf[k2]), "\\+"))) %in% tmp[1])
+                } else {
+                    inputN2 <- length(unlist(strsplit(gsub("=.*", "", dnf[k2]), "\\+"))) + 1
+                }
+                if (k2 == 1) {
+                    edgecolindex <- inputN2
+                } else {
+                    if (length(grep("\\+", graph[1:(k2-1)])) == 0) {
+                        edgecolindex <- length(graph[1:(k2-1)]) + inputN2
+                    } else {
+                        edgecolindex <- length(unlist(strsplit(dnf[1:(k2-1)], "\\+"))) + length(grep("\\+", dnf[1:(k2-1)])) + inputN2
+                    }
+                }
+                ## end
+                inputN2 <- grep(tmp[1], unlist(strsplit(dnf[grep("\\+", dnf)[k]], "\\+")))-1
+                edges[[i]]@attrs$style <- lty[grep("\\+", dnf)[k]]
+                edges[[i]]@attrs$label <- labels[grep("\\+", dnf)[k]]
+                if (use.freq) {
+                    edges[[i]]@attrs$weight <- freq[grep("\\+", dnf)[k]]
+                    edges[[i]]@attrs$fontcolor <- "blue"
+                }
+                if (!is.null(edgewidth)) {
+                    edges[[i]]@attrs$weight <- edgewidth[grep("\\+", dnf)[k]]
+                }
+                if (!is.null(edgestyle)) {
+                    if (!is.na(edgestyle[grep("\\+", dnf)[k]])) {
+                        edges[[i]]@attrs$style <- edgestyle[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
+                    }
+                }
+                if (!is.null(edgelabel)) {
+                    if (!is.na(edgelabel[grep("\\+", dnf)[k]])) {
+                        edges[[i]]@attrs$label <- edgelabel[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
+                    }
+                }
+                if (length(grep("!", names(edgesneg)[i])) > 0) {
+                    edges[[i]]@attrs$arrowhead <- "tee"
+                    edges[[i]]@attrs$color <- "red"
+                    if (!is.null(edgecol)) {
+                        if (!is.na(edgecol[grep("\\+", dnf)[k]])) {
+                            edges[[i]]@attrs$color <- edgecol[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
+                        }
+                    }
+                    if (!is.null(edgehead)) {
+                        if (!is.na(edgehead[grep("\\+", dnf)[k]])) {
+                            edges[[i]]@attrs$arrowhead <- edgehead[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
+                        }
+                    }
+                    if (!is.null(edgetail)) {
+                        if (!is.na(edgetail[grep("\\+", dnf)[k]])) {
+                            edges[[i]]@attrs$arrowtail <- edgetail[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
+                        }
+                    }
+                } else {
+                    edges[[i]]@attrs$arrowhead <- "open"
+                    edges[[i]]@attrs$color <- "black"
+                    if (gsub("and.*", "and", tmp[1]) %in% "and") {
+                        if (!is.null(edgecol)) {
+                            if (!is.na(edgecol[grep("\\+", dnf)[k]])) {
+                                edges[[i]]@attrs$color <- edgecol[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k])])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k])])) > 1)]
+                            }
+                        }
+                        if (!is.null(edgehead)) {
+                            if (!is.na(edgehead[grep("\\+", dnf)[k]])) {
+                                edges[[i]]@attrs$arrowhead <- edgehead[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k])])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k])])) > 1)]
+                            }
+                        }
+                        if (!is.null(edgetail)) {
+                            if (!is.na(edgetail[grep("\\+", dnf)[k]])) {
+                                edges[[i]]@attrs$arrowtail <- edgetail[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k])])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k])])) > 1)]
+                            }
+                        }
+                    } else {
+                        if (!is.null(edgecol)) {
+                            if (!is.na(edgecol[grep("\\+", dnf)[k]])) {
+                                edges[[i]]@attrs$color <- edgecol[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
+                            }
+                        }
+                        if (!is.null(edgehead)) {
+                            if (!is.na(edgehead[grep("\\+", dnf)[k]])) {
+                                edges[[i]]@attrs$arrowhead <- edgehead[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
+                            }
+                        }
+                        if (!is.null(edgetail)) {
+                            if (!is.na(edgetail[grep("\\+", dnf)[k]])) {
+                                edges[[i]]@attrs$arrowtail <- edgetail[edgecolindex] # [grep("\\+", dnf)[k]+inputN+sum(unlist(gregexpr("\\+", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep("\\+", dnf)[k]-1)])) > 1)+inputN2]
+                            }
+                        }
+                    }
+                }
+            } else {
+                tmp <- unlist(strsplit(names(edges)[i], "~"))
+                ## try to get the index of the correct edgecol:
+                if (length(grep("!", names(edgesneg)[i])) == 0) {
+                    k2 <- grep(paste("^", tmp[1], "=", tmp[2], sep = ""), dnf)
+                } else {
+                    k2 <- grep(paste("^!", tmp[1], "=", tmp[2], sep = ""), dnf)
+                }
+                if (k2 == 1) {
+                    edgecolindex <- k2
+                } else {
+                    if (length(grep("\\+", dnf[1:(k2-1)])) == 0) {
+                        edgecolindex <- k2
+                    } else {
+                        edgecolindex <- length(unlist(strsplit(dnf[1:(k2-1)], "\\+"))) + length(grep("\\+", dnf[1:(k2-1)])) + 1
+                    }
+                }
+                ## end
+                if (length(grep("!", names(edgesneg)[i])) > 0) {
+                    edges[[i]]@attrs$style <- lty[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
+                    edges[[i]]@attrs$label <- labels[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
+                    if (use.freq) {
+                        edges[[i]]@attrs$weight <- freq[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
+                        edges[[i]]@attrs$fontcolor <- "blue"
+                    }
+                    if (!is.null(edgewidth)) {
+                        edges[[i]]@attrs$weight <- edgewidth[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
+                    }
+                    if (!is.null(edgestyle)) {
+                        if (!is.na(edgestyle[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
+                            edges[[i]]@attrs$style <- edgestyle[edgecolindex] # [grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
+                        }
+                    }
+                    if (!is.null(edgelabel)) {
+                        if (!is.na(edgelabel[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
+                            edges[[i]]@attrs$label <- edgelabel[edgecolindex] # [grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
+                        }
+                    }
+                    edges[[i]]@attrs$arrowhead <- "tee"
+                    edges[[i]]@attrs$color <- "red"
+                    if (!is.null(edgecol)) {
+                        if (!is.na(edgecol[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
+                            edges[[i]]@attrs$color <- edgecol[edgecolindex] # [grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
+                        }
+                    }
+                    if (!is.null(edgehead)) {
+                        if (!is.na(edgehead[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
+                            edges[[i]]@attrs$arrowhead <- edgehead[edgecolindex] # [grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
+                        }
+                    }
+                    if (!is.null(edgetail)) {
+                        if (!is.na(edgetail[grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
+                            edges[[i]]@attrs$arrowtail <- edgetail[edgecolindex] # [grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
+                        }
+                    }
+                } else {
+                    edges[[i]]@attrs$style <- lty[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
+                    edges[[i]]@attrs$label <- labels[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
+                    if (use.freq) {
+                        edges[[i]]@attrs$weight <- freq[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
+                        edges[[i]]@attrs$fontcolor <- "blue"
+                    }
+                    if (!is.null(edgewidth)) {
+                        edges[[i]]@attrs$weight <- edgewidth[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)]
+                    }
+                    if (!is.null(edgestyle)) {
+                        if (!is.na(edgestyle[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
+                            edges[[i]]@attrs$style <- edgestyle[edgecolindex] # [grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
+                        }
+                    }
+                    if (!is.null(edgelabel)) {
+                        if (!is.na(edgelabel[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
+                            edges[[i]]@attrs$label <- edgelabel[edgecolindex] # [grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
+                        }
+                    }
+                    edges[[i]]@attrs$arrowhead <- "open"
+                    edges[[i]]@attrs$color <- "black"
+                    if (!is.null(edgecol)) {
+                        if (!is.na(edgecol[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
+                            edges[[i]]@attrs$color <- edgecol[edgecolindex] # [grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
+                        }
+                    }
+                    if (!is.null(edgehead)) {
+                        if (!is.na(edgehead[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
+                            edges[[i]]@attrs$arrowhead <- edgehead[edgecolindex] # [grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
+                        }
+                    }
+                    if (!is.null(edgetail)) {
+                        if (!is.na(edgetail[grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)])) {
+                            edges[[i]]@attrs$arrowtail <- edgetail[edgecolindex] # [grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)+sum(unlist(gregexpr("\\+", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)+sum(unlist(gregexpr("\\+.*=.*", graph[1:(grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""), dnf)-1)])) > 1)]
+                        }
+                    }
+                }
+            }
         }
-        if ((length(grep("and", i)) == 0 & g@renderInfo@edges$direction[[i]] == "both") | ambig) {
-          pos <- which(names(g@renderInfo@edges$arrowhead) %in% i)
-          if (is.null(edgehead)) {
-            if (paste("!", input, "=", output, sep = "") %in% dnf) {
-              g@renderInfo@edges$arrowhead[pos] <- "tee"
-            }
-            if (paste(input, "=", output, sep = "") %in% dnf) {
-              g@renderInfo@edges$arrowhead[pos] <- "open"
-            }
-            if (paste("!", output, "=", input, sep = "") %in% dnf) {
-              g@renderInfo@edges$arrowtail[pos] <- "tee"
-            }
-            if (paste(output, "=", input, sep = "") %in% dnf) {
-              g@renderInfo@edges$arrowtail[pos] <- "open"
-            }
-            if (paste("!", output, "=", input, sep = "") %in% dnf & paste("", output, "=", input, sep = "") %in% dnf) {
-              g@renderInfo@edges$arrowtail[pos] <- "odiamond"
-            }
-            if (paste("!", input, "=", output, sep = "") %in% dnf & paste("", input, "=", output, sep = "") %in% dnf) {
-              ## for (f in 1:length(g@renderInfo@edges)) {
-              ##   g@renderInfo@edges[[f]] <- c(g@renderInfo@edges[[f]], g@renderInfo@edges[[f]][pos])
-              ##   names(g@renderInfo@edges[[f]])[length(g@renderInfo@edges[[f]])] <- paste(input, "recip=", output, "recip", sep = "")
-              ## }
-              ## g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[1]]@x <- as.integer(g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[1]]@x + 20)
-              ## g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[2]]@x <- as.integer(g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[2]]@x + 40)
-              ## g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[3]]@x <- as.integer(g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[3]]@x + 40)
-              ## g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[4]]@x <- as.integer(g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[4]]@x + 20)
-              ## g@renderInfo@edges$enamesFrom[length(g@renderInfo@edges$enamesFrom)] <- paste(input, "recip", sep = "")
-              ## g@renderInfo@edges$enamesTo[length(g@renderInfo@edges$enamesTo)] <- paste(output, "recip", sep = "")
-              ## g@renderInfo@edges$arrowhead[length(g@renderInfo@edges$arrowhead)] <- "open"
-              ## g@renderInfo@edges$arrowhead[pos] <- "tee"
-              ## g@nodes <- c(g@nodes, paste(input, "recip", sep = ""), paste(output, "recip", sep = ""))
-              ## for (f in 1:length(g@renderInfo@nodes)) {
-              ##   g@renderInfo@nodes[[f]] <- c(g@renderInfo@nodes[[f]], g@renderInfo@nodes[[f]][1], g@renderInfo@nodes[[f]][1])
-              ##   names(g@renderInfo@nodes[[f]])[(length(g@renderInfo@nodes[[f]])-1):length(g@renderInfo@nodes[[f]])] <- c(paste(input, "recip", sep = ""), paste(output, "recip", sep = ""))
-              ## }
-              ## g@renderInfo@nodes$col[(length(g@renderInfo@nodes$col)-1):length(g@renderInfo@nodes$col)] <- "transparent"
-              ## g@renderInfo@nodes$fill[(length(g@renderInfo@nodes$fill)-1):length(g@renderInfo@nodes$fill)] <- "transparent"
-              ## g@renderInfo@nodes$label[(length(g@renderInfo@nodes$label)-1):length(g@renderInfo@nodes$label)] <- ""
-              ## g@edgeL[[paste(input, "recip", sep = "")]]$edges <- length(g@edgeL)+1
-              ## g@edgeL[[paste(output, "recip", sep = "")]]$edges <- numeric()
-              ## g@edgeData@data[[paste(input, "recip|", output, "recip", sep = "")]]$weight <- 1
-              g@renderInfo@edges$arrowhead[pos] <- "odiamond"
-            }
-          }
-          if (is.null(edgecol)) {
-            if (g@renderInfo@edges$arrowtail[pos] == "open" & g@renderInfo@edges$arrowhead[pos] == "open") {
-              g@renderInfo@edges$col[pos] <- "black"
-            }
-            if (g@renderInfo@edges$arrowtail[pos] == "tee" & g@renderInfo@edges$arrowhead[pos] == "tee") {
-              g@renderInfo@edges$col[pos] <- "red"
-            }
-            if (g@renderInfo@edges$arrowtail[pos] != g@renderInfo@edges$arrowhead[pos]) {
-              g@renderInfo@edges$col[pos] <- "brown"
-            }
-            if (g@renderInfo@edges$arrowtail[pos] == "odiamond" | g@renderInfo@edges$arrowhead[pos] == "odiamond") {
-              g@renderInfo@edges$col[pos] <- "blue"
-            }
-          } else {
-            if (is.null(edgecol)) { # is.na(edgecol[pos])
-              if (g@renderInfo@edges$arrowtail[pos] == "open" & g@renderInfo@edges$arrowhead[pos] == "open") {
-                g@renderInfo@edges$col[pos] <- "black"
-              }
-              if (g@renderInfo@edges$arrowtail[pos] == "tee" & g@renderInfo@edges$arrowhead[pos] == "tee") {
-                g@renderInfo@edges$col[pos] <- "red"
-              }
-              if (g@renderInfo@edges$arrowtail[pos] != g@renderInfo@edges$arrowhead[pos]) {
-                g@renderInfo@edges$col[pos] <- "brown"
-              }
-              if (g@renderInfo@edges$arrowtail[pos] == "odiamond" | g@renderInfo@edges$arrowhead[pos] == "odiamond") {
-                g@renderInfo@edges$col[pos] <- "blue"
-              }
-            }
-          }
-        }
-      }
     }
-    #g@renderInfo@nodes$labelX[grep("and", names(g@renderInfo@nodes$labelX))] <- -1000
-    #g@renderInfo@nodes$labelY[grep("and", names(g@renderInfo@nodes$labelY))] <- -1000
-    if (!is.null(simulate$draw)) {
-      for (i in simulate$inhibitors) {
-        ## add the inhibiting node
-        g@nodes <- c(g@nodes, paste(i, "_inhibited", sep = ""))
-        g@renderInfo@nodes$nodeX <- c(g@renderInfo@nodes$nodeX, g@renderInfo@nodes$nodeX[which(names(g@renderInfo@nodes$nodeX) %in% i)])
-        g@renderInfo@nodes$nodeY <- c(g@renderInfo@nodes$nodeY, g@renderInfo@nodes$nodeY[which(names(g@renderInfo@nodes$nodeY) %in% i)])
-        names(g@renderInfo@nodes$nodeX)[length(g@renderInfo@nodes$nodeX)] <- paste(i, "_inhibited", sep = "")
-        names(g@renderInfo@nodes$nodeY)[length(g@renderInfo@nodes$nodeY)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$labelX <- c(g@renderInfo@nodes$labelX, g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + 200)
-        g@renderInfo@nodes$labelY <- c(g@renderInfo@nodes$labelY, g@renderInfo@nodes$labelY[which(names(g@renderInfo@nodes$labelY) %in% i)])
-        names(g@renderInfo@nodes$labelX)[length(g@renderInfo@nodes$labelX)] <- paste(i, "_inhibited", sep = "")
-        names(g@renderInfo@nodes$labelY)[length(g@renderInfo@nodes$labelY)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$labelJust <- c(g@renderInfo@nodes$labelJust, "n")
-        names(g@renderInfo@nodes$labelJust)[length(g@renderInfo@nodes$labelJust)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$col <- c(g@renderInfo@nodes$col, "transparent")
-        names(g@renderInfo@nodes$col)[length(g@renderInfo@nodes$col)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$fill <- c(g@renderInfo@nodes$fill, "transparent")
-        names(g@renderInfo@nodes$fill)[length(g@renderInfo@nodes$fill)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$shape <- c(g@renderInfo@nodes$shape, "box")
-        names(g@renderInfo@nodes$shape)[length(g@renderInfo@nodes$shape)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$style <- c(g@renderInfo@nodes$style, "")
-        names(g@renderInfo@nodes$style)[length(g@renderInfo@nodes$style)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$height <- c(g@renderInfo@nodes$height, 2)
-        names(g@renderInfo@nodes$height)[length(g@renderInfo@nodes$height)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$rWidth <- c(g@renderInfo@nodes$rWidth, 1)
-        names(g@renderInfo@nodes$rWidth)[length(g@renderInfo@nodes$rWidth)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$lWidth <- c(g@renderInfo@nodes$lWidth, 1)
-        names(g@renderInfo@nodes$lWidth)[length(g@renderInfo@nodes$lWidth)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$label[[paste(i, "_inhibited", sep = "")]] <- ""#"X            X\n X       X\n  X  X\n   X\n  X  X\n X       X\nX            X"
-        g@renderInfo@nodes$labelWidth <- c(g@renderInfo@nodes$labelWidth, g@renderInfo@nodes$labelWidth[which(names(g@renderInfo@nodes$labelWidth) %in% i)])
-        names(g@renderInfo@nodes$labelWidth)[length(g@renderInfo@nodes$labelWidth)] <- paste(i, "_inhibited", sep = "")
+    if (type == 1) {
+        
+        g2 <- agopen(name="boolean", nodes=nodes, recipEdges = "distinct", edges=edges, edgeMode="undirected", attrs=list(edge = list(), graph = list(lwd = lwd, rankdir = rankdir), node=list(lwd = lwd, fixedsize=FALSE)))
 
-        ## add the inhibiting edge
-        tmp.name <- paste(i, "_inhibited", sep = "")
-        g@edgeL[[tmp.name]] <- list()
-        g@edgeL[[tmp.name]][["edges"]] <- which(g@nodes %in% i)
-        g@edgeData@data[[paste(tmp.name, "|", i, sep = "")]] <- list()
-        g@edgeData@data[[paste(tmp.name, "|", i, sep = "")]]$weight <- 1
-        g@renderInfo@edges$enamesFrom <- c(g@renderInfo@edges$enamesFrom, tmp.name)
-        names(g@renderInfo@edges$enamesFrom)[length(g@renderInfo@edges$enamesFrom)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$enamesTo <- c(g@renderInfo@edges$enamesTo, i)
-        names(g@renderInfo@edges$enamesTo)[length(g@renderInfo@edges$enamesTo)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$labelJust <- c(g@renderInfo@edges$labelJust, NA)
-        names(g@renderInfo@edges$labelJust)[length(g@renderInfo@edges$labelJust)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$labelX <- c(g@renderInfo@edges$labelX, NA)
-        names(g@renderInfo@edges$labelX)[length(g@renderInfo@edges$labelX)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$labelY <- c(g@renderInfo@edges$labelY, NA)
-        names(g@renderInfo@edges$labelY)[length(g@renderInfo@edges$labelY)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$labelWidth <- c(g@renderInfo@edges$labelWidth, NA)
-        names(g@renderInfo@edges$labelWidth)[length(g@renderInfo@edges$labelWidth)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$label <- c(g@renderInfo@edges$label, "")
-        names(g@renderInfo@edges$label)[length(g@renderInfo@edges$label)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$arrowhead <- c(g@renderInfo@edges$arrowhead, "tee")
-        names(g@renderInfo@edges$arrowhead)[length(g@renderInfo@edges$arrowhead)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$arrowtail <- c(g@renderInfo@edges$arrowtail, "odot")
-        names(g@renderInfo@edges$arrowtail)[length(g@renderInfo@edges$arrowtail)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$col <- c(g@renderInfo@edges$col, "firebrick")
-        names(g@renderInfo@edges$col)[length(g@renderInfo@edges$col)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$lwd <- c(g@renderInfo@edges$lwd, lwd[1]*1)
-        names(g@renderInfo@edges$lwd)[length(g@renderInfo@edges$lwd)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$lty <- c(g@renderInfo@edges$lty, "solid")
-        names(g@renderInfo@edges$lty)[length(g@renderInfo@edges$lty)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$direction <- c(g@renderInfo@edges$direction, "forward")
-        names(g@renderInfo@edges$direction)[length(g@renderInfo@edges$direction)] <- paste(tmp.name, "~", i, sep = "")
-        ## calculate splines
-        tmp.splines <- rep(g@renderInfo@nodes$labelY[which(names(g@renderInfo@nodes$labelY) %in% i)], 8)
-        tmp.splines[c(7,5,3,1)] <- round(seq(g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + g@renderInfo@nodes$rWidth[[i]] + 10,
-                                             g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + 200 - g@renderInfo@nodes$rWidth[[i]] - 10,
-                                             length.out = 4))
-        ## tmp.splines[c(2,4,6,8)] <- seq(tmp.splines[2] + 50, tmp.splines[8], length.out = 4)
-        tmp.splines[2] <- tmp.splines[2] + 50
-        tmp.splines <- as.integer(tmp.splines)
-        g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]] <- g@renderInfo@edges$splines[[1]]
-        for (j in 1:4) {
-          g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]][[1]]@cPoints[[j]]@x <- tmp.splines[c(1,3,5,7)][j]
-          g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]][[1]]@cPoints[[j]]@y <- tmp.splines[c(2,4,6,8)][j]
-        }
-      }
-      for (i in simulate$stimuli) {
-        ## add the stimulating node
-        g@nodes <- c(g@nodes, paste(i, "_inhibited", sep = ""))
-        g@renderInfo@nodes$nodeX <- c(g@renderInfo@nodes$nodeX, g@renderInfo@nodes$nodeX[which(names(g@renderInfo@nodes$nodeX) %in% i)])
-        g@renderInfo@nodes$nodeY <- c(g@renderInfo@nodes$nodeY, g@renderInfo@nodes$nodeY[which(names(g@renderInfo@nodes$nodeY) %in% i)])
-        names(g@renderInfo@nodes$nodeX)[length(g@renderInfo@nodes$nodeX)] <- paste(i, "_inhibited", sep = "")
-        names(g@renderInfo@nodes$nodeY)[length(g@renderInfo@nodes$nodeY)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$labelX <- c(g@renderInfo@nodes$labelX, g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + 200)
-        g@renderInfo@nodes$labelY <- c(g@renderInfo@nodes$labelY, g@renderInfo@nodes$labelY[which(names(g@renderInfo@nodes$labelY) %in% i)])
-        names(g@renderInfo@nodes$labelX)[length(g@renderInfo@nodes$labelX)] <- paste(i, "_inhibited", sep = "")
-        names(g@renderInfo@nodes$labelY)[length(g@renderInfo@nodes$labelY)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$labelJust <- c(g@renderInfo@nodes$labelJust, "n")
-        names(g@renderInfo@nodes$labelJust)[length(g@renderInfo@nodes$labelJust)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$col <- c(g@renderInfo@nodes$col, "transparent")
-        names(g@renderInfo@nodes$col)[length(g@renderInfo@nodes$col)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$fill <- c(g@renderInfo@nodes$fill, "transparent")
-        names(g@renderInfo@nodes$fill)[length(g@renderInfo@nodes$fill)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$shape <- c(g@renderInfo@nodes$shape, "box")
-        names(g@renderInfo@nodes$shape)[length(g@renderInfo@nodes$shape)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$style <- c(g@renderInfo@nodes$style, "")
-        names(g@renderInfo@nodes$style)[length(g@renderInfo@nodes$style)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$height <- c(g@renderInfo@nodes$height, 2)
-        names(g@renderInfo@nodes$height)[length(g@renderInfo@nodes$height)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$rWidth <- c(g@renderInfo@nodes$rWidth, 1)
-        names(g@renderInfo@nodes$rWidth)[length(g@renderInfo@nodes$rWidth)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$lWidth <- c(g@renderInfo@nodes$lWidth, 1)
-        names(g@renderInfo@nodes$lWidth)[length(g@renderInfo@nodes$lWidth)] <- paste(i, "_inhibited", sep = "")
-        g@renderInfo@nodes$label[[paste(i, "_inhibited", sep = "")]] <- ""#"X            X\n X       X\n  X  X\n   X\n  X  X\n X       X\nX            X"
-        g@renderInfo@nodes$labelWidth <- c(g@renderInfo@nodes$labelWidth, g@renderInfo@nodes$labelWidth[which(names(g@renderInfo@nodes$labelWidth) %in% i)])
-        names(g@renderInfo@nodes$labelWidth)[length(g@renderInfo@nodes$labelWidth)] <- paste(i, "_inhibited", sep = "")
+        plot(g2, "dot", lwd = lwd, ...)
 
-        ## add the stimulating edge
-        tmp.name <- paste(i, "_inhibited", sep = "")
-        g@edgeL[[tmp.name]] <- list()
-        g@edgeL[[tmp.name]][["edges"]] <- which(g@nodes %in% i)
-        g@edgeData@data[[paste(tmp.name, "|", i, sep = "")]] <- list()
-        g@edgeData@data[[paste(tmp.name, "|", i, sep = "")]]$weight <- 1
-        g@renderInfo@edges$enamesFrom <- c(g@renderInfo@edges$enamesFrom, tmp.name)
-        names(g@renderInfo@edges$enamesFrom)[length(g@renderInfo@edges$enamesFrom)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$enamesTo <- c(g@renderInfo@edges$enamesTo, i)
-        names(g@renderInfo@edges$enamesTo)[length(g@renderInfo@edges$enamesTo)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$labelJust <- c(g@renderInfo@edges$labelJust, NA)
-        names(g@renderInfo@edges$labelJust)[length(g@renderInfo@edges$labelJust)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$labelX <- c(g@renderInfo@edges$labelX, NA)
-        names(g@renderInfo@edges$labelX)[length(g@renderInfo@edges$labelX)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$labelY <- c(g@renderInfo@edges$labelY, NA)
-        names(g@renderInfo@edges$labelY)[length(g@renderInfo@edges$labelY)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$labelWidth <- c(g@renderInfo@edges$labelWidth, NA)
-        names(g@renderInfo@edges$labelWidth)[length(g@renderInfo@edges$labelWidth)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$label <- c(g@renderInfo@edges$label, "")
-        names(g@renderInfo@edges$label)[length(g@renderInfo@edges$label)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$arrowhead <- c(g@renderInfo@edges$arrowhead, "open")
-        names(g@renderInfo@edges$arrowhead)[length(g@renderInfo@edges$arrowhead)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$arrowtail <- c(g@renderInfo@edges$arrowtail, "odot")
-        names(g@renderInfo@edges$arrowtail)[length(g@renderInfo@edges$arrowtail)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$col <- c(g@renderInfo@edges$col, "limegreen")
-        names(g@renderInfo@edges$col)[length(g@renderInfo@edges$col)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$lwd <- c(g@renderInfo@edges$lwd, lwd[1]*1)
-        names(g@renderInfo@edges$lwd)[length(g@renderInfo@edges$lwd)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$lty <- c(g@renderInfo@edges$lty, "solid")
-        names(g@renderInfo@edges$lty)[length(g@renderInfo@edges$lty)] <- paste(tmp.name, "~", i, sep = "")
-        g@renderInfo@edges$direction <- c(g@renderInfo@edges$direction, "forward")
-        names(g@renderInfo@edges$direction)[length(g@renderInfo@edges$direction)] <- paste(tmp.name, "~", i, sep = "")
-        ## calculate splines
-        tmp.splines <- rep(g@renderInfo@nodes$labelY[which(names(g@renderInfo@nodes$labelY) %in% i)], 8)
-        tmp.splines[c(7,5,3,1)] <- round(seq(g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + g@renderInfo@nodes$rWidth[[i]] + 10,
-                                             g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + 200 - g@renderInfo@nodes$rWidth[[i]] - 10,
-                                             length.out = 4))
-        ## tmp.splines[c(2,4,6,8)] <- seq(tmp.splines[2] + 50, tmp.splines[8], length.out = 4)
-        tmp.splines[2] <- tmp.splines[2] + 50
-        tmp.splines <- as.integer(tmp.splines)
-        g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]] <- g@renderInfo@edges$splines[[1]]
-        for (j in 1:4) {
-          g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]][[1]]@cPoints[[j]]@x <- tmp.splines[c(1,3,5,7)][j]
-          g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]][[1]]@cPoints[[j]]@y <- tmp.splines[c(2,4,6,8)][j]
+    } else {
+
+        arrowheads <- character()
+        arrowtails <- character()
+        arrowcolors <- character()
+        arrowlabels <- character()
+        arrowlwd <- character()
+        arrowlty <- character()
+        arrowfontsize <- character()
+        if (length(edges) > 0) {
+            for (i in 1:length(edges)) {
+                if (length(edges[[i]]@attrs$style) == 0) { edges[[i]]@attrs$style <- "solid" }
+                arrowlty <- c(arrowlty, edges[[i]]@attrs$style)
+                arrowheads <- c(arrowheads, edges[[i]]@attrs$arrowhead)
+                if (!is.null(edgetail)) {
+                    arrowtails <- c(arrowtails, edges[[i]]@attrs$arrowtail)
+                } else {
+                    arrowtails <- c(arrowtails, "none")
+                }
+                arrowcolors <- c(arrowcolors, edges[[i]]@attrs$color)
+                arrowfontsize <- c(arrowfontsize, edges[[i]]@attrs$fontsize)
+                arrowlwd <- c(arrowlwd, edges[[i]]@attrs$weight)
+                arrowlabels <- c(arrowlabels, edges[[i]]@attrs$label)
+            }
         }
-      }
-      g@renderInfo@graph$bbox[2,1] <- g@renderInfo@graph$bbox[2,1] + 150
-      g@renderInfo@graph$bbox[2,2] <- g@renderInfo@graph$bbox[2,2] + 25
+        arrowlwd <- as.numeric(arrowlwd)
+        
+        graph.trans <- NULL
+        and.count <- 0
+        for (i in dnf) {
+            if (length(grep("\\+", i)) > 0) {
+                and.count <- and.count + 1
+                output <- unlist(strsplit(i, "="))
+                input <- unlist(strsplit(output[1], "\\+"))
+                output <- output[2]
+                for (i in input) {
+                    graph.trans <- c(graph.trans, paste(gsub("!", "", i), "~", paste("and", and.count, sep = ""), sep = ""))
+                }
+                graph.trans <- c(graph.trans, paste(paste("and", and.count, sep = ""), "~", output, sep = ""))
+            } else {
+                put <- unlist(strsplit(i, "="))
+                graph.trans <- c(graph.trans, paste(gsub("!", "", put[1]), "~", put[2], sep = ""))
+            }
+        }
+
+        if (length(edgecol) == length(arrowcolors)) {
+            edgecol <- edgecol[order(match(graph.trans, names(edges)))]
+            arrowcolors <- edgecol
+        }
+        
+        nodeshapes <- character()
+        nodecolors <- character()
+        nodeheight <- character()
+        nodewidth <- character()
+        nodecolor <- character()
+        
+        for (i in 1:length(nodes)) {
+            nodeshapes <- c(nodeshapes, nodes[[i]]@attrs$shape)
+            nodecolors <- c(nodecolors, nodes[[i]]@attrs$fillcolor)
+            nodeheight <- c(nodeheight, nodes[[i]]@attrs$height)
+            nodewidth <- c(nodewidth, nodes[[i]]@attrs$width)
+            nodecolor <- c(nodecolor, nodes[[i]]@attrs$color)
+        }
+
+        nodeheight[which(nodeheight == "0.4")] <- "0.2"
+
+        if (is.null(lty) & is.null(edgestyle)) {
+            arrowlty <- rep("solid", length(edges))
+        }
+        
+        if (use.freq) {
+            if (is.null(lty)) {
+                if (edgestyle) {
+                    arrowlty[which(as.numeric(arrowlabels) < 66)] <- "dashed"
+                    arrowlty[which(as.numeric(arrowlabels) < 33)] <- "dotted"
+                }
+            }
+            arrowlwd <- arrowlwd - min(arrowlwd)
+            arrowlwd <- as.character((arrowlwd/max(arrowlwd)+0.1)*2*edgelwd)
+        } else {
+            if (is.null(edgewidth)) {
+                arrowlwd <- rep(edgelwd, length(edges))
+            }
+        }
+
+        if (is.null(edgewidth) & is.null(edgelabel)) {
+            arrowlabels <- rep("", length(edges))
+        }
+        
+        if (length(arrowlty) == 0) {
+            arrowlty <- rep("solid", length(edges))
+        }
+        if (length(arrowlwd) == 0) {
+            arrowlwd <- rep(lwd, length(edges))
+        }
+        
+        names(arrowfontsize) <- names(arrowheads) <- names(arrowtails) <- names(arrowcolors) <- names(arrowlwd) <- names(arrowlty) <- names(arrowlabels) <- names(edges)
+
+        names(nodecolor) <- names(nodewidth) <- names(nodeheight) <- names(nodeshapes) <- names(nodecolors) <- names(nodes)
+
+        if (length(unique(names(edges))) < length(names(edges))) {
+            for (i in names(edges)[-which(duplicated(names(edges)) == TRUE)]) {
+                getpos <- grep(paste("^", i, "$", sep = ""), names(edges))
+                if (length(getpos) > 1) {
+                    if (use.freq) {
+                        if (arrowheads[getpos[1]] %in% "tee") {
+                            arrowlabels[getpos[1]] <- paste(paste(c("-", "+"), arrowlabels[getpos], sep = ""), collapse = "\n")
+                        } else {
+                            arrowlabels[getpos[1]] <- paste(paste(c("+", "-"), arrowlabels[getpos], sep = ""), collapse = "\n")
+                        }
+                    } else {
+                        if (is.null(edgelabel)) {
+                            arrowlabels[getpos[1]] <- ""
+                        }
+                    }
+                    arrowheads[getpos[1]] <- "odiamond"
+                    if (is.null(edgecol)) {
+                        arrowcolors[getpos[1]] <- "black"
+                    } else {
+                        if (is.na(edgecol[getpos[1]])) {
+                            arrowcolors[getpos[1]] <- "black"
+                        }
+                    }
+                    arrowlwd[getpos[1]] <- as.character(mean(as.numeric(arrowlwd[getpos])))
+                }
+            }
+        }
+        if (length(labels) == length(arrowlabels) & is.null(edgelabel)) {
+            arrowlabels[!is.na(labels)] <- labels[!is.na(labels)]
+        }
+        if (length(edgecol) == 1) {
+            arrowcolors <- rep(edgecol, length(arrowcolors))
+            names(arrowcolors) <- names(arrowlabels)
+        }
+        
+        if (legend == 1 | legend == 3) {
+            if (dolegend) {
+                start <- 1
+                g@nodes <- c("LEGEND:", "STIMULUS", "INHIBITOR", "SIGNAL", "NOTHING", "active", "inactive")
+                g@edgeL <- list()
+                g@edgeData@data <- list()
+            } else {
+                start <- length(g@nodes) + 1
+                g@nodes <- c(g@nodes, "LEGEND:", "STIMULUS", "INHIBITOR", "SIGNAL", "NOTHING", "active", "inactive")
+            }
+            g@edgeL[["LEGEND:"]] <- list()
+            g@edgeL[["STIMULUS"]] <- list()
+            g@edgeL[["INHIBITOR"]] <- list()
+            g@edgeL[["SIGNAL"]] <- list()
+            g@edgeL[["NOTHING"]] <- list()
+            g@edgeL[["active"]] <- list()
+            g@edgeL[["inactive"]] <- list()
+            g@edgeL[["LEGEND:"]][["edges"]] <- as.integer(start+1)
+            g@edgeL[["STIMULUS"]][["edges"]] <- as.integer(start+2)
+            g@edgeL[["INHIBITOR"]][["edges"]] <- as.integer(start+3)
+            g@edgeL[["SIGNAL"]][["edges"]] <- as.integer(start+4)
+            g@edgeL[["NOTHING"]][["edges"]] <- as.integer(start+5)
+            g@edgeL[["active"]][["edges"]] <- c(as.integer(start+6), as.integer(start+4))
+            g@edgeL[["inactive"]][["edges"]] <- as.integer(start+5)
+            g@edgeData@data[["LEGEND:|STIMULUS"]] <- list()
+            g@edgeData@data[["STIMULUS|INHIBITOR"]] <- list()
+            g@edgeData@data[["INHIBITOR|SIGNAL"]] <- list()
+            g@edgeData@data[["SIGNAL|NOTHING"]] <- list()
+            g@edgeData@data[["NOTHING|active"]] <- list()
+            g@edgeData@data[["active|inactive"]] <- list()
+            g@edgeData@data[["active|NOTHING"]] <- list()
+            g@edgeData@data[["inactive|active"]] <- list()
+            g@edgeData@data[["LEGEND:|STIMULUS"]][["weight"]] <- 1
+            g@edgeData@data[["STIMULUS|INHIBITOR"]][["weight"]] <- 1
+            g@edgeData@data[["INHIBITOR|SIGNAL"]][["weight"]] <- 1
+            g@edgeData@data[["SIGNAL|NOTHING"]][["weight"]] <- 1
+            g@edgeData@data[["NOTHING|active"]][["weight"]] <- 1
+            g@edgeData@data[["active|inactive"]][["weight"]] <- 1
+            g@edgeData@data[["active|NOTHING"]][["weight"]] <- 1
+            g@edgeData@data[["inactive|active"]][["weight"]] <- 1
+            arrowheads <- c(arrowheads, "LEGEND:~STIMULUS" = "none", "STIMULUS~INHIBITOR" = "open", "INHIBITOR~SIGNAL" = "tee", "SIGNAL~NOTHING" = "odiamond", "NOTHING~active" = "open", "active~inactive" = "tee", "active~NOTHING" = "tee", "inactive~active" = "open")
+            arrowcolors <- c(arrowcolors, "LEGEND:~STIMULUS" = "transparent", "STIMULUS~INHIBITOR" = "black", "INHIBITOR~SIGNAL" = "red", "SIGNAL~NOTHING" = "blue", "NOTHING~active" = "black", "active~inactive" = "red", "active~NOTHING" = "red", "inactive~active" = "black")
+            arrowlabels <- c(arrowlabels, "LEGEND:~STIMULUS" = "", "STIMULUS~INHIBITOR" = "    positive", "INHIBITOR~SIGNAL" = "    negative", "SIGNAL~NOTHING" = "    ambiguous\npositive\nnegative", "NOTHING~active" = "    bidirectional\ndifferent", "active~inactive" = "    bidirectional\ndifferent", "active~NOTHING" = "", "inactive~active" = "")
+            nodecolors <- c(nodecolors, "LEGEND:" = "white", "STIMULUS" = "white", "INHIBITOR" = "white", "SIGNAL" = "lightblue", "NOTHING" = "white", "active" = "green", "inactive" = "white")
+            nodeheight <- c(nodeheight, "LEGEND:" = 0, "STIMULUS" = as.character(max(nodeheight)), "INHIBITOR" = as.character(max(nodeheight)), "SIGNAL" = as.character(max(nodeheight)), "NOTHING" = as.character(max(nodeheight)), "active" = as.character(max(nodeheight)), "inactive" = as.character(max(nodeheight)))
+            nodewidth <- c(nodewidth, "LEGEND:" = as.character(max(nodewidth)), "STIMULUS" = as.character(max(nodewidth)), "INHIBITOR" = as.character(max(nodewidth)), "SIGNAL" = as.character(max(nodewidth)), "NOTHING" = as.character(max(nodewidth)), "active" = as.character(max(nodewidth)), "inactive" = as.character(max(nodewidth)))
+            if (type == 2) {
+                nodeshapes <- c(nodeshapes, "LEGEND:" = "box", "STIMULUS" = "diamond", "INHIBITOR" = "ellipse", "SIGNAL" = "ellipse", "NOTHING" = "ellipse", "active" = "ellipse", "inactive" = "ellipse")
+            } else {
+                nodeshapes <- c(nodeshapes, "LEGEND:" = "box", "STIMULUS" = "box", "INHIBITOR" = "ellipse", "SIGNAL" = "ellipse", "NOTHING" = "ellipse", "active" = "ellipse", "inactive" = "ellipse")
+            }
+            nodecolor <- c(nodecolor, "LEGEND:" = "white", "STIMULUS" = "black", "INHIBITOR" = "red", "SIGNAL" = "black", "NOTHING" = "black", "active" = "black", "inactive" = "black")
+            dnf <- c(dnf, "NOTHING=active", "!active=NOTHING", "!active=inactive", "inactive=active")
+        }
+        nodelabels <- names(nodecolor)
+        names(nodelabels) <- nodelabels
+        for (i in 1:length(nodelabel)) {
+            nodelabels[which(names(nodelabels) %in% names(nodelabel)[i])] <- nodelabel[i]
+        }
+        nodefontsizes <- NULL
+        if (!is.null(nodefontsize)) {
+            nodefontsizes <- rep(14, length(nodelabels))
+            names(nodefontsizes) <- names(nodelabels)
+            for (i in 1:length(nodefontsize)) {
+                nodefontsizes[which(names(nodefontsizes) %in% names(nodefontsize)[i])] <- nodefontsize[[i]]
+            }
+        }
+        g <- layoutGraph(g, edgeAttrs = list(arrowhead = arrowheads, color = arrowcolors, label = arrowlabels, arrowtail = arrowtails), nodeAttrs = list(labels = nodelabels, color = nodecolor, height = nodeheight, width = nodewidth, shape = nodeshapes, fillcolor = nodecolors), layoutType=layout)
+        graph.par(list(graph=list(main = main, sub = sub, cex.main = cex.main, cex.sub = cex.sub, col.sub = col.sub), edges=list(textCol = labelcol, lwd = edgelwd, fontsize = labelsize), nodes=list(lwd = lwd, fontsize = fontsize, cex = cex)))
+        edgeRenderInfo(g) <- list(lty = arrowlty, lwd = arrowlwd, label = arrowlabels)
+        if (length(edges) > 0) {
+            for (i in names(g@renderInfo@edges$direction)) {
+                input <- unlist(strsplit(i, "~"))
+                output <- input[2]
+                input <- input[1]
+                ambig <- FALSE
+                if (paste("!", input, "=", output, sep = "") %in% dnf & paste("", input, "=", output, sep = "") %in% dnf) {
+                    ambig <- TRUE
+                }
+                if ((length(grep("and", i)) == 0 & g@renderInfo@edges$direction[[i]] == "both") | ambig) {
+                    pos <- which(names(g@renderInfo@edges$arrowhead) %in% i)
+                    if (is.null(edgehead)) {
+                        if (paste("!", input, "=", output, sep = "") %in% dnf) {
+                            g@renderInfo@edges$arrowhead[pos] <- "tee"
+                        }
+                        if (paste(input, "=", output, sep = "") %in% dnf) {
+                            g@renderInfo@edges$arrowhead[pos] <- "open"
+                        }
+                        if (paste("!", output, "=", input, sep = "") %in% dnf) {
+                            g@renderInfo@edges$arrowtail[pos] <- "tee"
+                        }
+                        if (paste(output, "=", input, sep = "") %in% dnf) {
+                            g@renderInfo@edges$arrowtail[pos] <- "open"
+                        }
+                        if (paste("!", output, "=", input, sep = "") %in% dnf & paste("", output, "=", input, sep = "") %in% dnf) {
+                            g@renderInfo@edges$arrowtail[pos] <- "odiamond"
+                        }
+                        if (paste("!", input, "=", output, sep = "") %in% dnf & paste("", input, "=", output, sep = "") %in% dnf) {
+                            ## for (f in 1:length(g@renderInfo@edges)) {
+                            ##   g@renderInfo@edges[[f]] <- c(g@renderInfo@edges[[f]], g@renderInfo@edges[[f]][pos])
+                            ##   names(g@renderInfo@edges[[f]])[length(g@renderInfo@edges[[f]])] <- paste(input, "recip=", output, "recip", sep = "")
+                            ## }
+                            ## g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[1]]@x <- as.integer(g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[1]]@x + 20)
+                            ## g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[2]]@x <- as.integer(g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[2]]@x + 40)
+                            ## g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[3]]@x <- as.integer(g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[3]]@x + 40)
+                            ## g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[4]]@x <- as.integer(g@renderInfo@edges$splines[[length(g@renderInfo@edges$enamesFrom)]][[1]]@cPoints[[4]]@x + 20)
+                            ## g@renderInfo@edges$enamesFrom[length(g@renderInfo@edges$enamesFrom)] <- paste(input, "recip", sep = "")
+                            ## g@renderInfo@edges$enamesTo[length(g@renderInfo@edges$enamesTo)] <- paste(output, "recip", sep = "")
+                            ## g@renderInfo@edges$arrowhead[length(g@renderInfo@edges$arrowhead)] <- "open"
+                            ## g@renderInfo@edges$arrowhead[pos] <- "tee"
+                            ## g@nodes <- c(g@nodes, paste(input, "recip", sep = ""), paste(output, "recip", sep = ""))
+                            ## for (f in 1:length(g@renderInfo@nodes)) {
+                            ##   g@renderInfo@nodes[[f]] <- c(g@renderInfo@nodes[[f]], g@renderInfo@nodes[[f]][1], g@renderInfo@nodes[[f]][1])
+                            ##   names(g@renderInfo@nodes[[f]])[(length(g@renderInfo@nodes[[f]])-1):length(g@renderInfo@nodes[[f]])] <- c(paste(input, "recip", sep = ""), paste(output, "recip", sep = ""))
+                            ## }
+                            ## g@renderInfo@nodes$col[(length(g@renderInfo@nodes$col)-1):length(g@renderInfo@nodes$col)] <- "transparent"
+                            ## g@renderInfo@nodes$fill[(length(g@renderInfo@nodes$fill)-1):length(g@renderInfo@nodes$fill)] <- "transparent"
+                            ## g@renderInfo@nodes$label[(length(g@renderInfo@nodes$label)-1):length(g@renderInfo@nodes$label)] <- ""
+                            ## g@edgeL[[paste(input, "recip", sep = "")]]$edges <- length(g@edgeL)+1
+                            ## g@edgeL[[paste(output, "recip", sep = "")]]$edges <- numeric()
+                            ## g@edgeData@data[[paste(input, "recip|", output, "recip", sep = "")]]$weight <- 1
+                            g@renderInfo@edges$arrowhead[pos] <- "odiamond"
+                        }
+                    }
+                    if (is.null(edgecol)) {
+                        if (g@renderInfo@edges$arrowtail[pos] == "open" & g@renderInfo@edges$arrowhead[pos] == "open") {
+                            g@renderInfo@edges$col[pos] <- "black"
+                        }
+                        if (g@renderInfo@edges$arrowtail[pos] == "tee" & g@renderInfo@edges$arrowhead[pos] == "tee") {
+                            g@renderInfo@edges$col[pos] <- "red"
+                        }
+                        if (g@renderInfo@edges$arrowtail[pos] != g@renderInfo@edges$arrowhead[pos]) {
+                            g@renderInfo@edges$col[pos] <- "brown"
+                        }
+                        if (g@renderInfo@edges$arrowtail[pos] == "odiamond" | g@renderInfo@edges$arrowhead[pos] == "odiamond") {
+                            g@renderInfo@edges$col[pos] <- "blue"
+                        }
+                    } else {
+                        if (is.null(edgecol)) { # is.na(edgecol[pos])
+                            if (g@renderInfo@edges$arrowtail[pos] == "open" & g@renderInfo@edges$arrowhead[pos] == "open") {
+                                g@renderInfo@edges$col[pos] <- "black"
+                            }
+                            if (g@renderInfo@edges$arrowtail[pos] == "tee" & g@renderInfo@edges$arrowhead[pos] == "tee") {
+                                g@renderInfo@edges$col[pos] <- "red"
+                            }
+                            if (g@renderInfo@edges$arrowtail[pos] != g@renderInfo@edges$arrowhead[pos]) {
+                                g@renderInfo@edges$col[pos] <- "brown"
+                            }
+                            if (g@renderInfo@edges$arrowtail[pos] == "odiamond" | g@renderInfo@edges$arrowhead[pos] == "odiamond") {
+                                g@renderInfo@edges$col[pos] <- "blue"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+                                        #g@renderInfo@nodes$labelX[grep("and", names(g@renderInfo@nodes$labelX))] <- -1000
+                                        #g@renderInfo@nodes$labelY[grep("and", names(g@renderInfo@nodes$labelY))] <- -1000
+        if (!is.null(simulate$draw)) {
+            for (i in simulate$inhibitors) {
+                ## add the inhibiting node
+                g@nodes <- c(g@nodes, paste(i, "_inhibited", sep = ""))
+                g@renderInfo@nodes$nodeX <- c(g@renderInfo@nodes$nodeX, g@renderInfo@nodes$nodeX[which(names(g@renderInfo@nodes$nodeX) %in% i)])
+                g@renderInfo@nodes$nodeY <- c(g@renderInfo@nodes$nodeY, g@renderInfo@nodes$nodeY[which(names(g@renderInfo@nodes$nodeY) %in% i)])
+                names(g@renderInfo@nodes$nodeX)[length(g@renderInfo@nodes$nodeX)] <- paste(i, "_inhibited", sep = "")
+                names(g@renderInfo@nodes$nodeY)[length(g@renderInfo@nodes$nodeY)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$labelX <- c(g@renderInfo@nodes$labelX, g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + 200)
+                g@renderInfo@nodes$labelY <- c(g@renderInfo@nodes$labelY, g@renderInfo@nodes$labelY[which(names(g@renderInfo@nodes$labelY) %in% i)])
+                names(g@renderInfo@nodes$labelX)[length(g@renderInfo@nodes$labelX)] <- paste(i, "_inhibited", sep = "")
+                names(g@renderInfo@nodes$labelY)[length(g@renderInfo@nodes$labelY)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$labelJust <- c(g@renderInfo@nodes$labelJust, "n")
+                names(g@renderInfo@nodes$labelJust)[length(g@renderInfo@nodes$labelJust)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$col <- c(g@renderInfo@nodes$col, "transparent")
+                names(g@renderInfo@nodes$col)[length(g@renderInfo@nodes$col)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$fill <- c(g@renderInfo@nodes$fill, "transparent")
+                names(g@renderInfo@nodes$fill)[length(g@renderInfo@nodes$fill)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$shape <- c(g@renderInfo@nodes$shape, "box")
+                names(g@renderInfo@nodes$shape)[length(g@renderInfo@nodes$shape)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$style <- c(g@renderInfo@nodes$style, "")
+                names(g@renderInfo@nodes$style)[length(g@renderInfo@nodes$style)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$height <- c(g@renderInfo@nodes$height, 2)
+                names(g@renderInfo@nodes$height)[length(g@renderInfo@nodes$height)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$rWidth <- c(g@renderInfo@nodes$rWidth, 1)
+                names(g@renderInfo@nodes$rWidth)[length(g@renderInfo@nodes$rWidth)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$lWidth <- c(g@renderInfo@nodes$lWidth, 1)
+                names(g@renderInfo@nodes$lWidth)[length(g@renderInfo@nodes$lWidth)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$label[[paste(i, "_inhibited", sep = "")]] <- ""#"X            X\n X       X\n  X  X\n   X\n  X  X\n X       X\nX            X"
+                g@renderInfo@nodes$labelWidth <- c(g@renderInfo@nodes$labelWidth, g@renderInfo@nodes$labelWidth[which(names(g@renderInfo@nodes$labelWidth) %in% i)])
+                names(g@renderInfo@nodes$labelWidth)[length(g@renderInfo@nodes$labelWidth)] <- paste(i, "_inhibited", sep = "")
+
+                ## add the inhibiting edge
+                tmp.name <- paste(i, "_inhibited", sep = "")
+                g@edgeL[[tmp.name]] <- list()
+                g@edgeL[[tmp.name]][["edges"]] <- which(g@nodes %in% i)
+                g@edgeData@data[[paste(tmp.name, "|", i, sep = "")]] <- list()
+                g@edgeData@data[[paste(tmp.name, "|", i, sep = "")]]$weight <- 1
+                g@renderInfo@edges$enamesFrom <- c(g@renderInfo@edges$enamesFrom, tmp.name)
+                names(g@renderInfo@edges$enamesFrom)[length(g@renderInfo@edges$enamesFrom)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$enamesTo <- c(g@renderInfo@edges$enamesTo, i)
+                names(g@renderInfo@edges$enamesTo)[length(g@renderInfo@edges$enamesTo)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$labelJust <- c(g@renderInfo@edges$labelJust, NA)
+                names(g@renderInfo@edges$labelJust)[length(g@renderInfo@edges$labelJust)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$labelX <- c(g@renderInfo@edges$labelX, NA)
+                names(g@renderInfo@edges$labelX)[length(g@renderInfo@edges$labelX)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$labelY <- c(g@renderInfo@edges$labelY, NA)
+                names(g@renderInfo@edges$labelY)[length(g@renderInfo@edges$labelY)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$labelWidth <- c(g@renderInfo@edges$labelWidth, NA)
+                names(g@renderInfo@edges$labelWidth)[length(g@renderInfo@edges$labelWidth)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$label <- c(g@renderInfo@edges$label, "")
+                names(g@renderInfo@edges$label)[length(g@renderInfo@edges$label)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$arrowhead <- c(g@renderInfo@edges$arrowhead, "tee")
+                names(g@renderInfo@edges$arrowhead)[length(g@renderInfo@edges$arrowhead)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$arrowtail <- c(g@renderInfo@edges$arrowtail, "odot")
+                names(g@renderInfo@edges$arrowtail)[length(g@renderInfo@edges$arrowtail)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$col <- c(g@renderInfo@edges$col, "firebrick")
+                names(g@renderInfo@edges$col)[length(g@renderInfo@edges$col)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$lwd <- c(g@renderInfo@edges$lwd, lwd[1]*1)
+                names(g@renderInfo@edges$lwd)[length(g@renderInfo@edges$lwd)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$lty <- c(g@renderInfo@edges$lty, "solid")
+                names(g@renderInfo@edges$lty)[length(g@renderInfo@edges$lty)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$direction <- c(g@renderInfo@edges$direction, "forward")
+                names(g@renderInfo@edges$direction)[length(g@renderInfo@edges$direction)] <- paste(tmp.name, "~", i, sep = "")
+                ## calculate splines
+                tmp.splines <- rep(g@renderInfo@nodes$labelY[which(names(g@renderInfo@nodes$labelY) %in% i)], 8)
+                tmp.splines[c(7,5,3,1)] <- round(seq(g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + g@renderInfo@nodes$rWidth[[i]] + 10,
+                                                     g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + 200 - g@renderInfo@nodes$rWidth[[i]] - 10,
+                                                     length.out = 4))
+                ## tmp.splines[c(2,4,6,8)] <- seq(tmp.splines[2] + 50, tmp.splines[8], length.out = 4)
+                tmp.splines[2] <- tmp.splines[2] + 50
+                tmp.splines <- as.integer(tmp.splines)
+                g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]] <- g@renderInfo@edges$splines[[1]]
+                for (j in 1:4) {
+                    g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]][[1]]@cPoints[[j]]@x <- tmp.splines[c(1,3,5,7)][j]
+                    g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]][[1]]@cPoints[[j]]@y <- tmp.splines[c(2,4,6,8)][j]
+                }
+            }
+            for (i in simulate$stimuli) {
+                ## add the stimulating node
+                g@nodes <- c(g@nodes, paste(i, "_inhibited", sep = ""))
+                g@renderInfo@nodes$nodeX <- c(g@renderInfo@nodes$nodeX, g@renderInfo@nodes$nodeX[which(names(g@renderInfo@nodes$nodeX) %in% i)])
+                g@renderInfo@nodes$nodeY <- c(g@renderInfo@nodes$nodeY, g@renderInfo@nodes$nodeY[which(names(g@renderInfo@nodes$nodeY) %in% i)])
+                names(g@renderInfo@nodes$nodeX)[length(g@renderInfo@nodes$nodeX)] <- paste(i, "_inhibited", sep = "")
+                names(g@renderInfo@nodes$nodeY)[length(g@renderInfo@nodes$nodeY)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$labelX <- c(g@renderInfo@nodes$labelX, g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + 200)
+                g@renderInfo@nodes$labelY <- c(g@renderInfo@nodes$labelY, g@renderInfo@nodes$labelY[which(names(g@renderInfo@nodes$labelY) %in% i)])
+                names(g@renderInfo@nodes$labelX)[length(g@renderInfo@nodes$labelX)] <- paste(i, "_inhibited", sep = "")
+                names(g@renderInfo@nodes$labelY)[length(g@renderInfo@nodes$labelY)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$labelJust <- c(g@renderInfo@nodes$labelJust, "n")
+                names(g@renderInfo@nodes$labelJust)[length(g@renderInfo@nodes$labelJust)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$col <- c(g@renderInfo@nodes$col, "transparent")
+                names(g@renderInfo@nodes$col)[length(g@renderInfo@nodes$col)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$fill <- c(g@renderInfo@nodes$fill, "transparent")
+                names(g@renderInfo@nodes$fill)[length(g@renderInfo@nodes$fill)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$shape <- c(g@renderInfo@nodes$shape, "box")
+                names(g@renderInfo@nodes$shape)[length(g@renderInfo@nodes$shape)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$style <- c(g@renderInfo@nodes$style, "")
+                names(g@renderInfo@nodes$style)[length(g@renderInfo@nodes$style)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$height <- c(g@renderInfo@nodes$height, 2)
+                names(g@renderInfo@nodes$height)[length(g@renderInfo@nodes$height)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$rWidth <- c(g@renderInfo@nodes$rWidth, 1)
+                names(g@renderInfo@nodes$rWidth)[length(g@renderInfo@nodes$rWidth)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$lWidth <- c(g@renderInfo@nodes$lWidth, 1)
+                names(g@renderInfo@nodes$lWidth)[length(g@renderInfo@nodes$lWidth)] <- paste(i, "_inhibited", sep = "")
+                g@renderInfo@nodes$label[[paste(i, "_inhibited", sep = "")]] <- ""#"X            X\n X       X\n  X  X\n   X\n  X  X\n X       X\nX            X"
+                g@renderInfo@nodes$labelWidth <- c(g@renderInfo@nodes$labelWidth, g@renderInfo@nodes$labelWidth[which(names(g@renderInfo@nodes$labelWidth) %in% i)])
+                names(g@renderInfo@nodes$labelWidth)[length(g@renderInfo@nodes$labelWidth)] <- paste(i, "_inhibited", sep = "")
+
+                ## add the stimulating edge
+                tmp.name <- paste(i, "_inhibited", sep = "")
+                g@edgeL[[tmp.name]] <- list()
+                g@edgeL[[tmp.name]][["edges"]] <- which(g@nodes %in% i)
+                g@edgeData@data[[paste(tmp.name, "|", i, sep = "")]] <- list()
+                g@edgeData@data[[paste(tmp.name, "|", i, sep = "")]]$weight <- 1
+                g@renderInfo@edges$enamesFrom <- c(g@renderInfo@edges$enamesFrom, tmp.name)
+                names(g@renderInfo@edges$enamesFrom)[length(g@renderInfo@edges$enamesFrom)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$enamesTo <- c(g@renderInfo@edges$enamesTo, i)
+                names(g@renderInfo@edges$enamesTo)[length(g@renderInfo@edges$enamesTo)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$labelJust <- c(g@renderInfo@edges$labelJust, NA)
+                names(g@renderInfo@edges$labelJust)[length(g@renderInfo@edges$labelJust)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$labelX <- c(g@renderInfo@edges$labelX, NA)
+                names(g@renderInfo@edges$labelX)[length(g@renderInfo@edges$labelX)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$labelY <- c(g@renderInfo@edges$labelY, NA)
+                names(g@renderInfo@edges$labelY)[length(g@renderInfo@edges$labelY)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$labelWidth <- c(g@renderInfo@edges$labelWidth, NA)
+                names(g@renderInfo@edges$labelWidth)[length(g@renderInfo@edges$labelWidth)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$label <- c(g@renderInfo@edges$label, "")
+                names(g@renderInfo@edges$label)[length(g@renderInfo@edges$label)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$arrowhead <- c(g@renderInfo@edges$arrowhead, "open")
+                names(g@renderInfo@edges$arrowhead)[length(g@renderInfo@edges$arrowhead)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$arrowtail <- c(g@renderInfo@edges$arrowtail, "odot")
+                names(g@renderInfo@edges$arrowtail)[length(g@renderInfo@edges$arrowtail)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$col <- c(g@renderInfo@edges$col, "limegreen")
+                names(g@renderInfo@edges$col)[length(g@renderInfo@edges$col)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$lwd <- c(g@renderInfo@edges$lwd, lwd[1]*1)
+                names(g@renderInfo@edges$lwd)[length(g@renderInfo@edges$lwd)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$lty <- c(g@renderInfo@edges$lty, "solid")
+                names(g@renderInfo@edges$lty)[length(g@renderInfo@edges$lty)] <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$direction <- c(g@renderInfo@edges$direction, "forward")
+                names(g@renderInfo@edges$direction)[length(g@renderInfo@edges$direction)] <- paste(tmp.name, "~", i, sep = "")
+                ## calculate splines
+                tmp.splines <- rep(g@renderInfo@nodes$labelY[which(names(g@renderInfo@nodes$labelY) %in% i)], 8)
+                tmp.splines[c(7,5,3,1)] <- round(seq(g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + g@renderInfo@nodes$rWidth[[i]] + 10,
+                                                     g@renderInfo@nodes$labelX[which(names(g@renderInfo@nodes$labelX) %in% i)] + 200 - g@renderInfo@nodes$rWidth[[i]] - 10,
+                                                     length.out = 4))
+                ## tmp.splines[c(2,4,6,8)] <- seq(tmp.splines[2] + 50, tmp.splines[8], length.out = 4)
+                tmp.splines[2] <- tmp.splines[2] + 50
+                tmp.splines <- as.integer(tmp.splines)
+                g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]] <- g@renderInfo@edges$splines[[1]]
+                for (j in 1:4) {
+                    g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]][[1]]@cPoints[[j]]@x <- tmp.splines[c(1,3,5,7)][j]
+                    g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]][[1]]@cPoints[[j]]@y <- tmp.splines[c(2,4,6,8)][j]
+                }
+            }
+            g@renderInfo@graph$bbox[2,1] <- g@renderInfo@graph$bbox[2,1] + 150
+            g@renderInfo@graph$bbox[2,2] <- g@renderInfo@graph$bbox[2,2] + 25
+        }
+        g <- g
+        if (draw) {
+            renderGraph(g, lwd = lwd, recipEdges = "distinct", ...)
+        }
     }
-    g <- g
-    if (draw) {
-      renderGraph(g, lwd = lwd, recipEdges = "distinct", ...)
+    if (legend == 2 | legend == 3) {
+        legend(x = x, y = y, legend = c("signals are blue", "stimuli are diamonds/boxes", "inhibitors have a red border", "positive regulation is green ->", "negative regulation is red -|", "ambiguous regulation is black -o"), fill = c("lightblue", "white", "red", "green", "red", "black"), col = c("lightblue", "white", "red", "green", "red", "black"), yjust = yjust, xjust = xjust)
     }
-  }
-  if (legend == 2 | legend == 3) {
-    legend(x = x, y = y, legend = c("signals are blue", "stimuli are diamonds/boxes", "inhibitors have a red border", "positive regulation is green ->", "negative regulation is red -|", "ambiguous regulation is black -o"), fill = c("lightblue", "white", "red", "green", "red", "black"), col = c("lightblue", "white", "red", "green", "red", "black"), yjust = yjust, xjust = xjust)
-  }
-  return(g)
+    return(g)
 }
