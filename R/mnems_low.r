@@ -1,4 +1,78 @@
 
+lnem <- function(data, inference = "nemEst", control = NULL, ...) {
+    kds <- unlist(lapply(colnames(data), function(x) return(length(unlist(strsplit(x, "_"))))))
+    lnems <- list()
+    data2 <- data[, which(kds <= 1)]
+    for (i in 2:max(kds)) {
+        for (j in which(kds == i)) {
+            data3 <- cbind(data2, data[, j, drop = FALSE])
+            multi <- colnames(data3)[ncol(data3)]
+            if (inference %in% "nemEst") {
+                tmp <- nemEst(data3, ...)
+            } else {
+                colnames(data3)[ncol(data3)] <- "multi"
+                if (is.null(control)) {
+                    if (all(data %in% c(0,1))) {
+                        control <- set.default.parameters(setdiff(unique(colnames(data3)),"time"))
+                    } else {
+                        control <- set.default.parameters(setdiff(unique(colnames(data3)),"time"))
+                        control$type <- "CONTmLLBayes"
+                    }
+                }
+                tmp2 <- nem(data3, inference = inference, control = control, ...)
+                tmp <- list()
+                tmp$phi <- graph2adj(tmp2$graph)
+                rownames(tmp$phi)[which(rownames(tmp$phi) %in% "multi")] <- colnames(tmp$phi)[which(rownames(tmp$phi) %in% "multi")] <- multi
+            }
+            singles <- unlist(strsplit(multi, "_"))
+            direct <- colnames(tmp$phi)[which(apply(tmp$phi[which(colnames(tmp$phi) %in% singles), ], 2, sum) >= 1)]
+            if (any(tmp$phi[which(rownames(tmp$phi) %in% c(multi)),
+                            which(!(colnames(tmp$phi) %in% c(multi, singles, direct)))] == 1)) {
+                lnems[[multi]] <- tmp
+            }
+        }
+    }
+    dnf <- NULL
+    for (i in 1:length(lnems)) {
+        tmp <- ladj(lnems[[i]]$phi)
+        dnf <- c(dnf, tmp)
+    }
+    dnf <- absorption3(unique(dnf))
+    dnf <- transRed(dnf)
+    return(list(lnems = lnems, dnf = dnf))
+}
+
+ladj <- function(adj) {
+    for (i in notgrep("_", colnames(adj))) {
+        adj[i, grep(rownames(adj)[i], rownames(adj))] <- 1
+        adj[grep(rownames(adj)[i], rownames(adj)), i] <- 0
+        for (j in which(adj[, i] == 1)) {
+            if (adj[j, i] == 1) {
+                adj[grep(paste(unlist(strsplit(rownames(adj)[j], "_")), collapse = ".*"), rownames(adj)), i] <- 0
+                adj[j, i] <- 1
+            }
+        }
+    }
+    adj[grep("_", rownames(adj)), grep("_", colnames(adj))] <- 0
+    adj[, intersect(which(apply(adj, 1, sum) == 0), grep("_", rownames(adj)))] <- 0
+    rownames(adj)[grep("_", rownames(adj))] <- colnames(adj)[grep("_", colnames(adj))] <- paste0("AND", 1:length(grep("_", colnames(adj))))
+    dnf <- NULL
+    for (i in 1:nrow(adj)) {
+        targets <- which(adj[i, ] == 1)
+        for (j in targets) {
+            if (length(grep("AND", colnames(adj)[j])) > 0) {
+                dnf <- c(dnf, paste0(paste(sort(unique(c(rownames(adj)[i], rownames(adj)[which(adj[, j] == 1)]))), collapse = "+"), "=", rownames(adj)[which(adj[j, ] == 1)]))
+            } else {
+                dnf <- c(dnf, paste(c(rownames(adj)[i], "=", rownames(adj)[j]), collapse = ""))
+            }
+        }
+    }
+    dnf <- unique(dnf)
+    dnf <- dnf[notgrep("AND", dnf)]
+    dnf <- dnf[grep("=.*$", dnf)]
+    return(dnf)
+}
+
 andgrep <- function(patterns, targets, fun = grep) {
     found <- as.numeric(names(which(table(unlist(lapply(patterns, fun, targets))) == length(patterns))))
     return(found)
@@ -26,7 +100,7 @@ kernelnem <- function(R) {
 nemEst <- function(data, maxiter = 100, start = "full",
                    sumf = mean, alpha = 1, cut = 0,
                    kernel = "cosim", monoton = FALSE,
-                   useCut = TRUE, useF = TRUE) { # kernels can be cosim or cor # fun can be add, mult or sign
+                   useCut = TRUE, useF = TRUE, ...) { # kernels can be cosim or cor # fun can be add, mult or sign
     if (sum(duplicated(colnames(data)) == TRUE) > 0) {
         data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
         for (j in unique(colnames(data))) {
@@ -46,7 +120,7 @@ nemEst <- function(data, maxiter = 100, start = "full",
     if (!(kernel %in% c("cosim", "cor"))) { stop("kernel neither set to 'cosim' nor 'cor'.") }
     if (alpha < 1) {
         C <- cor(R)
-        C <- C2 <- solve(C)
+        C <- C2 <- solve(C, ...)
         for (r in 1:nrow(C)) {
             C[r, ] <- C[r, ]/(C2[r, r]^0.5)
         }
@@ -57,10 +131,10 @@ nemEst <- function(data, maxiter = 100, start = "full",
         Cz <- apply(C, c(1,2), function(x) return(0.5*log((1+x)/(1-x)))) # conditional independence test with fisher-transform
         diag(Cz) <- 0
         Cz <- pnorm(((nrow(R) - n - 2 - 3)^0.5)*Cz)
-        idx <- which(Cz <= alpha)
+        idx <- which(Cz >= alpha)
         Cp <- Cz
-        Cp[idx] <- 1
-        Cp[-idx] <- 0
+        Cp[-idx] <- 1
+        Cp[idx] <- 0
     } else {
         Cp <- 1
         Cz <- 0
@@ -128,7 +202,7 @@ nemEst <- function(data, maxiter = 100, start = "full",
         if (useCut) {
             cutoff <- cut*max(abs(O))
             phi[which(O > cutoff & E == 1)] <- 1
-            phi[which(O <= cutoff)] <- 0
+            phi[which(O <= cutoff | E == 0)] <- 0
             phi <- transitive.closure(phi, mat = TRUE)
         } else {
             O <- O*E

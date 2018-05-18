@@ -1,6 +1,6 @@
 ---
 title: "Mixture Nested Effects Models  \n
-Inferring networks from sub-populations of single cells."
+Inferring networks from subpopulations of single cells."
 author: "Martin Pirkl, Niko Beerenwinkel"
 date: "`r Sys.Date()`"
 graphics: yes
@@ -13,7 +13,7 @@ vignette: >
 
 # Mixture Nested Effects Models (M&NEM)
 
-Single cell RNA-seq data sets from pooled CrispR screens provide the possibility to analyzse heterogeneous cell populations. We extended the original Nested Effects Models (NEM) to Mixture Nested Effects Models (M&NEM) to identify not one causal signalling, but several ones, each based on the information of a sub-population of cells.
+Single cell RNA-seq data sets from pooled CrispR screens provide the possibility to analyzse heterogeneous cell populations. We extended the original Nested Effects Models (NEM) to Mixture Nested Effects Models (M&NEM) to identify not one causal signalling, but several ones, each based on the information of a subpopulation of cells.
 
 ## Install
 
@@ -112,10 +112,15 @@ Evaluation of the simulation results by accuracy of the networks, mixture weight
 ```{r, fig.height=8, fig.width=10, fig.cap=fig.cap2}
 data(sim)
 
+load("~/Documents/temp.rda")
+
+noises <- c(1,2.5,5)
+nems <- 1:5
+
 simres3 <- sim[[1]]
 simres5 <- sim[[2]]
 simres10 <- sim[[3]]
-simres20 <- sim[[4]]
+simres20 <- sim[[3]]
   
 meancol2 <- rgb(1,0,0)
 
@@ -133,17 +138,20 @@ for (i in 1:5) {
     for (j in c(3,5,10,20)) {
         tmp <- get(paste0("simres", j))
         tmp2 <- NULL
-        for (k in c(1,2)) {
-            for (l in 1:3) {
+        for (l in 1:3) {
+            for (k in c(1,3,2)) {
                 tmp3 <- tmp[,l,i,k,3]
                 tmp2 <- cbind(tmp2, tmp3)
             }
         }
-        boxplot(tmp2, col = c(rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0.5,1))
+        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n", ylim = c(0.5,1))
+        #  rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0.5,1))
+        abline(h=(5:10)/10, col = "grey", lty = 3)
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
-        axis(1, 1:(length(noises)*3), rep(noises, 3))
-        abline(v=c(length(noises)+0.5), lty = 3, col = "black", lwd = 2)
+        axis(1, 1:(length(noises)*3), c(rep(1,3), rep(2.5,3),rep(5,3)))
+        #axis(1, 1:(length(noises)*3), rep(noises, 3))
+        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3, col = "black", lwd = 2)
     }
 }
 
@@ -159,22 +167,44 @@ for (i in 1:4) {
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
 }
 
-for (i in 1:4) {
-    mtext("NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(2.97 - (i-1)*1.2))
-}
-
-for (i in 1:4) {
-    mtext("M&NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.5 - (i-1)*1.2))
-}
+# for (i in 1:4) {
+#     mtext("M&NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+#           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.6 - (i-1)*1.2))
+# }
+# 
+# for (i in 1:4) {
+#     mtext("cNEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+#           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.23 - (i-1)*1.2))
+# }
+# 
+# for (i in 1:4) {
+#     mtext("NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+#           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(2.875 - (i-1)*1.2))
+# }
 
 for (i in 1:4) {
     mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
-```
-```{r, fig.height=8, fig.width=10, fig.cap=fig.cap3}
+
+## komp
+
+noises <- c(1,2.5,5)
+nems <- 1:5
+
+simres3 <- sim[[1]]
+simres5 <- sim[[2]]
+simres10 <- sim[[3]]
+simres20 <- sim[[3]]
+  
+meancol2 <- rgb(1,0,0)
+
+meancol <- rgb(0,0,1)
+
+redcol <- rgb(1,0,0)
+
+bluecol <- rgb(0,0,1)
+
 mar <- 1.5
 
 par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
@@ -184,14 +214,23 @@ for (i in 1:5) {
         tmp <- get(paste0("simres", j))
         tmp2 <- NULL
         for (l in 1:3) {
-            tmp3 <- tmp[,l,i,1,2]
-            tmp2 <- cbind(tmp2, tmp3)
+            for (k in c(1,3,2)) {
+                tmp3 <- tmp[,l,i,k,2]
+                tmp2 <- cbind(tmp2, tmp3)
+            }
         }
-        boxplot(tmp2, col = rep(redcol, 3), xaxt = "n")
+        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n")#, ylim = c(0.5,1))
+        #  rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0.5,1))
+        
+        #abline(h=seq(0,5,length.out=51), col = "grey", lty = 3)
+        
+        abline(h=seq(min(tmp2),max(tmp2),length.out=11), col = "grey", lty = 3)
+        
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
-        axis(1, 1:(length(noises)*3), rep(noises, 3))
-        abline(h=1, lty = 3, col = "black", lwd = 2)
+        axis(1, 1:(length(noises)*3), c(rep(1,3), rep(2.5,3),rep(5,3)))
+        #axis(1, 1:(length(noises)*3), rep(noises, 3))
+        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3, col = "black", lwd = 2)
     }
 }
 
@@ -207,29 +246,68 @@ for (i in 1:4) {
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
 }
 
+# for (i in 1:4) {
+#     mtext("M&NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+#           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.6 - (i-1)*1.2))
+# }
+# 
+# for (i in 1:4) {
+#     mtext("cNEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+#           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.23 - (i-1)*1.2))
+# }
+# 
+# for (i in 1:4) {
+#     mtext("NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+#           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(2.875 - (i-1)*1.2))
+# }
+
 for (i in 1:4) {
     mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.15 - (i-1)*1.21))
+          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
-```
-```{r, fig.height=8, fig.width=10, fig.cap=fig.cap4}
+
+## mix
+
+noises <- c(1,2.5,5)
+nems <- 1:5
+
+simres3 <- sim[[1]]
+simres5 <- sim[[2]]
+simres10 <- sim[[3]]
+simres20 <- sim[[3]]
+  
+meancol2 <- rgb(1,0,0)
+
+meancol <- rgb(0,0,1)
+
+redcol <- rgb(1,0,0)
+
+bluecol <- rgb(0,0,1)
+
+mar <- 1.5
+
 par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
 
 for (i in 1:5) {
     for (j in c(3,5,10,20)) {
         tmp <- get(paste0("simres", j))
         tmp2 <- NULL
-        for (k in c(1,2)) {
-            for (l in 1:3) {
+        for (l in 1:3) {
+            for (k in c(1,3,2)) {
                 tmp3 <- tmp[,l,i,k,6]
                 tmp2 <- cbind(tmp2, tmp3)
             }
         }
-        boxplot(tmp2, col = c(rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0,1))
+        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n", ylim = c(0,1))
+        #  rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0.5,1))
+        
+        abline(h=seq(0,1,length.out=11), col = "grey", lty = 3)
+        
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
-        axis(1, 1:(length(noises)*3), rep(noises, 3))
-        abline(v=c(length(noises)+0.5), lty = 3, col = "black", lwd = 2)
+        axis(1, 1:(length(noises)*3), c(rep(1,3), rep(2.5,3),rep(5,3)))
+        #axis(1, 1:(length(noises)*3), rep(noises, 3))
+        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3, col = "black", lwd = 2)
     }
 }
 
@@ -245,20 +323,26 @@ for (i in 1:4) {
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
 }
 
-for (i in 1:4) {
-    mtext("NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(2.97 - (i-1)*1.2))
-}
-
-for (i in 1:4) {
-    mtext("M&NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.5 - (i-1)*1.2))
-}
+# for (i in 1:4) {
+#     mtext("M&NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+#           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.6 - (i-1)*1.2))
+# }
+# 
+# for (i in 1:4) {
+#     mtext("cNEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+#           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.23 - (i-1)*1.2))
+# }
+# 
+# for (i in 1:4) {
+#     mtext("NEM", side = 3, line = 44.3, outer = FALSE, cex = 1, adj = 0,
+#           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(2.875 - (i-1)*1.2))
+# }
 
 for (i in 1:4) {
     mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
+
 ```
 
 We randomly draw mixture weights and components as a comparison to our inferred weights.
@@ -293,6 +377,8 @@ We optimized the mixture for components K=1,2,3,4,5. Hence, we use our penelized
 ```{r, fig.height = 3, fig.width = 11, fig.cap = fig.cap5}
 
 data(app)
+
+load("~/Mount/Euler/app.rda")
 
 res2 <- app
 
@@ -567,7 +653,7 @@ verbose <- FALSE
 Egenes <- 2
 nCells <- 1000
 
-simres <- array(0, c(runs, length(noises), length(nems), 4, 7), list(paste("run_", 1:runs, sep = ""), paste("noise_", noises, sep = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "random", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing", "mixing2")))
+simres <- array(0, c(runs, length(noises), length(nems), 4, 7), list(paste("run_", 1:runs, sep = ""), paste("noise_", noises, sep = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "cnem", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing", "mixing2")))
 
 for (i in nem) {
     for (j in noise) {    
@@ -687,12 +773,21 @@ for (donoise in noise) {
         simres[run, donoise, donem, 2, 3] <- hamSim(simfull, t(fullnem))
         simres[run, donoise, donem, 2, 6] <- sum(dist(rbind(sort(c(1, rep(0, length(mw) - 1))), sort(mw))))
         
-        ## random:
-        fullrand <- matrix(sample(c(0,1), Sgenes^2, replace = TRUE), Sgenes, Sgenes)
-        diag(fullrand) <- 1
-        rownames(fullrand) <- colnames(fullrand) <- 1:Sgenes
+        ## cluster NEM:
+        start <- as.numeric(format(Sys.time(), "%s"))
+        res <- clustNEM(data, search = search)
+        simres[run, donoise, donem, 3, 1] <- as.numeric(format(Sys.time(), "%s")) - start
+         resfull <- NULL
+        fullres <- res$comp[[1]]$phi*0
+        for (i in 1:length(res$comp)) {
+            tmp <- transitive.closure(res$comp[[i]]$phi, mat = TRUE)
+            resfull <- cbind(resfull, t(tmp))
+            fullres <- fullres + transitive.closure(res$comp[[i]]$phi, mat = TRUE)
+        }
+        fullres[which(fullres > 1)] <- 1
+        diag(fullres) <- 1
         
-        simres[run, donoise, donem, 4, 2] <- 1/nems[donem]
+        simres[run, donoise, donem, 4, 2] <- length(res$comp)/nems[donem]
         tp <- sum(fullrand == 1 & fullsim == 1) - ncol(fullrand)
         tn <- sum(fullrand == 0 & fullsim == 0)
         fp <- sum(fullrand == 1 & fullsim == 0)
@@ -700,8 +795,15 @@ for (donoise in noise) {
         simres[run, donoise, donem, 4, 4] <- tp/(tp+fn)
         simres[run, donoise, donem, 4, 5] <- tn/(tn+fp)
         simres[run, donoise, donem, 4, 3] <- hamSim(simfull, fullrand)
-        simres[run, donoise, donem, 4, 6] <-  sum(dist(rbind(sort(c(1, rep(0, length(mw) - 1))), sort(mw))))
-        
+        if (length(mw) == length(res$mw)) {
+            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(res$mw), sort(mw))))
+        }
+        if (length(mw) > length(res$mw)) {
+            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(c(res$mw, rep(0, length(mw) - length(res$mw)))), sort(mw))))
+        }
+        if (length(mw) < length(res$mw)) {
+            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(c(mw, rep(0, length(res$mw) - length(mw)))), sort(res$mw))))
+        }
     }
 }
 
@@ -716,6 +818,33 @@ for (i in nem) {
 }
 
 stop("simulations are done")
+
+### load simulations
+
+sim <- list()
+
+count <- 0
+for (Sgenes in c(3,5,10,20)) {
+    simresF <- NULL
+    for (i in 1:length(noises)) {
+        for (j in 1:length(nems)) {
+            for (k in 1:runs) {
+                if (file.exists(paste0("temp/simres_mnem_", Sgenes, "_", k, "_", i, "_", j, ".rda"))) {
+                    load(paste0("temp/simres_mnem_", Sgenes, "_", k, "_", i, "_", j, ".rda"))
+                    if (is.null(simresF)) {
+                        simresF <- simres
+                    } else {
+                        simresF[k,i,j,,] <- simres[k,i,j,,]
+                    }
+                }
+            }
+        }
+    }
+    assign(paste0("simres", Sgenes), simresF)
+    count <- count + 1
+    sim[[count]] <- simresF
+}
+
 
 ### job script to turn normalized count data in log likelihood ratios and apply mnem.
 
@@ -1016,8 +1145,8 @@ bioRxiv 258202; doi: https://doi.org/10.1101/258202
 
 Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and Bock, C. (2017).  
 Pooled crispr screening with single-cell transcriptome readout.  
-Nature Methods, 14, 297 EP –.
+Nature Methods, 14, 297 EP ???.
 
 Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P., Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R., Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and Regev, A. (2016).  
 Perturb-seq: Dissecting molecular circuits with scalable single-cell rna profiling of pooled genetic screens.  
-Cell, 167(7), 1853–1866.e17.
+Cell, 167(7), 1853???1866.e17.
