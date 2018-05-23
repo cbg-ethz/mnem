@@ -1,10 +1,40 @@
 
-lnem <- function(data, inference = "nemEst", control = NULL, ...) {
+lnem <- function(data, inference = "nemEst", control = NULL, donot = TRUE, ...) {
     kds <- unlist(lapply(colnames(data), function(x) return(length(unlist(strsplit(x, "_"))))))
     lnems <- list()
     data2 <- data[, which(kds <= 1)]
+    if (donot) {
+        for (i in 1:ncol(data2)) {
+            data3 <- data2
+            not <- paste0("!", colnames(data2)[i])
+            data3[, i] <- -data3[, i]
+            if (inference %in% "nemEst") {
+                tmp <- nemEst(data3, ...)
+            } else {
+                colnames(data3)[ncol(data3)] <- "not"
+                if (is.null(control)) {
+                    if (all(data %in% c(0,1))) {
+                        control <- set.default.parameters(setdiff(unique(colnames(data3)),"time"))
+                    } else {
+                        control <- set.default.parameters(setdiff(unique(colnames(data3)),"time"))
+                        control$type <- "CONTmLLBayes"
+                    }
+                }
+                tmp2 <- nem(data3, inference = inference, control = control, ...)
+                tmp <- list()
+                tmp$phi <- graph2adj(tmp2$graph)
+                rownames(tmp$phi)[which(rownames(tmp$phi) %in% "not")] <- colnames(tmp$phi)[which(rownames(tmp$phi) %in% "not")] <- not
+            }
+            diag(tmp$phi) <- 0
+            if (any(tmp$phi[i, ] == 1)) {
+                diag(tmp$phi) <- 1
+                lnems[[not]] <- tmp
+            }
+        }
+    }
     for (i in 2:max(kds)) {
         for (j in which(kds == i)) {
+            ## positive
             data3 <- cbind(data2, data[, j, drop = FALSE])
             multi <- colnames(data3)[ncol(data3)]
             if (inference %in% "nemEst") {
@@ -30,12 +60,46 @@ lnem <- function(data, inference = "nemEst", control = NULL, ...) {
                             which(!(colnames(tmp$phi) %in% c(multi, singles, direct)))] == 1)) {
                 lnems[[multi]] <- tmp
             }
+            if (donot) {
+                ## negative
+                data3 <- cbind(data2, -data[, j, drop = FALSE])
+                multi2 <- paste0("!", colnames(data3)[ncol(data3)])
+                if (inference %in% "nemEst") {
+                    tmp <- nemEst(data3, ...)
+                } else {
+                    colnames(data3)[ncol(data3)] <- "multi"
+                    if (is.null(control)) {
+                        if (all(data %in% c(0,1))) {
+                            control <- set.default.parameters(setdiff(unique(colnames(data3)),"time"))
+                        } else {
+                            control <- set.default.parameters(setdiff(unique(colnames(data3)),"time"))
+                            control$type <- "CONTmLLBayes"
+                        }
+                    }
+                    tmp2 <- nem(data3, inference = inference, control = control, ...)
+                    tmp <- list()
+                    tmp$phi <- graph2adj(tmp2$graph)
+                    rownames(tmp$phi)[which(rownames(tmp$phi) %in% "multi")] <- colnames(tmp$phi)[which(rownames(tmp$phi) %in% "multi")] <- multi
+                }
+                singles <- unlist(strsplit(multi, "_"))
+                direct <- colnames(tmp$phi)[which(apply(tmp$phi[which(colnames(tmp$phi) %in% singles), ], 2, sum) >= 1)]
+                if (any(tmp$phi[which(rownames(tmp$phi) %in% c(multi)),
+                                which(!(colnames(tmp$phi) %in% c(multi, singles, direct)))] == 1)) {
+                    lnems[[multi2]] <- tmp
+                }
+            }
         }
     }
+    lnems <<- lnems
     dnf <- NULL
     for (i in 1:length(lnems)) {
-        tmp <- ladj(lnems[[i]]$phi)
-        dnf <- c(dnf, tmp)
+        if (length(grep("!", names(lnems)[i])) > 0) {
+            input <- gsub("!", "", unlist(strsplit(names(lnems)[i], "_")))
+            dnf <- c(dnf, paste0(paste0("!", input, "="), colnames(lnems[[i]]$phi)[which(lnems[[i]]$phi[grep(gsub("!", "", names(lnems)[i]), rownames(lnems[[i]]$phi)), ] == 1)]))
+        } else {
+            tmp <- ladj(lnems[[i]]$phi)
+            dnf <- c(dnf, tmp)
+        }
     }
     dnf <- absorption3(unique(dnf))
     dnf <- transRed(dnf)
@@ -71,6 +135,41 @@ ladj <- function(adj) {
     dnf <- dnf[notgrep("AND", dnf)]
     dnf <- dnf[grep("=.*$", dnf)]
     return(dnf)
+}
+
+absorption3 <- function(bString, model = NULL) {
+    graph <- bString
+    degree <- unlist(lapply(graph, function(x) return(length(unlist(strsplit(x, "\\+"))))))
+    identical <- NULL
+    for (i in graph) {
+        targets <- grep(paste("(?=.*", gsub("\\+", ")(?=.*", 
+                                            gsub("=", ")(?=.*=", i)), ")", sep = ""), graph, 
+                        perl = TRUE)
+        toomuch <- grep(paste("!", gsub("\\+", "|!", gsub("=.*", 
+                                                          "", i)), "", sep = ""), graph[targets])
+        if (length(toomuch) > 0) {
+            targets <- targets[-grep(paste("!", gsub("\\+", "|!", 
+                                                     gsub("=.*", "", i)), "", sep = ""), graph[targets])]
+        }
+        if (length(targets) > 1) {
+            identical <- c(identical, intersect(targets, which(degree == degree[which(graph %in% i)]))[-1])
+            targets <- targets[-which(targets == which(graph %in% 
+                                                       i))]
+            targets <- intersect(targets, which(degree > degree[which(graph %in% i)]))
+            if (is.null(model)) {
+                if (sum(bString %in% graph[targets]) > 0) {
+                    bString <- bString[-which(bString %in% graph[targets])]
+                }
+            }
+            else {
+                bString[which(model$reacID %in% graph[targets])] <- 0
+            }
+        }
+    }
+    if (is.null(model) & length(identical) > 0) {
+        bString <- bString[-identical]
+    }
+    return(bString)
 }
 
 andgrep <- function(patterns, targets, fun = grep) {
