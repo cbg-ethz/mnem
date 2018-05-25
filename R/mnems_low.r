@@ -1,3 +1,122 @@
+nemEst <- function(data, maxiter = 100, start = "full",
+                   sumf = mean, alpha = 1, cut = 0,
+                   kernel = "cosim", monoton = FALSE,
+                   useCut = TRUE, useF = TRUE, ...) { # kernels can be cosim or cor # fun can be add, mult or sign
+    if (sum(duplicated(colnames(data)) == TRUE) > 0) {
+        data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
+        for (j in unique(colnames(data))) {
+            data2[, j] <- apply(data[, which(colnames(data) %in% j), drop = FALSE], 1, sumf)
+        }
+    } else {
+        data2 <- data
+    }
+    R <- data2[, naturalsort(colnames(data2))] 
+    n <- ncol(R)
+    if (kernel %in% "cosim") {
+        R2 <- t(R)%*%R
+    }
+    if (kernel %in% "cor") {
+        R2 <- cor(R)
+    }
+    if (!(kernel %in% c("cosim", "cor"))) { stop("kernel neither set to 'cosim' nor 'cor'.") }
+    if (alpha < 1) {
+        C <- cor(R)
+        C <- C2 <- solve(C, ...)
+        for (r in 1:nrow(C)) {
+            C[r, ] <- C[r, ]/(C2[r, r]^0.5)
+        }
+        for (c in 1:ncol(C)) {
+            C[, c] <- C[, c]/(C2[c, c]^0.5)
+        }
+        diag(C) <- 1
+        Cz <- apply(C, c(1,2), function(x) return(0.5*log((1+x)/(1-x)))) # conditional independence test with fisher-transform
+        diag(Cz) <- 0
+        Cz <- pnorm(((nrow(R) - n - 2 - 3)^0.5)*Cz)
+        idx <- which(Cz >= alpha)
+        Cp <- Cz
+        Cp[-idx] <- 1
+        Cp[idx] <- 0
+    } else {
+        Cp <- 1
+        Cz <- 0
+    }
+    phibest <- phi <- matrix(0, n, n)
+    rownames(phi) <- colnames(phi) <- colnames(R)
+    E0 <- apply(R, 2, sum)
+    phi <- phi[order(E0, decreasing = TRUE), order(E0, decreasing = TRUE)]
+    phi[upper.tri(phi)] <- 1
+    phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
+    phi <- transitive.closure(phi, mat = TRUE)
+    E <- phi
+    E <- E*Cp
+    if (any(start %in% "full")) {
+        phi <- phi
+    } else if (any(start %in% "rand")) {
+        phi <- phi*0
+        diag(phi) <- 1
+        phi[1:length(phi)] <- sample(c(0,1), length(phi), replace = TRUE)
+    } else if (any(start %in% "null")) {
+        phi <- phi*0
+        diag(phi) <- 1
+    } else {
+        phi <- start
+    }
+    O <- phi*0
+    iter <- Oold <- 0
+    lls <- NULL
+    llbest <- -Inf
+    stop <- FALSE
+    while(!stop & iter < maxiter) {
+        iter <- iter + 1
+        P <- R%*%cbind(phi, 0)
+        P[, grep("_", colnames(phi))] <- min(P)
+        subtopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(P, 1, function(x) return(which.max(x)))))
+        theta <- t(R)*0
+        theta[cbind(subtopo, 1:ncol(theta))] <- 1
+        Oold <- O
+        ll <- sum(diag(theta%*%P))
+        if (ll %in% lls | all(phi == phibest)) {
+            stop <- TRUE
+        }
+        if (monoton & iter > 1) {
+            if (ll < lls[length(lls)]) { stop <- TRUE }
+        }
+        if (llbest < ll) {
+            phibest <- phi
+            thetabest <- theta
+            llbest <- ll
+            numbest <- iter
+            Obest <- O
+        }
+        lls <- c(lls, ll)
+        ## we have to fill up the theta, however, this seems to worsen convergence and also places incorrect ones, needs improvement:
+        nogenes <- which(apply(theta, 1, sum) == 0)
+        nozeros <- which(t(P) > 0, arr.ind = TRUE)
+        nozeros <- nozeros[which(nozeros[, 1] %in% nogenes), ]
+        theta[nozeros] <- 1
+        theta[grep("_", colnames(phi)), ] <- 0
+        if (useF) {
+            O <- t(R)%*%t(phi%*%theta)
+        } else {
+            O <- t(R)%*%t(theta)
+        }
+        if (useCut) {
+            cutoff <- cut*max(abs(O))
+            phi[which(O > cutoff & E == 1)] <- 1
+            phi[which(O <= cutoff | E == 0)] <- 0
+            phi <- transitive.closure(phi, mat = TRUE)
+        } else {
+            O <- O*E
+            supertopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(O, 1, function(x) return(which.max(x)))))
+            phi <- phi*0
+            phi[cbind(supertopo, 1:ncol(phi))] <- 1
+            phi <- transitive.closure(phi, mat = TRUE)
+        }
+    }
+    nem <- list(phi = phibest, theta = thetabest, iter = iter, ll = llbest, lls = lls, num = numbest, C = Cz, O = Obest, E = E0)
+    class(nem) <- "nemEst" 
+    return(nem)
+}
 
 lnem <- function(data, inference = "nemEst", control = NULL, donot = TRUE, ...) {
     kds <- unlist(lapply(colnames(data), function(x) return(length(unlist(strsplit(x, "_"))))))
@@ -194,136 +313,6 @@ kernelnem <- function(R) {
     }
     K <- (K + t(K))/2
     return(K)
-}
-
-nemEst <- function(data, maxiter = 100, start = "full",
-                   sumf = mean, alpha = 1, cut = 0,
-                   kernel = "cosim", monoton = FALSE,
-                   useCut = TRUE, useF = TRUE, ...) { # kernels can be cosim or cor # fun can be add, mult or sign
-    if (sum(duplicated(colnames(data)) == TRUE) > 0) {
-        data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
-        for (j in unique(colnames(data))) {
-            data2[, j] <- apply(data[, which(colnames(data) %in% j), drop = FALSE], 1, sumf)
-        }
-    } else {
-        data2 <- data
-    }
-    R <- data2[, naturalsort(colnames(data2))] 
-    n <- ncol(R)
-    if (kernel %in% "cosim") {
-        R2 <- t(R)%*%R
-    }
-    if (kernel %in% "cor") {
-        R2 <- cor(R)
-    }
-    if (!(kernel %in% c("cosim", "cor"))) { stop("kernel neither set to 'cosim' nor 'cor'.") }
-    if (alpha < 1) {
-        C <- cor(R)
-        C <- C2 <- solve(C, ...)
-        for (r in 1:nrow(C)) {
-            C[r, ] <- C[r, ]/(C2[r, r]^0.5)
-        }
-        for (c in 1:ncol(C)) {
-            C[, c] <- C[, c]/(C2[c, c]^0.5)
-        }
-        diag(C) <- 1
-        Cz <- apply(C, c(1,2), function(x) return(0.5*log((1+x)/(1-x)))) # conditional independence test with fisher-transform
-        diag(Cz) <- 0
-        Cz <- pnorm(((nrow(R) - n - 2 - 3)^0.5)*Cz)
-        idx <- which(Cz >= alpha)
-        Cp <- Cz
-        Cp[-idx] <- 1
-        Cp[idx] <- 0
-    } else {
-        Cp <- 1
-        Cz <- 0
-    }
-    phibest <- phi <- matrix(0, n, n)
-    rownames(phi) <- colnames(phi) <- colnames(R)
-    E0 <- apply(R, 2, sum)
-    phi <- phi[order(E0, decreasing = TRUE), order(E0, decreasing = TRUE)]
-    phi[upper.tri(phi)] <- 1
-    phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
-    phi <- transitive.closure(phi, mat = TRUE)
-    E <- phi
-    E <- E*Cp
-    if (any(start %in% "full")) {
-        phi <- phi
-    } else if (any(start %in% "rand")) {
-        phi <- phi*0
-        diag(phi) <- 1
-        phi[1:length(phi)] <- sample(c(0,1), length(phi), replace = TRUE)
-    } else if (any(start %in% "null")) {
-        phi <- phi*0
-        diag(phi) <- 1
-    } else {
-        phi <- start
-    }
-    O <- phi*0
-    iter <- Oold <- 0
-    lls <- NULL
-    llbest <- -Inf
-    stop <- FALSE
-    while(!stop & iter < maxiter) {
-        iter <- iter + 1
-        P <- R%*%cbind(phi, 0)
-        P[, grep("_", colnames(phi))] <- min(P)
-        subtopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(P, 1, function(x) return(which.max(x)))))
-        theta <- t(R)*0
-        theta[cbind(subtopo, 1:ncol(theta))] <- 1
-        Oold <- O
-        ll <- sum(diag(theta%*%P))
-        if (ll %in% lls | all(phi == phibest)) {
-            stop <- TRUE
-        }
-        if (monoton & iter > 1) {
-            if (ll < lls[length(lls)]) { stop <- TRUE }
-        }
-        if (llbest < ll) {
-            phibest <- phi
-            thetabest <- theta
-            llbest <- ll
-            numbest <- iter
-            Obest <- O
-        }
-        lls <- c(lls, ll)
-        ## we have to fill up the theta, however, this seems to worsen convergence and also places incorrect ones, needs improvement:
-        nogenes <- which(apply(theta, 1, sum) == 0)
-        nozeros <- which(t(P) > 0, arr.ind = TRUE)
-        nozeros <- nozeros[which(nozeros[, 1] %in% nogenes), ]
-        theta[nozeros] <- 1
-        theta[grep("_", colnames(phi)), ] <- 0
-        if (useF) {
-            O <- t(R)%*%t(phi%*%theta)
-        } else {
-            O <- t(R)%*%t(theta)
-        }
-        if (useCut) {
-            cutoff <- cut*max(abs(O))
-            phi[which(O > cutoff & E == 1)] <- 1
-            phi[which(O <= cutoff | E == 0)] <- 0
-            phi <- transitive.closure(phi, mat = TRUE)
-        } else {
-            O <- O*E
-            supertopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(O, 1, function(x) return(which.max(x)))))
-            phi <- phi*0
-            phi[cbind(supertopo, 1:ncol(phi))] <- 1
-            phi <- transitive.closure(phi, mat = TRUE)
-        }
-    }
-    for (i in which(phibest == 1)) {
-        tmp <- phibest
-        tmp[i] <- 0
-        if (sum(diag(tmp%*%theta%*%R)) >= llbest) {
-            phi <- tmp
-        }
-    }
-    phibest[, which(apply(thetabest, 1, sum) == 0)] <- 0
-    diag(phibest) <- 1
-    ll <- sum(diag(phi%*%theta%*%R))
-    nem <- list(phi = phibest, theta = thetabest, iter = iter, ll = ll, lls = lls, num = numbest, C = Cz, O = Obest, E = E0)
-    class(nem) <- "nemEst"
-    return(nem)
 }
 
 print.nemEst <- function(nem) {
