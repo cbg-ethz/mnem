@@ -531,7 +531,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
                   verbose = FALSE, redSpace = NULL,
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
-                  ratio = TRUE, domean = TRUE, modulesize = 5) { # reduce might not work as expected
+                  ratio = TRUE, domean = TRUE, modulesize = 5, ...) { # reduce might not work as expected
     if ("modules" %in% search) {
         if (length(search) > 1) {
             search <- search[-which(search %in% "modules")]
@@ -564,10 +564,16 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         D <- mD
         colnames(D) <- 1:length(Sgenes)
     }
-    if (is.null(start) == TRUE) {
+    if (is.null(start)) {
+        start2 <- "full"
         start <- better <- matrix(0, length(Sgenes), length(Sgenes))
     } else {
-        better <- start
+        if (length(start) == 1) {
+            start2 <- start
+            start <- better <- matrix(0, length(Sgenes), length(Sgenes))
+        } else {
+            better <- start
+        }
     }
     diag(start) <- diag(better) <- 1
     colnames(better) <- rownames(better) <- colnames(start) <- rownames(start) <- Sgenes
@@ -733,6 +739,20 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         better <- traClo(matrix(bestbivec, n, n), mat = TRUE)
         colnames(better) <- rownames(better) <- Sgenes
         diag(better) <- 1
+    }
+
+    if (search %in% "estimate") {
+        if (!is.null(weights)) {
+            Dw <- t(t(D)*weights)
+        } else {
+            Dw <- D
+        }
+        tmp <- nemEst(Dw, start = start2, ...)
+        subtopo <- apply(tmp$theta, 2, function(x) return(which(x == 1)))
+        better <- tmp$phi
+        oldscore <- tmp$ll
+        allscores <- tmp$lls
+        subweights <- t(Dw%*%cbind(tmp$phi, 0))
     }
 
     if (!is.null(parallel)) {
