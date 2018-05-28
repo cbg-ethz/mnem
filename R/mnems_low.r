@@ -1,7 +1,7 @@
-nemEst <- function(data, maxiter = 100, start = "full",
+nemEst <- function(data, maxiter = 100, start = "null",
                    sumf = mean, alpha = 1, cut = 0,
                    kernel = "cosim", monoton = FALSE,
-                   useCut = TRUE, useF = TRUE, ...) { # kernels can be cosim or cor # fun can be add, mult or sign
+                   useCut = TRUE, useF = FALSE, ...) { # kernels can be cosim or cor # fun can be add, mult or sign
     if (sum(duplicated(colnames(data)) == TRUE) > 0) {
         data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
         for (j in unique(colnames(data))) {
@@ -98,7 +98,7 @@ nemEst <- function(data, maxiter = 100, start = "full",
         if (useF) {
             O <- t(R)%*%t(phi%*%theta)
         } else {
-            O <- t(R)%*%t(theta)
+            O <- t(R)%*%t(theta) # this works better... math checks out, does it?
         }
         if (useCut) {
             cutoff <- cut*max(abs(O))
@@ -107,7 +107,7 @@ nemEst <- function(data, maxiter = 100, start = "full",
             phi <- transitive.closure(phi, mat = TRUE)
         } else {
             O <- O*E
-            supertopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(O, 1, function(x) return(which.max(x)))))
+            supertopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(O, 1, function(x) return(which(x == max(x))))))
             phi <- phi*0
             phi[cbind(supertopo, 1:ncol(phi))] <- 1
             phi <- transitive.closure(phi, mat = TRUE)
@@ -677,70 +677,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         better <- traClo(models[[best]], mat = TRUE)
         diag(better) <- 1
     }
-
-    if (search %in% "exhaustive2") {
-        dec2bin <- function(x) {
-            if (x == 0) {
-                y <- 0
-            } else {
-                tmp <- rev(as.integer(intToBits(x)))
-                y <- tmp[which(tmp != 0)[1]:length(tmp)]
-            }
-            return(y)
-        }
-        n <- length(Sgenes)
-        spaceExp <- 2^(n*n)
-        ## if (verbose) { print(paste("different network structures: ", spaceExp, sep = "")) }
-        if (!is.null(redSpace)) {
-            spaceUnique <- redSpace
-            ## if (verbose) { print(paste("different equivalence classes: ", length(spaceUnique), sep = "")) }
-        } else {
-            if (reduce) {
-                createFull <- function(i) {
-                    bivec <- dec2bin(i-1)
-                    bivec <- c(rep(0, n*n - length(bivec)), bivec)
-                    adj <- traClo(matrix(bivec, n, n), mat = TRUE)
-                    diag(adj) <- 1
-                    return(paste(as.vector(adj), collapse = ""))
-                }
-                if (is.null(parallel)) {
-                    spaceFull <- do.call("c", lapply(1:spaceExp, createFull))
-                } else {
-                    spaceFull <- do.call("c", sfLapply(1:spaceExp, createFull))
-                }
-                spaceUnique <- (1:spaceExp)[-which(duplicated(spaceFull) == TRUE)]
-                redSpace <- spaceUnique
-                ## if (verbose) { print(paste("different equivalence classes: ", length(spaceUnique), sep = "")) }
-            } else {
-                spaceUnique <- 1:spaceExp
-            }
-        }
-        scores <- numeric(spaceExp)
-        doScores <- function(i) {
-            bivec <- dec2bin(i-1)
-            bivec <- c(rep(0, n*n - length(bivec)), bivec)
-            adj <- traClo(matrix(bivec, n, n), mat = TRUE)
-            diag(adj) <- 1
-            colnames(adj) <- rownames(adj) <- Sgenes
-            score <- scoreAdj(D, adj, method = method, weights = weights,
-                              subtopo = subtopo, prior = prior,
-                              ratio = ratio)
-            subtopo <- score$subtopo
-            score <- score$score
-            return(score)
-        }
-        if (is.null(parallel)) {
-            scores[spaceUnique] <- unlist(lapply(spaceUnique, doScores))
-        } else {
-            scores[spaceUnique] <- unlist(sfLapply(spaceUnique, doScores))
-        }
-        bestbivec <- dec2bin(which.max(scores)-1)
-        bestbivec <- c(rep(0, n*n - length(bestbivec)), bestbivec)
-        better <- traClo(matrix(bestbivec, n, n), mat = TRUE)
-        colnames(better) <- rownames(better) <- Sgenes
-        diag(better) <- 1
-    }
-
+    
     if (search %in% "estimate") {
         if (!is.null(weights)) {
             Dw <- t(t(D)*weights)
@@ -748,11 +685,11 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
             Dw <- D
         }
         tmp <- nemEst(Dw, start = start2, ...)
-        subtopo <- apply(tmp$theta, 2, function(x) return(which(x == 1)))
         better <- tmp$phi
         oldscore <- tmp$ll
         allscores <- tmp$lls
         subweights <- t(Dw%*%cbind(tmp$phi, 0))
+        subtopo <- apply(subweights, 1, which.max)
     }
 
     if (!is.null(parallel)) {
