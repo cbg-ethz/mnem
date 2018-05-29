@@ -104,15 +104,20 @@ nemEst <- function(data, maxiter = 100, start = "null",
             cutoff <- cut*max(abs(O))
             phi[which(O > cutoff & E == 1)] <- 1
             phi[which(O <= cutoff | E == 0)] <- 0
-            phi <- transitive.closure(phi, mat = TRUE)
         } else {
             O <- O*E
             supertopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(O, 1, function(x) return(which(x == max(x))))))
             phi <- phi*0
             phi[cbind(supertopo, 1:ncol(phi))] <- 1
-            phi <- transitive.closure(phi, mat = TRUE)
         }
     }
+    phibest <- transitive.closure(phibest, mat = TRUE)
+    P <- R%*%cbind(phibest, 0)
+    P[, grep("_", colnames(phibest))] <- min(P)
+    subtopo <- as.numeric(gsub(ncol(phibest)+1, 0, apply(P, 1, function(x) return(which.max(x)))))
+    thetabest <- t(R)*0
+    thetabest[cbind(subtopo, 1:ncol(thetabest))] <- 1
+    llbest <- sum(diag(thetabest%*%P))
     nem <- list(phi = phibest, theta = thetabest, iter = iter, ll = llbest, lls = lls, num = numbest, C = Cz, O = Obest, E = E0)
     class(nem) <- "nemEst" 
     return(nem)
