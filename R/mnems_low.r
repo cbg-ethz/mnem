@@ -19,7 +19,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         R2 <- cor(R)
     }
     if (!(kernel %in% c("cosim", "cor"))) { stop("kernel neither set to 'cosim' nor 'cor'.") }
-    if (alpha < 1) {
+    if (alpha < 1) { # this messes with convergence anyhow...
         C <- cor(R)
         C <- C2 <- solve(C, ...)
         for (r in 1:nrow(C)) {
@@ -29,7 +29,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
             C[, c] <- C[, c]/(C2[c, c]^0.5)
         }
         diag(C) <- 1
-        Cz <- apply(C, c(1,2), function(x) return(0.5*log((1+x)/(1-x)))) # conditional independence test with fisher-transform
+        Cz <- apply(C, c(1,2), function(x) return(0.5*log((1+x)/(1-x))))
         diag(Cz) <- 0
         Cz <- pnorm(((nrow(R) - n - 2 - 3)^0.5)*Cz)
         idx <- which(Cz >= alpha)
@@ -89,7 +89,6 @@ nemEst <- function(data, maxiter = 100, start = "null",
             Obest <- O
         }
         lls <- c(lls, ll)
-        ## we have to fill up the theta, however, this seems to worsen convergence and also places incorrect ones, needs improvement:
         nogenes <- which(apply(theta, 1, sum) == 0)
         nozeros <- which(t(P) > 0, arr.ind = TRUE)
         nozeros <- nozeros[which(nozeros[, 1] %in% nogenes), ]
@@ -570,14 +569,14 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         colnames(D) <- 1:length(Sgenes)
     }
     if (is.null(start)) {
-        start2 <- "full"
+        start2 <- "null"
         start <- better <- matrix(0, length(Sgenes), length(Sgenes))
     } else {
         if (length(start) == 1) {
             start2 <- start
             start <- better <- matrix(0, length(Sgenes), length(Sgenes))
         } else {
-            better <- start
+            better <- start2 <- start
         }
     }
     diag(start) <- diag(better) <- 1
