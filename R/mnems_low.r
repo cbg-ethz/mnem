@@ -692,7 +692,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         better <- tmp$phi
         oldscore <- tmp$ll
         allscores <- tmp$lls
-        subweights <- Dw%*%cbind(tmp$phi, 0)
+        subweights <- Dw%*%cbind(tmp$phi[colnames(Dw), ], 0)
         subtopo <- apply(subweights, 1, which.max)
     }
 
