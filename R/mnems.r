@@ -228,15 +228,21 @@ learnk <- function(data, kmax = 10, verbose = FALSE) {
 }
 #' @noRd
 #' @export
-getLL <- function(x, logtype = 2, mw = NULL) {
+getLL <- function(x, logtype = 2, mw = NULL, data = NULL) {
     if (is.null(mw)) { mw = rep(1, nrow(x))/nrow(x) }
-    x <- logtype^x
-    x <- x*mw
-    return(sum(log(apply(x, 2, sum))/log(logtype)))
+    if (any(is.infinite(logtype^apply(data, 2, function(x) return(sum(x[which(x>0)])))))) {
+        Z <- getAffinity(x, logtype = logtype, mw = mw, data = data)
+        l <- sum(apply(Z*(x + log(mw)/log(logtype)), 2, sum))
+    } else {
+        x <- logtype^x
+        x <- x*mw
+        l <- sum(log(apply(x, 2, sum))/log(logtype))
+    }
+    return(l)
 }
 #' @noRd
 #' @export
-getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL) {
+getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL, data = matrix(0, 2, ncol(x))) {
     if (is.null(mw)) { mw <- rep(1, nrow(x))/nrow(x) }
     if (affinity == 1) {
         y <- logtype^x
@@ -257,6 +263,15 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL) {
         if (nrow(x) > 1) {
             y <- x
             if (norm) {
+                if (any(is.infinite(logtype^apply(data, 2, function(x) return(sum(x[which(x>0)])))))) {
+                    y <- apply(y, 2, function(x) {
+                        xmax <- max(x)
+                        maxnum <- 2^1023
+                        shrinkfac <- log(maxnum)/log(logtype)
+                        x <- x - (xmax - shrinkfac)
+                        return(x)
+                    })
+                }
                 y <- logtype^y
                 y <- y*mw
                 y <- apply(y, 2, function(x) return(x/sum(x)))
@@ -298,7 +313,8 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
     max_count <- 100
     ll0 <- 0
     stop <- FALSE
-    mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE, logtype = logtype), 1, mean)
+    mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE, logtype = logtype, data = data), 1, sum)
+    mw <- mw/sum(mw)
     if (any(is.na(mw))) { mw <- rep(1, k)/k }
     while((!stop | time0) & count < max_count) {
         llold <- max(ll0)
@@ -306,7 +322,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
         probsold <- probs
         subtopo0 <- matrix(0, k, nrow(data))
         subweights0 <- matrix(0, nrow(data), n+1) # account for null node
-        postprobsold <- getAffinity(probsold, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
+        postprobsold <- getAffinity(probsold, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data)
         align <- list()
         for (i in 1:k) {
             n <- getSgeneN(data)
@@ -346,7 +362,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
                 tmp <- llrScore(t(data), t(adj2), ratio = ratio)
                 probs0[[do]][i, ] <- tmp[cbind(1:nrow(tmp), as.numeric(rownames(tmp)))]
             }
-            ll0[do] <- getLL(probs0[[do]], logtype = logtype, mw = mw)
+            ll0[do] <- getLL(probs0[[do]], logtype = logtype, mw = mw, data = data)
         }
         if (which.max(ll0) == 1) {
             sdo <- 1
@@ -362,7 +378,8 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
         if (max(ll0) - llold <= converged) {
             stop <- TRUE
         }
-        mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, mean)
+        mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data), 1, sum)
+        mw <- mw/sum(mw)
         count <- count + 1
         ## if (verbose) { print(max(ll0)) }
     }
@@ -503,13 +520,13 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
         for (i in 1:2) { # i == 1 seems to win most of the time
             probs <- matrix(i - 1, k, ncol(data))
             probs <- getProbs(probs, k, data, res, method, n, affinity, converged, subtopoX, ratio)
-            if (getLL(probs$probs, logtype = logtype, mw = mw) > getLL(probs0$probs, logtype = logtype, mw = mw)) {
+            if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) > getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
                 probs0 <- probs
             }
         }
         subtopoX <- probs0$subtopoX
         probs <- probs0$probs
-        limits[[1]]$ll <- getLL(probs, logtype = logtype, mw = mw)
+        limits[[1]]$ll <- getLL(probs, logtype = logtype, mw = mw, data = data)
         limits[[1]]$probs <- probs
     } else {
         if (inference %in% "em") {
@@ -538,7 +555,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                         for (i in 1:2) {
                             probs <- matrix(i - 1, k, ncol(data))
                             probs <- getProbs(probs, k, data, res1, method, n, affinity, converged, subtopoX, ratio)
-                            if (getLL(probs$probs, logtype = logtype, mw = mw) > getLL(probs0$probs, logtype = logtype, mw = mw)) {
+                            if (getLL(probs$probs, logtype = logtype, mw = mw, data = data1) > getLL(probs0$probs, logtype = logtype, mw = mw, data = data1)) {
                                 probs0 <- probs
                             }
                         }
@@ -554,18 +571,20 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                     } else {
                         probs <- matrix(log2(sample(c(0,1), k*ncol(data), replace = TRUE, prob = c(0.9, 0.1))), k, ncol(data))
                     }
-                    mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, mean)
+                    mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data), 1, sum)
+                    mw <- mw/sum(mw)
                 } else {
                     k <- nrow(p)
                     probs <- p
                 }
-                mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, mean)
+                mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data), 1, sum)
+                mw <- mw/sum(mw)
                 if (any(is.na(mw))) { mw <- rep(1, k)/k }
                 if (verbose) {
                     print(paste("start...", s))
                 }
                 limits <- list()
-                ll <- getLL(probs, logtype = logtype, mw = mw)
+                ll <- getLL(probs, logtype = logtype, mw = mw, data = data)
                 llold <- bestll <- -Inf
                 lls <- NULL
                 count <- 0
@@ -581,7 +600,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                     }
                     time0 <- FALSE
                     res <- list()
-                    postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
+                    postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data)
                     edgechange <- 0
                     thetachange <- 0
                     for (i in 1:k) {
@@ -656,7 +675,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                             probs <- matrix(i - 1, k, ncol(data))
                         }
                         probs <- getProbs(probs, k, data, res, method, n, affinity, converged, subtopoX, ratio)
-                        if (getLL(probs$probs, logtype = logtype, mw = mw) > getLL(probs0$probs, logtype = logtype, mw = mw)) {
+                        if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) > getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
                             probs0 <- probs
                         }
                     }
@@ -664,8 +683,9 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                     probs <- probs0$probs
                     modelsize <- n*n*k
                     datasize <- nrow(data)*ncol(data)*k
-                    ll <- getLL(probs, logtype = logtype, mw = mw) + evopen*datasize*(modelsize^-1)
-                    mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw), 1, mean)
+                    ll <- getLL(probs, logtype = logtype, mw = mw, data = data) + evopen*datasize*(modelsize^-1)
+                    mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data), 1, sum)
+                    mw <- mw/sum(mw)
                     if(verbose) {
                         print(paste("ll: ", ll, sep = ""))
                         print(paste("changes in phi(s): ", edgechange, sep = ""))
@@ -761,9 +781,10 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
         unique <- unique2
         probs <- best$probs[added, , drop = FALSE]
         colnames(probs) <- colnames(D.backup)
-        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
+        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data)
         if (!is.null(dim(postprobs))) {
-            lambda <- apply(postprobs, 1, mean)
+            lambda <- apply(postprobs, 1, sum)
+            lambda <- lambda/sum(lambda)
         } else {
             lambda <- 1
         }
@@ -776,9 +797,10 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
     } else {
         probs <- best$probs[, , drop = FALSE]
         colnames(probs) <- colnames(D.backup)
-        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw)
+        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data)
         if (!is.null(dim(postprobs))) {
-            lambda <- apply(postprobs, 1, mean)
+            lambda <- apply(postprobs, 1, sum)
+            lambda <- lambda/sum(lambda)
         } else {
             lambda <- 1
         }
@@ -789,7 +811,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
             comp[[i]]$theta <- best$res[[i]]$subtopo
         }
     }
-    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, ll = getLL(probs, logtype = logtype, mw = lambda))
+    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, ll = getLL(probs, logtype = logtype, mw = lambda, data = data))
     class(res) <- "mnem"
     return(res)
 }
@@ -904,6 +926,8 @@ bootstrap <- function(x) {
 plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ratio = TRUE, method = "llr", showweights = TRUE, ...) {
 
     x2 <- x
+
+    data <- x$data
     
     laymat <- rbind(1:(length(x$comp)+1), c(length(x$comp)+2, rep(length(x$comp)+3, length(x$comp))))
 
@@ -927,7 +951,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             layout = "circo")
     }
     full <- x$comp[[1]]$phi
-    mixnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw)
+    mixnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw, data = data)
     mixnorm <- apply(mixnorm, 2, function(x) {
         xmax <- max(x)
         x[which(x != xmax)] <- 0
@@ -961,7 +985,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             enodewidth <- list()
             probs <- x$probs
             if (is.null(x$comp[[i]]$theta)) {
-                weights <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw)
+                weights <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw, data = data)
                 subtopo <- scoreAdj(modData(x$data), x$comp[[i]]$phi, method = method, weights = weights[i, ],
                                     ratio = ratio, ...)$subtopo
             } else {
@@ -985,7 +1009,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         }
         if (cells) {
             datanorm <- modData(x$data)
-            pnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw)
+            pnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw, data = data)
             pnorm <- apply(pnorm, 2, function(x) {
                 xmax <- max(x)
                 x[which(x != xmax)] <- 0
@@ -1018,7 +1042,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         if (bestCell) {
             bnodes <- bnodeshape <- bnodeheight <- bnodewidth <- list()
             if (nrow(x$probs) > 1) {
-                gam <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw)
+                gam <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw, data = data)
             } else {
                 gam <- (logtype^x$probs)*x$mw
                 gam <- gam/gam
