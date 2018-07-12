@@ -34,7 +34,7 @@ plot.mnem(x, oma = c(3, 1, 1, 3), main = "M&NEM", anno = TRUE,
 
 \item{affinity}{logical use hard clustering if true}
 
-\item{logtype}{log type of the data}
+\item{logtype}{logarithm type of the data}
 
 \item{cells}{show ccell attachments}
 
@@ -65,10 +65,10 @@ visualization of mnem result Rgraphviz
 plot mnem result
 }
 \examples{
-sim <- simData(Sgenes = 5, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 data <- (sim$data - 0.5)/0.5
 data <- data + rnorm(length(data), 0, 1)
-result <- mnem(data, k = 2, starts = 10)
+result <- mnem(data, k = 2, starts = 2)
 plot(result)
 }
 \author{

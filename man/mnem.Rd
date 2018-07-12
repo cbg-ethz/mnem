@@ -11,7 +11,7 @@ mnem(D, inference = "em", search = "modules", start = NULL,
   redSpace = NULL, affinity = 0, evolution = FALSE, subtopoX = NULL,
   ratio = TRUE, logtype = 2, initnets = FALSE, popSize = 10,
   stallMax = 2, elitism = NULL, maxGens = Inf, domean = TRUE,
-  modulesize = 5, compress = FALSE)
+  modulesize = 5, compress = FALSE, increase = TRUE)
 }
 \arguments{
 \item{D}{data with cells indexing the columns and features (E-genes) indexing the rows}
@@ -75,6 +75,8 @@ mnem(D, inference = "em", search = "modules", start = NULL,
 \item{modulesize}{max number of S-genes per module in module search}
 
 \item{compress}{compress networks after search}
+
+\item{increase}{if set to FALSE, the algorithm will not stop if the likelihood decreases}
 }
 \value{
 optimized network for data fit
@@ -83,10 +85,10 @@ optimized network for data fit
 learn mixture of networks from a single-ceel knock-down experiment
 }
 \examples{
-sim <- simData(Sgenes = 5, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 data <- (sim$data - 0.5)/0.5
 data <- data + rnorm(length(data), 0, 1)
-result <- mnem(data, k = 2, starts = 10)
+result <- mnem(data, k = 2, starts = 2)
 plot(result)
 }
 \author{

@@ -2,7 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{getIC}
 \alias{getIC}
-\title{plot mnem result}
+\title{calculate negative penalized log likelihood}
 \usage{
 getIC(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE,
   Fnorm = FALSE)
@@ -16,9 +16,9 @@ getIC(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE,
 
 \item{logtype}{logarithm type of the data}
 
-\item{pen}{penalty weight ofr the data}
+\item{pen}{penalty weight for the data}
 
-\item{useF}{use F (see publication) as complexity}
+\item{useF}{use F (see publication) as complexity instead of phi and theta}
 
 \item{Fnorm}{normalize complexity of F}
 }
@@ -26,17 +26,17 @@ getIC(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE,
 penlized likelihood
 }
 \description{
-plot mnem result
+calculate negative penalized log likelihood
 }
 \examples{
-sim <- simData(Sgenes = 5, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 data <- (sim$data - 0.5)/0.5
 data <- data + rnorm(length(data), 0, 1)
 pen <- numeric(3)
 result <- list()
-for (k in 1:3) {
-result[[k]] <- mnem(data, k = k, starts = 10)
-pen[k] <- getIC(result[[k]])
+for (k in seq__len(3)) {
+    result[[k]] <- mnem(data, k = k, starts = 2)
+    pen[k] <- getIC(result[[k]])
 }
 print(pen)
 }
