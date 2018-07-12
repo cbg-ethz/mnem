@@ -302,7 +302,7 @@ estimateSubtopo <- function(data) {
 }
 #' @noRd
 #' @export
-getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, converged = 10^-2, subtopoX = NULL, ratio = TRUE, logtype = 2) {
+getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, converged = 10^-2, subtopoX = NULL, ratio = TRUE, logtype = 2, mw = NULL) {
     if (is.null(subtopoX)) {
         subtopoX <- estimateSubtopo(data)
     }
@@ -313,7 +313,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
     max_count <- 100
     ll0 <- 0
     stop <- FALSE
-    mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE, logtype = logtype, data = data), 1, sum)
+    mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE, mw = mw, logtype = logtype, data = data), 1, sum)
     mw <- mw/sum(mw)
     if (any(is.na(mw))) { mw <- rep(1, k)/k }
     while((!stop | time0) & count < max_count) {
@@ -519,7 +519,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
         probs0$probs <- matrix(0, k, ncol(data))
         for (i in 1:2) { # i == 1 seems to win most of the time
             probs <- matrix(i - 1, k, ncol(data))
-            probs <- getProbs(probs, k, data, res, method, n, affinity, converged, subtopoX, ratio)
+            probs <- getProbs(probs, k, data, res, method, n, affinity, converged, subtopoX, ratio, mw = mw)
             if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) > getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
                 probs0 <- probs
             }
@@ -554,7 +554,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                         probs0$probs <- matrix(0, k, ncol(data))
                         for (i in 1:2) {
                             probs <- matrix(i - 1, k, ncol(data))
-                            probs <- getProbs(probs, k, data, res1, method, n, affinity, converged, subtopoX, ratio)
+                            probs <- getProbs(probs, k, data, res1, method, n, affinity, converged, subtopoX, ratio, mw = mw)
                             if (getLL(probs$probs, logtype = logtype, mw = mw, data = data1) > getLL(probs0$probs, logtype = logtype, mw = mw, data = data1)) {
                                 probs0 <- probs
                             }
@@ -586,6 +586,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                 limits <- list()
                 ll <- getLL(probs, logtype = logtype, mw = mw, data = data)
                 llold <- bestll <- -Inf
+                bestmw <- mw
                 lls <- NULL
                 count <- 0
                 time0 <- TRUE
@@ -593,7 +594,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                 while ((((ll - llold > converged & increase) | (abs(ll - llold) > converged & !increase) & count < max_iter)) | time0) {
                     if (!time0) {
                         if (ll - bestll > 0) {
-                            bestll <- ll; bestres <- res1; bestprobs <- probs
+                            bestll <- ll; bestres <- res1; bestprobs <- probs; bestmw <- mw
                         }
                         llold <- ll
                         probsold <- probs
@@ -674,7 +675,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                         } else {
                             probs <- matrix(i - 1, k, ncol(data))
                         }
-                        probs <- getProbs(probs, k, data, res, method, n, affinity, converged, subtopoX, ratio)
+                        probs <- getProbs(probs, k, data, res, method, n, affinity, converged, subtopoX, ratio, mw = mw)
                         if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) > getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
                             probs0 <- probs
                         }
@@ -698,7 +699,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                     count <- count + 1
                 }
                 if (ll - bestll > 0) {
-                    bestll <- ll; bestres <- res1; bestprobs <- probs
+                    bestll <- ll; bestres <- res1; bestprobs <- probs; bestmw <- mw
                 }
                 if (abs(ll - llold) > converged | llold > ll) { # llold > ll probably hardly happens but when it does it prob goes into a cycle for 100 iterations. not necesssarily. e.g. with modulesearch I do not give the last optimum as a starting network and cannot guarantee ll increase. improve modulesearch to add a starting network....
                     if (verbose & (increase | max_iter <= count)) {
@@ -712,6 +713,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                 limits$ll <- lls
                 limits$k <- k
                 limits$subtopo <- subtopoX
+                limits$mw <- bestmw
                 return(limits)
             }
             if (!is.null(parallel)) {
@@ -784,7 +786,9 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
         postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data)
         if (!is.null(dim(postprobs))) {
             lambda <- apply(postprobs, 1, sum)
-            lambda <- lambda/sum(lambda)
+            lambda0 <- lambda/sum(lambda)
+            lambda <- best$mw
+            if (verbose) { print(all(lambda == lambda0)) }
         } else {
             lambda <- 1
         }
@@ -797,10 +801,12 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
     } else {
         probs <- best$probs[, , drop = FALSE]
         colnames(probs) <- colnames(D.backup)
-        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data)
+        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = best$mw, data = data)
         if (!is.null(dim(postprobs))) {
             lambda <- apply(postprobs, 1, sum)
-            lambda <- lambda/sum(lambda)
+            lambda0 <- lambda/sum(lambda)
+            lambda <- best$mw
+            if (verbose) { print(all(lambda == lambda0)) }
         } else {
             lambda <- 1
         }
@@ -811,7 +817,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
             comp[[i]]$theta <- best$res[[i]]$subtopo
         }
     }
-    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, ll = getLL(probs, logtype = logtype, mw = lambda, data = data))
+    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, lls = best$ll, ll = getLL(probs, logtype = logtype, mw = lambda, data = data))
     class(res) <- "mnem"
     return(res)
 }
