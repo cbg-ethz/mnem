@@ -15,16 +15,15 @@ vignette: >
 # Mixture Nested Effects Models (M&NEM)
 
 Single cell RNA-seq data sets from pooled CrispR screens provide the possibility
-       to analyzse hete	rogeneous cell populations. We extended the original
-       Nested Effects Models (NEM) to Mixture Nested Effects Models (M&NEM) to
-       simulataneously identify several causal signalling graphs and
-       corresponding subpopulations of cells. The final result will be a soft
-       clustering of the perturbed cells and a causal signalling graph, which
-       describes the interactions of the perturbed genens for each cluster of
-       cells.
+to analyzse heterogeneous cell populations. We extended the original
+Nested Effects Models (NEM) to Mixture Nested Effects Models (M&NEM) to
+simulataneously identify several causal signalling graphs and
+corresponding subpopulations of cells. The final result will be a soft
+clustering of the perturbed cells and a causal signalling graph, which
+describes the interactions of the perturbed genens for each cluster of
+cells.
 
 ## Installation
-
 Download and install the package manually or use the R package 'devtools'.	
 ```{r, global_options, include=FALSE}
 knitr::opts_chunk$set(message=FALSE)
@@ -37,7 +36,7 @@ the number
 of components of the groudn truth (1 to 5). The accuracy of mixture nems is
 shown in red, for a naive clustering approach in blue and for standard nem
 with one component in grey."
-fig.cap3 <- "Accuracy of the mixture wieghts. The rows denote the number
+fig.cap3 <- "Accuracy of the mixture weights. The rows denote the number
 of components of the groudn truth (1 to 5). The accuracy of mixture nems is
 shown in red, for a naive clustering approach in blue and for standard nem
 with one component in grey."
@@ -46,14 +45,20 @@ random mixture weights for different components."
 fig.cap5 <- "Penelized and raw log likelihood ratios. Blue denotes the raw
 loglikelihood and red the negative penalization for complexity for the CROPSeq
 (A) and the two PERTURBSeq datasets (B,C)."
-fig.cap6 <- "Histograms of the responsibilities. The responsibilties for the highest scoring according to the penelized loglikelihood for the CROPSeq (A) the two PERTURBSeq datasets (B,C)."
+fig.cap6 <- "Histograms of the responsibilities. The responsibilties for the
+highest scoring according to the penelized loglikelihood for the CROPSeq (A)
+the two PERTURBSeq datasets (B,C)."
 fig.cap7 <- "Highest scoring mixture for the CROPSeq dataset."
 fig.cap8 <- "Second highest scoring mixture for the CROPSeq dataset."
-fig.cap9 <- "Highest scoring mixture for the PERTURBSeq dataset of cell cycle regulators."
-fig.cap10 <- "Second highest scoring mixture for the PERTURBSeq dataset of cell cycle regulators."
-fig.cap11 <- "Highest scoring mixture for the PERTURBSeq dataset of transcription factors."
-fig.cap12 <- "Second highest scoring mixture for the PERTURBSeq dataset of transcription factors."
-```		
+fig.cap9 <- "Highest scoring mixture for the PERTURBSeq dataset of cell
+cycle regulators."
+fig.cap10 <- "Second highest scoring mixture for the PERTURBSeq dataset of cell
+cycle regulators."
+fig.cap11 <- "Highest scoring mixture for the PERTURBSeq dataset of
+transcription factors."
+fig.cap12 <- "Second highest scoring mixture for the PERTURBSeq dataset of
+transcription factors."
+```
 ```{r, warning=FALSE}
 library(devtools)
 install_github("cbg-ethz/mnem")
@@ -63,12 +68,12 @@ library(mnem)
 ## Simulations
 
 We simulate cells based on a ground truth mixture of networks. We use M&NEM to
-   infer an optimal network from the data and compare the result ot the ground
-   truth. We also look at the accuracy of the mixture weights and the the number
-   of networks K.For large scale simulation see section 'Data generation' at the
-   end of the vignette.	
+infer an optimal network from the data and compare the result ot the ground
+truth. We also look at the accuracy of the mixture weights and the the number
+of networks K.For large scale simulation see section 'Data generation' at the
+end of the vignette.	
 Simulation results are evaluated by accuracy of the networks, mixture
-	   weights and number of components.
+weights and number of components.
 
 ```{r, fig.height=8, fig.width=10, fig.cap=fig.cap1}
 data(sim)
@@ -121,7 +126,7 @@ for (i in 1:4) {
           adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
-```	
+```
 ```{r, fig.height=8, fig.width=10, fig.cap=fig.cap2}
 noises <- c(1,2.5,5)
 nems <- 1:5
@@ -171,7 +176,7 @@ for (i in 1:4) {
           adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
-```	
+```
 ```{r, fig.height=8, fig.width=10, fig.cap=fig.cap3}
 noises <- c(1,2.5,5)
 nems <- 1:5
@@ -225,9 +230,9 @@ for (i in 1:4) {
 ```
 
 We randomly draw mixture weights and components as a comparison to our inferred
-   weights.
+weights.
 
-```{r, fig.cap = "test", fig.width = 4, fig.height = 4, warning=FALSE, fig.cap = fig.cap4}
+```{r, fig.width = 4, fig.height = 4, warning=FALSE, fig.cap = fig.cap4}
 runs <- 100
 maxk <- 5
 mixrand <- matrix(0, runs, maxk)
@@ -252,11 +257,11 @@ boxplot(mixrand, col = "grey", main = "random", xlab = "components K")
 ## Application to pooled CRISPR screens from CROPSeq and PERTURBSeq
 
 We apply M&NEM to three different data sets from two different pooled CRISPR
-   screens, Crop-Seq (Datlinger *et al.*, 2017) and
-   Perturb-Seq (Dixit *et al.*, 2016).
+screens, Crop-Seq (Datlinger *et al.*, 2017) and
+Perturb-Seq (Dixit *et al.*, 2016).
 
 We optimized the mixture for components K=1,2,3,4,5. Hence, we use our penelized
-   likelihood to finde the optimal number of components without overfitting.
+likelihood to finde the optimal number of components without overfitting.
 ```{r, fig.height = 3, fig.width = 11, fig.cap = fig.cap5}
 data(app)
 res2 <- app
@@ -298,8 +303,8 @@ legend(1, 100, c("raw log likelihood ratio", "penalized log likelihood ratio"),
 ```
 	
 Each cell has a certain probability to have been generated by a components
-     (responsibility). The histograms show the responsibilities for all three
-     data sets.
+(responsibility). The histograms show the responsibilities for all three
+data sets.
      
 ```{r, fig.height = 3, fig.width = 11, fig.cap = fig.cap6}
 gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
@@ -372,12 +377,18 @@ Martin Pirkl, Niko Beerenwinkel (2018).
 Single cell network analysis with a mixture of Nested Effects Models  
 bioRxiv 258202; doi: https://doi.org/10.1101/258202  
 
-Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and Bock, C. (2017).  
+Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P.,
+	   Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and
+	   Bock, C. (2017).  
 Pooled crispr screening with single-cell transcriptome readout.  
 Nature Methods, 14, 297 EP ???.
 
-Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P., Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R., Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and Regev, A. (2016).  
-Perturb-seq: Dissecting molecular circuits with scalable single-cell rna profiling of pooled genetic screens.  
+Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P., Jerby-Arnon, L.,
+       Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R., Adamson,
+       B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and
+       Regev, A. (2016).  
+Perturb-seq: Dissecting molecular circuits with scalable single-cell rna
+	     profiling of pooled genetic screens.  
 Cell, 167(7), 1853???1866.e17.
 
 # Data generation
@@ -413,7 +424,8 @@ for (i in seq_len(length(c2g[[1]]))) {
 colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
 data <- data[, -which(colnames(data) %in% "")]
 pertdist <- unlist(lapply(colnames(data),
-                          function(x) return(length(unlist(strsplit(x, "_"))))))
+                          function(x)
+                              return(length(unlist(strsplit(x, "_"))))))
 hist(pertdist)
 if (length(grep("_", colnames(data))) > 0) {
     data <- data[, -grep("_", colnames(data))]
@@ -430,7 +442,8 @@ if (length(grep(":", nem)) > 0) {
     nem <- as.numeric(nem)
 }
 if (length(grep(":", noise)) > 0) {
-    noise <- as.numeric(gsub(":.*", "", noise)):as.numeric(gsub(".*:", "",                                                             noise))
+    noise <- as.numeric(gsub(":.*", "", noise)):as.numeric(gsub(".*:", "",
+                                                                noise))
 } else {
     noise <- as.numeric(noise)
 }
@@ -876,8 +889,10 @@ resMax <- list()
 
 for (i in seq_len(starts)) {
     print(i)
-    if (file.exists(paste0("cropseq/", dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))) {
-        load(paste0("cropseq/", dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))
+    if (file.exists(paste0("cropseq/",
+                           dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))) {
+        load(paste0("cropseq/",
+                    dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))
     } else {
         next()
     }
@@ -897,7 +912,8 @@ for (i in seq_len(starts)) {
 
 res <- resMax
 
-res[[5]]$data <- res[[4]]$data <- res[[3]]$data <- res[[2]]$data <- res[[1]]$data <- lods
+res[[5]]$data <- res[[4]]$data <-
+    res[[3]]$data <- res[[2]]$data <- res[[1]]$data <- lods
 
 load(paste0(dataset, "_mnem_", bigorsmall, "_final.rda"))
 

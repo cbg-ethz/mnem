@@ -20,8 +20,16 @@ NA
 #' @name app
 #' @docType data
 #' @usage app
-#' @references Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and Bock, C. (2017). Pooled crispr screening with single-cell transcriptome readout. Nature Methods, 14, 297 EP ???.
-#' @references Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P., Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R., Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and Regev, A. (2016). Perturb-seq: Dissecting molecular circuits with scalable single-cell rna profiling of pooled genetic screens. Cell, 167(7), 1853???1866.e17.
+#' @references Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T.,
+#' Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D.,
+#' and Bock, C. (2017). Pooled crispr screening with single-cell transcriptome
+#' readout. Nature Methods, 14, 297 EP ???.
+#' @references Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P.,
+#' Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R.,
+#' Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and
+#' Regev, A. (2016). Perturb-seq: Dissecting molecular circuits with scalable
+#' single-cell rna profiling of pooled genetic screens. Cell, 167(7),
+#' 1853???1866.e17.
 #' @examples
 #' data(app)
 NA
@@ -33,6 +41,7 @@ NA
 #' @param logtype logarithm type of the data
 #' @param mw miture weights
 #' @param data data in log odds
+#' @return responsibilities as a kxl matrix (k components, l cells)
 #' @author Martin Pirkl
 #' @export
 #' @examples
@@ -45,7 +54,18 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
                         data = matrix(0, 2, ncol(x))) {
     if (is.null(mw)) { mw <- rep(1, nrow(x))/nrow(x) }
     if (affinity == 1) {
+        if (any(is.infinite(logtype^apply(data, 2, function(x)
+            return(sum(x[which(x>0)])))))) {
+            y <- apply(y, 2, function(x) {
+                xmax <- max(x)
+                maxnum <- 2^1023
+                shrinkfac <- log(maxnum)/log(logtype)
+                x <- x - (xmax - shrinkfac)
+                return(x)
+            })
+        }
         y <- logtype^x
+        y <- y*mw
         y <- apply(y, 2, function(x) {
             xnmax <- which(x < max(x))
             if (length(xnmax) > 0) {
@@ -1765,7 +1785,8 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                 if (grep("and", tmp) == 2) {
                     inputN2 <-
                         which(gsub("!", "",
-                                   unlist(strsplit(gsub("=.*", "",dnf[k2]), "\\+")))
+                                   unlist(strsplit(gsub("=.*", "",dnf[k2]),
+                                                   "\\+")))
                               %in% tmp[1])
                 } else {
                     inputN2 <-
@@ -2547,11 +2568,11 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                                                   sep = "")]] <-
                     g@renderInfo@edges$splines[[1]]
                 for (j in seq_len(4)) {
-                    g@renderInfo@edges$splines[[paste(tmp.name, "~", i,
-                                                      sep = "")]][[1]]@cPoints[[j]]@x <-
+                    tmpname <- paste(tmp.name, "~", i, sep = "")
+                    g@renderInfo@edges$splines[[tmpname]][[1]]@cPoints[[j]]@x <-
                         tmp.splines[c(1,3,5,7)][j]
-                    g@renderInfo@edges$splines[[paste(tmp.name, "~", i,
-                                                      sep = "")]][[1]]@cPoints[[j]]@y <-
+                    tmpname <- paste(tmp.name, "~", i, sep = "")
+                    g@renderInfo@edges$splines[[tmpname]][[1]]@cPoints[[j]]@y <-
                         tmp.splines[c(2,4,6,8)][j]
                 }
             }
@@ -2712,14 +2733,15 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                         length.out = 4))
                 tmp.splines[2] <- tmp.splines[2] + 50
                 tmp.splines <- as.integer(tmp.splines)
-                g@renderInfo@edges$splines[[paste(tmp.name, "~", i, sep = "")]] <-
+                tmpname <- paste(tmp.name, "~", i, sep = "")
+                g@renderInfo@edges$splines[[tmpname]] <-
                     g@renderInfo@edges$splines[[1]]
                 for (j in seq_len(4)) {
-                    g@renderInfo@edges$splines[[paste(tmp.name, "~", i,
-                                                      sep = "")]][[1]]@cPoints[[j]]@x <-
+                    tmpname <- paste(tmp.name, "~", i, sep = "")
+                    g@renderInfo@edges$splines[[tmpname]][[1]]@cPoints[[j]]@x <-
                         tmp.splines[c(1,3,5,7)][j]
-                    g@renderInfo@edges$splines[[paste(tmp.name, "~", i,
-                                                      sep = "")]][[1]]@cPoints[[j]]@y <-
+                    tmpname <- paste(tmp.name, "~", i, sep = "")
+                    g@renderInfo@edges$splines[[tmpname]][[1]]@cPoints[[j]]@y <-
                         tmp.splines[c(2,4,6,8)][j]
                 }
             }

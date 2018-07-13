@@ -220,7 +220,8 @@ getLL <- function(x, logtype = 2, mw = NULL, data = NULL) {
 }
 #' @noRd
 estimateSubtopo <- function(data) {
-    effectsums <- effectsds <- matrix(0, nrow(data), length(unique(colnames(data))))
+    effectsums <- effectsds <- matrix(0, nrow(data),
+                                      length(unique(colnames(data))))
     for (i in seq_len(length(unique(colnames(data))))) {
         if (length(grep(i, colnames(data))) > 1) {
             effectsds[, i] <- apply(data[, grep(i, colnames(data))], 1, sd)
@@ -644,10 +645,9 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     
     if (!is.null(parallel)) {
         sfInit(parallel = TRUE, cpus = parallel)
-        sfExport("modules", "D", "start", "better", "transitive.closure", "method",
-                 "scoreAdj",
-                 "weights", "transitive.closure", "llrScore",
-                 "transitive.reduction")
+        sfExport("modules", "D", "start", "better", "transitive.closure",
+                 "method", "scoreAdj", "weights", "transitive.closure",
+                 "llrScore", "transitive.reduction")
     }
 
     if (search %in% "greedy") {
@@ -672,7 +672,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 oldscore <- score
                 allscores <- score
             }
-            stop <- F
+            stop <- FALSE
             while(!stop) {
                 doScores <- function(i) {
                     new <- models[[i]]
@@ -703,7 +703,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                     oldscore <- max(scores)
                     allscores <- c(allscores, oldscore)
                 } else {
-                    stop <- T
+                    stop <- TRUE
                 }
             }
             if (iter > 1) {
@@ -901,7 +901,7 @@ simulateDnf <- function(dnf, stimuli = NULL, inhibitors = NULL) {
                 pob <- rep(1, nrow(signalStates))
                 for (j in parents) {
                     j2 <- gsub("!", "", j)
-                    if (sum(is.na(signalStates[, j2]) == T) ==
+                    if (sum(is.na(signalStates[, j2]) == TRUE) ==
                         length(signalStates[, j2])) {
                         if (j %in% j2) {
                             node2 <- node
@@ -919,18 +919,13 @@ simulateDnf <- function(dnf, stimuli = NULL, inhibitors = NULL) {
                                 signalStates = signalStates,
                                 graph = subGraph,
                                 children = NULL)
-                            if ((length(
-                                    grep("!",
-                                         children[
-                                             which(
-                                                 children2 %in%
-                                                 j2):length(
-                                                        children2)]))+add1)/2 !=
-                                ceiling((length(grep("!",children[
-                                                             which(
-                                                                 children2 %in%
-                                                                 j2):length(
-                                                                        children2)]))+add1)/2)) {
+                            ifa <- children[
+                                which(children2 %in% j2):length(children2)]
+                            ifb <- (length(grep("!", ifa)) + add1)/2
+                            ifc <- children[
+                                which(children2 %in% j2):length(children2)]
+                            if (ifb != ceiling((length(grep("!", ifc)) +
+                                                add1)/2)) {
                             } else {
                             }
                             if (add1 == 0) {
@@ -965,10 +960,10 @@ simulateDnf <- function(dnf, stimuli = NULL, inhibitors = NULL) {
                         }
                         pob <- pob*pobMult
                     }
-                    if (max(pob, na.rm = T) == 0) { break() }
+                    if (max(pob, na.rm = TRUE) == 0) { break() }
                 }
                 sop <- sop + pob
-                if (min(sop, na.rm = T) > 0) { break() }
+                if (min(sop, na.rm = TRUE) > 0) { break() }
             }
             sop[sop > 0] <- 1
             if (node %in% inhibitors) {
@@ -992,7 +987,7 @@ simulateDnf <- function(dnf, stimuli = NULL, inhibitors = NULL) {
     colnames(signalStates) <- signals
     signalStates[which(signals %in% stimuli)] <- 1
     for (k in signals) {
-        if (is.na(signalStates[, k]) == T) {
+        if (is.na(signalStates[, k]) == TRUE) {
             signalStates <- getStateDnf(node = k, signalStates = signalStates,
                                         graph = graph, children = NULL)
         }

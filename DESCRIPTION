@@ -9,8 +9,8 @@ Depends: R (>= 3.4)
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-biocViews: Pathways, SystemsBiology, NetworkInference, Network, Single-cell, CrispR, RNAi
+biocViews: Pathways, SystemsBiology, NetworkInference, Network, RNASeq, PooledScreens, SingleCell, CRISPR, ATACSeq, DNASeq
 RoxygenNote: 6.0.1
-Imports: cluster, nem, epiNEM, graph, Rgraphviz, flexclust, lattice, modeltools, naturalsort, snowfall, stats4, tsne, methods
+Imports: cluster, nem, epiNEM, graph, Rgraphviz, flexclust, lattice, modeltools, naturalsort, snowfall, stats4, tsne, methods, graphics, grid, stats, utils
 VignetteBuilder: knitr
-Suggests: knitr, devtools, rmarkdown, BiocGenerics
+Suggests: knitr, devtools, rmarkdown, BiocGenerics, RUnit

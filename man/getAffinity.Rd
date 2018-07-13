@@ -21,6 +21,9 @@ during inference (not recommended)}
 
 \item{data}{data in log odds}
 }
+\value{
+responsibilities as a kxl matrix (k components, l cells)
+}
 \description{
 Calculate responsibilities
 }
