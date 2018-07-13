@@ -1,6 +1,7 @@
 ---
 title: "Mixture Nested Effects Models  \n
-Inferring networks from subpopulations of single cells."
+Simulataneous inferring of causal networks and corresponding subpopulations
+from single cells perturbation data."
 author: "Martin Pirkl, Niko Beerenwinkel"
 date: "`r Sys.Date()`"
 graphics: yes
@@ -13,127 +14,79 @@ vignette: >
 
 # Mixture Nested Effects Models (M&NEM)
 
-Single cell RNA-seq data sets from pooled CrispR screens provide the possibility to analyzse heterogeneous cell populations. We extended the original Nested Effects Models (NEM) to Mixture Nested Effects Models (M&NEM) to identify not one causal signalling, but several ones, each based on the information of a subpopulation of cells.
+Single cell RNA-seq data sets from pooled CrispR screens provide the possibility
+       to analyzse hete	rogeneous cell populations. We extended the original
+       Nested Effects Models (NEM) to Mixture Nested Effects Models (M&NEM) to
+       simulataneously identify several causal signalling graphs and
+       corresponding subpopulations of cells. The final result will be a soft
+       clustering of the perturbed cells and a causal signalling graph, which
+       describes the interactions of the perturbed genens for each cluster of
+       cells.
 
-## Install
+## Installation
 
 Download and install the package manually or use the R package 'devtools'.
 ```{r style, echo = FALSE, results = 'asis'}
 BiocStyle::markdown()
-```
+```	
 ```{r, global_options, include=FALSE}
 knitr::opts_chunk$set(message=FALSE)
-fig.cap1 <- "Accuracy for randomly drawn number of components and mixture weights.."
-fig.cap2 <- "Accuracy for the networks."
-fig.cap3 <- "Accuracy for the number of components."
-fig.cap4 <- "Distance of inferred to ground truth mixture weights."
-fig.cap5 <- "Penelized and raw log likelihood ratios."
-fig.cap6 <- "Histograms of the responsibilities."
-fig.cap7 <- "Highest scoring mixtures."
-
-#output: BiocStyle::pdf_document
-```
-```{r, warning=FALSE}
+fig.cap1 <- "Accuracy of the inferred networks. The rows denote the number
+of components of the groudn truth (1 to 5). The accuracy of mixture nems is
+shown in red, for a naive clustering approach in blue and for standard nem
+with one component in grey."
+fig.cap2 <- "Accuracy of the inferred number of components. The rows denote
+the number
+of components of the groudn truth (1 to 5). The accuracy of mixture nems is
+shown in red, for a naive clustering approach in blue and for standard nem
+with one component in grey."
+fig.cap3 <- "Accuracy of the mixture wieghts. The rows denote the number
+of components of the groudn truth (1 to 5). The accuracy of mixture nems is
+shown in red, for a naive clustering approach in blue and for standard nem
+with one component in grey."
+fig.cap4 <- "As a comparison to the inferred mixture wieght we simulated
+random mixture weights for different components."
+fig.cap5 <- "Penelized and raw log likelihood ratios. Blue denotes the raw
+loglikelihood and red the negative penalization for complexity for the CROPSeq
+(A) and the two PERTURBSeq datasets (B,C)."
+fig.cap6 <- "Histograms of the responsibilities. The responsibilties for the highest scoring according to the penelized loglikelihood for the CROPSeq (A) the two PERTURBSeq datasets (B,C)."
+fig.cap7 <- "Highest scoring mixture for the CROPSeq dataset."
+fig.cap8 <- "Second highest scoring mixture for the CROPSeq dataset."
+fig.cap9 <- "Highest scoring mixture for the PERTURBSeq dataset of cell cycle regulators."
+fig.cap10 <- "Second highest scoring mixture for the PERTURBSeq dataset of cell cycle regulators."
+fig.cap11 <- "Highest scoring mixture for the PERTURBSeq dataset of transcription factors."
+fig.cap12 <- "Second highest scoring mixture for the PERTURBSeq dataset of transcription factors."
+```		
+```{r, eval=FALSE}
+library(devtools)
+install_github("cbg-ethz/mnem")
 library(mnem)
 ```
   
 ## Simulations
 
-We simulate cells based on a ground truth mixture of networks. We use M&NEM to infer an optimal network from the data and compare the result ot the ground truth. For large scale simulation see section 'Data generation' at the end of the vignette.
+We simulate cells based on a ground truth mixture of networks. We use M&NEM to
+   infer an optimal network from the data and compare the result ot the ground
+   truth. We also look at the accuracy of the mixture weights and the the number
+   of networks K.For large scale simulation see section 'Data generation' at the
+   end of the vignette.	
+Simulation results are evaluated by accuracy of the networks, mixture
+	   weights and number of components.
 
-```{r}
-runs <- 100
-noises <- c(1, 2.5, 5)
-
-acc <- comps <- mws <- numeric(runs)
-
-Sgenes <- 5
-Egenes <- 2
-nem <- 2
-maxk <- 5
-starts <- 10
-noise <- 1
-nCells <- 1000
-```	
-```{r, eval = FALSE, include=FALSE}
-
-acc <- comps <- mws <- numeric(runs)
-
-for (run in 1:length(acc)) {
-    mw <- runif(nem, 0.1, 1)
-    mw <- mw/sum(mw)
-    sim <- simData(Sgenes = Sgenes, Egenes = Egenes, nCells = nCells,
-                   Nems = nem, uninform = floor(Egenes*Sgenes*0.1), mw = mw)
-    simfull <- NULL
-    gtn <- list()
-    for (i in 1:length(sim$Nem)) {
-        tmp <- transitive.closure(sim$Nem[[i]], mat = TRUE)
-        simfull <- cbind(simfull, t(tmp))
-        gtn[[i]] <- list()
-        gtn[[i]]$adj <- sim$Nem[[i]]
-    }
-    
-    data <- sim$data
-    data <- (data - 0.5)/0.5
-    data <- data + rnorm(length(sim$data), 0, noises[noise])
-    for (i in 1:Sgenes) {
-        colnames(data)[which(colnames(data) == i)] <- letters[i]
-    }
-
-    start <- Sys.time()
-    res2 <- list()
-    bics <- rep(Inf, maxk)
-    for (k in 1:maxk) {
-        res2[[k]] <- mnem(data, starts = starts, k = k)
-        bics[k] <- getIC(res2[[k]])
-    }
-    res <- res2[[which.min(bics)]]
-    end <- Sys.time()
-    print(end - start)
-    comps[run] <- which.min(bics)
-    
-    resfull <- NULL
-    for (i in 1:length(res$comp)) {
-        tmp <- transitive.closure(res$comp[[i]]$phi, mat = TRUE)
-        resfull <- cbind(resfull, t(tmp))
-    }
-    
-    resadj <- list()
-    for (i in 1:length(res$comp)) {
-        resadj[[i]] <- list()
-        resadj[[i]]$adj <- res$comp[[i]]$phi
-    }
-    acc[run] <- hamSim(resfull, simfull, symmetric = TRUE)
-}  
-```
-	
-Evaluation of the simulation results by accuracy of the networks, mixture weights and number of components.
-
-```{r, fig.height=8, fig.width=10, fig.cap=fig.cap2}
+```{r, fig.height=8, fig.width=10, fig.cap=fig.cap1}
 data(sim)
-
-load("~/Documents/mnem/data/sim.rda")
-
 noises <- c(1,2.5,5)
 nems <- 1:5
-
 simres3 <- sim[[1]]
 simres5 <- sim[[2]]
 simres10 <- sim[[3]]
 simres20 <- sim[[4]]
-  
 meancol2 <- rgb(1,0,0)
-
 meancol <- rgb(0,0,1)
-
 redcol <- rgb(1,0,0)
-
 bluecol <- rgb(0,0,1)
-
 mar <- 1.5
-
 par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
-
 for (i in 1:5) {
     for (j in c(3,5,10,20)) {
         tmp <- get(paste0("simres", j))
@@ -144,56 +97,47 @@ for (i in 1:5) {
                 tmp2 <- cbind(tmp2, tmp3)
             }
         }
-        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n", ylim = c(0.5,1))
-        #  rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0.5,1))
+        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n",
+                ylim = c(0.5,1))
         abline(h=(5:10)/10, col = "grey", lty = 3)
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
-        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2,
+              pch = "*")
         axis(1, 1:(length(noises)*3), c(rep(1,3), rep(2.5,3),rep(5,3)))
-        #axis(1, 1:(length(noises)*3), rep(noises, 3))
-        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3, col = "black", lwd = 2)
+        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3,
+               col = "black", lwd = 2)
     }
 }
-
 for (i in 1:5) {
-    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE, cex = 1, adj = 0,
+    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE,
+          cex = 1, adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*4)
 }
-
 Sgenes <- c(3,5,10,20)
-
 for (i in 1:4) {
-    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1, adj = 0,
+    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1,
+          adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
 }
-
 for (i in 1:4) {
-    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
+    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1,
+          adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
-
-## komp
-
+```	
+```{r, fig.height=8, fig.width=10, fig.cap=fig.cap2}
 noises <- c(1,2.5,5)
 nems <- 1:5
-
 simres3 <- sim[[1]]
 simres5 <- sim[[2]]
 simres10 <- sim[[3]]
 simres20 <- sim[[4]]
-  
 meancol2 <- rgb(1,0,0)
-
 meancol <- rgb(0,0,1)
-
 redcol <- rgb(1,0,0)
-
 bluecol <- rgb(0,0,1)
-
 mar <- 1.5
-
 par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
-
 for (i in 1:5) {
     for (j in c(3,5,10,20)) {
         tmp <- get(paste0("simres", j))
@@ -204,60 +148,46 @@ for (i in 1:5) {
                 tmp2 <- cbind(tmp2, tmp3)
             }
         }
-        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n")#, ylim = c(0.5,1))
-        #  rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0.5,1))
-        
-        #abline(h=seq(0,5,length.out=51), col = "grey", lty = 3)
-        
+        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n")
         abline(h=seq(min(tmp2),max(tmp2),length.out=11), col = "grey", lty = 3)
-        
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
-        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2,
+              pch = "*")
         axis(1, 1:(length(noises)*3), c(rep(1,3), rep(2.5,3),rep(5,3)))
-        #axis(1, 1:(length(noises)*3), rep(noises, 3))
-        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3, col = "black", lwd = 2)
+        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3,
+               col = "black", lwd = 2)
     }
 }
-
 for (i in 1:5) {
-    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE, cex = 1, adj = 0,
+    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE,
+          cex = 1, adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*4)
 }
-
 Sgenes <- c(3,5,10,20)
-
 for (i in 1:4) {
-    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1, adj = 0,
+    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1,
+          adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
 }
-
 for (i in 1:4) {
-    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
+    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1,
+          adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
-
-## mix
-
+```	
+```{r, fig.height=8, fig.width=10, fig.cap=fig.cap3}
 noises <- c(1,2.5,5)
 nems <- 1:5
-
 simres3 <- sim[[1]]
 simres5 <- sim[[2]]
 simres10 <- sim[[3]]
 simres20 <- sim[[4]]
-  
 meancol2 <- rgb(1,0,0)
-
 meancol <- rgb(0,0,1)
-
 redcol <- rgb(1,0,0)
-
 bluecol <- rgb(0,0,1)
-
 mar <- 1.5
-
 par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
-
 for (i in 1:5) {
     for (j in c(3,5,10,20)) {
         tmp <- get(paste0("simres", j))
@@ -268,41 +198,39 @@ for (i in 1:5) {
                 tmp2 <- cbind(tmp2, tmp3)
             }
         }
-        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n", ylim = c(0,1))
-        #  rep(redcol, 3), rep(bluecol, 3), rep("grey", 3)), xaxt = "n", ylim = c(0.5,1))
-        
+        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n",
+                ylim = c(0,1))
         abline(h=seq(0,1,length.out=11), col = "grey", lty = 3)
-        
         lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
-        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2, pch = "*")
+        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2,
+              pch = "*")
         axis(1, 1:(length(noises)*3), c(rep(1,3), rep(2.5,3),rep(5,3)))
-        #axis(1, 1:(length(noises)*3), rep(noises, 3))
-        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3, col = "black", lwd = 2)
+        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3,
+               col = "black", lwd = 2)
     }
 }
-
 for (i in 1:5) {
-    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE, cex = 1, adj = 0,
+    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE,
+          cex = 1, adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*4)
 }
-
 Sgenes <- c(3,5,10,20)
-
 for (i in 1:4) {
-    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1, adj = 0,
+    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1,
+          adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
 }
-
 for (i in 1:4) {
-    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1, adj = 0,
+    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1,
+          adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
-
 ```
 
-We randomly draw mixture weights and components as a comparison to our inferred weights.
+We randomly draw mixture weights and components as a comparison to our inferred
+   weights.
 
-```{r, fig.cap = "test", fig.width = 4, fig.height = 4, warning=FALSE, fig.cap = fig.cap1}
+```{r, fig.cap = "test", fig.width = 4, fig.height = 4, warning=FALSE, fig.cap = fig.cap4}
 runs <- 100
 maxk <- 5
 mixrand <- matrix(0, runs, maxk)
@@ -312,7 +240,7 @@ for (j in 1:5) {
     for (i in 1:runs) {
         mw <- runif(nem, 0.1, 1)
         mw <- sort(mw/sum(mw))
-        mw2 <- c(rep(0, 5 - length(mw)), mw)
+        mw <- c(rep(0, 5 - length(mw)), mw)
         nem2 <- sample(1:5, 1)
         mw2 <- runif(nem2, 0.1, 1)
         mw2 <- sort(mw2/sum(mw2))
@@ -324,113 +252,83 @@ for (j in 1:5) {
 boxplot(mixrand, col = "grey", main = "random", xlab = "components K")
 ```
 	
-## Application
+## Application to pooled CRISPR screens from CROPSeq and PERTURBSeq
 
-We apply M&NEM to three different data sets from two different pooled CRISPR screens, Crop-Seq (Datlinger *et al.*, 2017) and Perturb-Seq (Dixit *et al.*, 2016).
+We apply M&NEM to three different data sets from two different pooled CRISPR
+   screens, Crop-Seq (Datlinger *et al.*, 2017) and
+   Perturb-Seq (Dixit *et al.*, 2016).
 
-We optimized the mixture for components K=1,2,3,4,5. Hence, we use our penelized likelihood to finde the optimal number of components without overfitting.
+We optimized the mixture for components K=1,2,3,4,5. Hence, we use our penelized
+   likelihood to finde the optimal number of components without overfitting.
 ```{r, fig.height = 3, fig.width = 11, fig.cap = fig.cap5}
-
 data(app)
-
 res2 <- app
-
 maxk <- 5
-
 par(mfrow=c(1,3), oma = c(0,0,1,0), mar = rep(0,4))
-
 for (j in 1:3) {
-
     res <- res2[[j]]
-
     for (i in 2:5) {
         res[[i]]$data <- res[[1]]$data
     }
-    
     bics <- rep(0, maxk)
-    
     ll <- rep(0, maxk)
-    
     for (i in 1:maxk) {
-        
         bics[i] <- getIC(res[[i]])
-        
         ll[i] <- max(res[[i]]$ll)
-
     }
-
     ll2 <- ll
-    
     ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
-    
     ll <- ll - min(ll) + min(bics)
-    
     ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
-    
     par(mar=c(5,5,2,5))
-    plot(bics, type = "b", ylab = "", col = "red", xlab = "", yaxt = "n", ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
+    plot(bics, type = "b", ylab = "", col = "red", xlab = "", yaxt = "n",
+         ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
     lines(ll, type = "b", col = "blue")
     axis(4, ll3, round(seq(min(ll2), max(ll2), length.out = 5)), cex.axis = 1.7)
     axis(2, ll3, round(ll3), cex.axis = 1.7)
     axis(1, 1:maxk, 1:maxk)
     mtext("penalized", side=2, line=3, cex = 1.2)
     mtext("raw", side=4, line=3, cex = 1.2)
-    
     mtext(LETTERS[j], side = 3, line = -1, outer = FALSE, cex = 2.5, adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*0.27)
 
 }
-plot(0, xlim = c(1,100), ylim = c(90,100), xaxt = "n", yaxt = "n", xlab = "", ylab = "")
-
-legend(1, 100, c("raw log likelihood ratio", "penalized log likelihood ratio"), fill = ,
-       border = "transparent", cex = 1.25, lty = 1, pch = 1, col = c("blue", "red"))
+plot(0, xlim = c(1,100), ylim = c(90,100), xaxt = "n", yaxt = "n", xlab = "",
+     ylab = "")
+legend(1, 100, c("raw log likelihood ratio", "penalized log likelihood ratio"),
+       border = "transparent", cex = 1.25, lty = 1, pch = 1,
+       col = c("blue", "red"))
 ```
-
-Each cell has a certain probability to have been generated by a components (responsibility). The histograms show the responsibilities for all three data sets.
-
+	
+Each cell has a certain probability to have been generated by a components
+     (responsibility). The histograms show the responsibilities for all three
+     data sets.
+     
 ```{r, fig.height = 3, fig.width = 11, fig.cap = fig.cap6}
 gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
-
 par(mfrow=c(1,3), oma = c(0,0,1,0), mar = rep(0,4))
-
 for (j in 1:3) {
-
     res <- res2[[j]]
-    
     for (i in 2:5) {
         res[[i]]$data <- res[[1]]$data
     }
-    
     bics <- rep(0, maxk)
-    
     ll <- rep(0, maxk)
-    
     for (i in 1:maxk) {
-        
         bics[i] <- getIC(res[[i]])
-        
         ll[i] <- max(res[[i]]$ll)
-
     }
-
     ll2 <- ll
-    
     ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
-    
     ll <- ll - min(ll) + min(bics)
-    
     ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
-    
     i <- which.min(bics)
-
     gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
-
     par(mar=c(5,5,2,5))
-    hist(gamma, main = "Histogram of responsibilities", xlab = "responsibilities")
-    
+    hist(gamma, main = "Histogram of responsibilities",
+         xlab = "responsibilities")
     mtext(LETTERS[j], side = 3, line = -2.3, outer = FALSE, cex = 2.5, adj = 0,
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*0.27)
-
 }
 ```
 
@@ -438,190 +336,147 @@ We show the highest and second highest scoring networks for each data set.
 
 ```{r, fig.height = 10, fig.width = 30, fig.cap = fig.cap7}
 paltmp <- palette()
-
 paltmp[3] <- "blue"
-
 paltmp[4] <- "brown"
-
 palette(paltmp)
-   
 par(mfrow=c(6,1), oma = c(0,0,1,0), mar = rep(0,4))
-
 for (j in 1:3) {
-
     res <- res2[[j]]
-    
     for (i in 2:5) {
         res[[i]]$data <- res[[1]]$data
     }
-    
     bics <- rep(0, maxk)
-    
     ll <- rep(0, maxk)
-    
     for (i in 1:maxk) {
-        
         bics[i] <- getIC(res[[i]])
-        
         ll[i] <- max(res[[i]]$ll)
-        
     }
-    
     ll2 <- ll
-    
     ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
-    
     ll <- ll - min(ll) + min(bics)
-    
     ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
-    
     i <- which.min(bics)
-
     bics[i] <- bics[which.max(bics)]
-
     i2 <- which.min(bics)
-
     plot(res[[i]])
     plot(res[[i2]])
-
 }
 ```
+	
+# Session information
+
+```{r}
+sessionInfo()
+```
+
+## References:
+   
+Martin Pirkl, Niko Beerenwinkel (2018).  
+Single cell network analysis with a mixture of Nested Effects Models  
+bioRxiv 258202; doi: https://doi.org/10.1101/258202  
+
+Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and Bock, C. (2017).  
+Pooled crispr screening with single-cell transcriptome readout.  
+Nature Methods, 14, 297 EP ???.
+
+Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P., Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R., Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and Regev, A. (2016).  
+Perturb-seq: Dissecting molecular circuits with scalable single-cell rna profiling of pooled genetic screens.  
+Cell, 167(7), 1853???1866.e17.
 
 # Data generation
 
-The following code was used to generate the data for the simulation and application results.
+The following code was used to generate the data for the simulation and
+    application results.
 
 ```{r, eval=FALSE}
-data <- read.csv("GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv", stringsAsFactors = FALSE)
-
+data <- read.csv("GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv",
+                 stringsAsFactors = FALSE)
 counts <- data[, grep("condition|^stim", colnames(data))]
-
 counts <- counts[-(1:5), -1]
-
 counts <- matrix(as.numeric(as.character(unlist(counts))), nrow(counts))
-
 rownames(counts) <- data[6:nrow(data), 1]
-
 colnames(counts) <- data[4, grep("^stim", colnames(data))]
-
 colnames(counts)[which(colnames(counts) %in% "CTRL")] <- ""
-
 data <- data[, -grep("DHODH|MVD|TUBB", colnames(data))]
-
 save(data, file = "data.rda")
-
 library(data.table)
-
 data <- fread("k562_both_filt.txt")
-
 data.backup <- data
-
 data <- data[, -1]
-
 data <- as.matrix(data)
-
 rownames(data) <- data.backup$GENE
-
-## data <- data[, grep("p7d", colnames(data))]
-
-## data <- data[, grep("cc7d", colnames(data))]
-
-## c2g <- read.csv("data/perturbseq/GSE90063_RAW/GSM2396858_k562_tfs_7_cbc_gbc_dict.csv", header = FALSE)
-
-## c2g <- read.csv("data/perturbseq/GSE90063_RAW/GSM2396861_k562_ccycle_cbc_gbc_dict.csv", header = FALSE)
-
 cn <- character(ncol(data))
-
 for (i in 1:length(c2g[[1]])) {
-    
     cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
-    
-    cn[which(colnames(data) %in% cells)] <- paste(cn[which(colnames(data) %in% cells)],
-                                                       gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "", as.character(c2g[[1]][[i]])), sep = "_")
-
+    cn[which(colnames(data) %in% cells)] <- paste(cn[
+        which(colnames(data) %in% cells)],
+        gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
+             as.character(c2g[[1]][[i]])), sep = "_")
 }
-
 colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
-
 data <- data[, -which(colnames(data) %in% "")]
-
-pertdist <- unlist(lapply(colnames(data), function(x) return(length(unlist(strsplit(x, "_"))))))
-
+pertdist <- unlist(lapply(colnames(data),
+                          function(x) return(length(unlist(strsplit(x, "_"))))))
 hist(pertdist)
-
 if (length(grep("_", colnames(data))) > 0) {
     data <- data[, -grep("_", colnames(data))]
 }
-
 save(data, file = "data.rda")
-
-## job script for simulations:
-
 args <- commandArgs()
 Sgenes <- as.numeric(gsub("Sgenes=", "", args[grep("Sgenes=", args)]))
 run <- gsub("run=", "", args[grep("run=", args)])
 noise <- gsub("noise=", "", args[grep("noise=", args)])
 nem <- gsub("nem=", "", args[grep("nem=", args)])
-
-# nem <- 1:5; noise <- 1:3; run <- 1; Sgenes <- 3
-
 if (length(grep(":", nem)) > 0) {
     nem <- as.numeric(gsub(":.*", "", nem)):as.numeric(gsub(".*:", "", nem))
 } else {
     nem <- as.numeric(nem)
 }
-
 if (length(grep(":", noise)) > 0) {
-    noise <- as.numeric(gsub(":.*", "", noise)):as.numeric(gsub(".*:", "", noise))
+    noise <- as.numeric(gsub(":.*", "", noise)):as.numeric(gsub(".*:", "",                                                             noise))
 } else {
     noise <- as.numeric(noise)
 }
-
 if (length(grep(":", run)) > 0) {
     run <- as.numeric(gsub(":.*", "", run)):as.numeric(gsub(".*:", "", run))
 } else {
     run <- as.numeric(run)
 }
-
 library(cluster)
 library(nem)
 library(snowfall)
 library(Rgraphviz)
 library(mnem)
-
 start1 <- as.numeric(format(Sys.time(), "%s"))
-
-## variable parameters:
 runs <- 100
 noises <- c(1, 2.5, 5, 10)
 nems <- 1:10
 maxk <- 5
-
-## fixed parameters:
 starts <- 10
 search <- "modules"
 verbose <- FALSE
-
-## mixing parameters:
 Egenes <- 2
 nCells <- 1000
-
-simres <- array(0, c(runs, length(noises), length(nems), 4, 7), list(paste("run_", 1:runs, sep = ""), paste("noise_", noises, sep = ""), paste("components_", nems, sep = ""), c("mnem", "nem", "cnem", "random2"), c("time", "overfit", "accuracy", "sensitivity", "specificity", "mixing", "mixing2")))
+simres <- array(0, c(runs, length(noises), length(nems), 4, 7),
+                list(paste("run_", 1:runs, sep = ""),
+                     paste("noise_", noises, sep = ""),
+                     paste("components_", nems, sep = ""),
+                     c("mnem", "nem", "cnem", "random2"),
+                     c("time", "overfit", "accuracy", "sensitivity",
+                       "specificity", "mixing", "mixing2")))
 
 for (i in nem) {
     for (j in noise) {    
-        if (file.exists(paste("temp/simres_mnem_", Sgenes, "_", run, "_", j, "_", i, ".rda", sep = ""))) {
-            print(paste("temp/simres_mnem_", Sgenes, "_", run, "_", j, "_", i, ".rda", sep = ""))
+        if (file.exists(paste("temp/simres_mnem_", Sgenes, "_", run, "_", j,
+                              "_", i, ".rda", sep = ""))) {
+            print(paste("temp/simres_mnem_", Sgenes, "_", run, "_", j, "_",
+                        i, ".rda", sep = ""))
             stop("simulation result already exists")
         }
     }
 }
-
 for (donoise in noise) {
     for (donem in nem) {
-
-        ## donoise <- noise[1]; donem <- nem[2]
-
         print(paste(rep("_", 100), collapse = ""))
         print(paste("run", run))
         print(paste("noise", noises[donoise]))
@@ -642,41 +497,44 @@ for (donoise in noise) {
         fullsim[which(fullsim > 1)] <- 1
         diag(fullsim) <- 1
         
-        ## mnem:
         data <- sim$data
         data <- (data - 0.5)/0.5
         data <- data + rnorm(length(sim$data), 0, noises[donoise])
-        ## random p:
+
         p <- NULL
         start <- as.numeric(format(Sys.time(), "%s"))
         res <- list()
         if (maxk == 1) {
-            res <- mnem(data, starts = starts, search = search, verbose = verbose)
+            res <- mnem(data, starts = starts, search = search,
+                        verbose = verbose)
         } else {
             bics <- rep(Inf, maxk)
             for (k in 1:maxk) {
-                res[[k]] <- mnem(data, starts = starts, search = search, k = k, verbose = verbose)
+                res[[k]] <- mnem(data, starts = starts, search = search, k = k,
+                                 verbose = verbose)
                 bics[k] <- getIC(res[[k]])
             }
             res1 <- res[[1]]
             res <- res[[which.min(bics)]]
         }
-        simres[run, donoise, donem, 1, 1] <- as.numeric(format(Sys.time(), "%s")) - start
+        simres[run, donoise, donem, 1, 1] <-
+            as.numeric(format(Sys.time(), "%s")) - start
         resfull <- NULL
         fullres <- res$comp[[1]]$phi*0
         for (i in 1:length(res$comp)) {
             tmp <- transitive.closure(res$comp[[i]]$phi, mat = TRUE)
             resfull <- cbind(resfull, t(tmp))
-            fullres <- fullres + transitive.closure(res$comp[[i]]$phi, mat = TRUE)
+            fullres <- fullres + transitive.closure(res$comp[[i]]$phi,
+                                                    mat = TRUE)
         }
         fullres[which(fullres > 1)] <- 1
         diag(fullres) <- 1
 
-        ## look at binary mixing weights:
         if (dim(res$probs)[1] == 1) {
             mwbin <- 1
         } else {
-            mwbin <- apply(apply(getAffinity(res$probs, mw = res$mw,affinity=0), 2,
+            mwbin <- apply(apply(getAffinity(res$probs, mw = res$mw,
+                                             affinity=0), 2,
                                  function(x) { xmax <- max(x)
                                      x[which(x != xmax)] <- 0
                                      x[which(x != 0)] <- 1
@@ -693,22 +551,37 @@ for (donoise in noise) {
         simres[run, donoise, donem, 1, 5] <- tn/(tn+fp)
         simres[run, donoise, donem, 1, 3] <- hamSim(simfull, resfull)
         if (length(mw) == length(res$mw)) {
-            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(res$mw), sort(mw))))
-            simres[run, donoise, donem, 1, 7] <- sum(dist(rbind(sort(mwbin), sort(mw))))
+            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(res$mw),
+                                                                sort(mw))))
+            simres[run, donoise, donem, 1, 7] <- sum(dist(rbind(sort(mwbin),
+                                                                sort(mw))))
         }
         if (length(mw) > length(res$mw)) {
-            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(c(res$mw, rep(0, length(mw) - length(res$mw)))), sort(mw))))
-            simres[run, donoise, donem, 1, 7] <- sum(dist(rbind(sort(c(mwbin, rep(0, length(mw) - length(mwbin)))), sort(mw))))
+            simres[run, donoise, donem, 1, 6] <-
+                sum(dist(rbind(sort(c(res$mw,
+                                      rep(0,length(mw) - length(res$mw)))),
+                               sort(mw))))
+            simres[run, donoise, donem, 1, 7] <-
+                sum(dist(rbind(sort(c(mwbin,
+                                      rep(0, length(mw) - length(mwbin)))),
+                               sort(mw))))
         }
         if (length(mw) < length(res$mw)) {
-            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(c(mw, rep(0, length(res$mw) - length(mw)))), sort(res$mw))))
-            simres[run, donoise, donem, 1, 7] <- sum(dist(rbind(sort(c(mw, rep(0, length(mwbin) - length(mw)))), sort(mwbin))))
+            simres[run, donoise, donem, 1, 6] <-
+                sum(dist(rbind(sort(c(mw,
+                                      rep(0, length(res$mw) - length(mw)))),
+                               sort(res$mw))))
+            simres[run, donoise, donem, 1, 7] <-
+                sum(dist(rbind(sort(c(mw,
+                                      rep(0, length(mwbin) - length(mw)))),
+                               sort(mwbin))))
         }
         
         ## nem:
         start <- as.numeric(format(Sys.time(), "%s"))
         nemres <- mynem(data, search = search)
-        simres[run, donoise, donem, 2, 1] <- as.numeric(format(Sys.time(), "%s")) - start
+        simres[run, donoise, donem, 2, 1] <-
+            as.numeric(format(Sys.time(), "%s")) - start
         if (maxk == 1) {
             fullnem <- transitive.closure(nemres$adj, mat = TRUE)
         } else {
@@ -724,18 +597,21 @@ for (donoise in noise) {
         simres[run, donoise, donem, 2, 4] <- tp/(tp+fn)
         simres[run, donoise, donem, 2, 5] <- tn/(tn+fp)
         simres[run, donoise, donem, 2, 3] <- hamSim(simfull, t(fullnem))
-        simres[run, donoise, donem, 2, 6] <- sum(dist(rbind(sort(c(1, rep(0, length(mw) - 1))), sort(mw))))
+        simres[run, donoise, donem, 2, 6] <-
+            sum(dist(rbind(sort(c(1, rep(0, length(mw) - 1))), sort(mw))))
         
         ## cluster NEM:
         start <- as.numeric(format(Sys.time(), "%s"))
         res <- clustNEM(data, search = search)
-        simres[run, donoise, donem, 3, 1] <- as.numeric(format(Sys.time(), "%s")) - start
+        simres[run, donoise, donem, 3, 1] <-
+            as.numeric(format(Sys.time(), "%s")) - start
          resfull <- NULL
         fullres <- res$comp[[1]]$phi*0
         for (i in 1:length(res$comp)) {
             tmp <- transitive.closure(res$comp[[i]]$phi, mat = TRUE)
             resfull <- cbind(resfull, t(tmp))
-            fullres <- fullres + transitive.closure(res$comp[[i]]$phi, mat = TRUE)
+            fullres <- fullres + transitive.closure(res$comp[[i]]$phi,
+                                                    mat = TRUE)
         }
         fullres[which(fullres > 1)] <- 1
         diag(fullres) <- 1
@@ -749,13 +625,20 @@ for (donoise in noise) {
         simres[run, donoise, donem, 4, 5] <- tn/(tn+fp)
         simres[run, donoise, donem, 4, 3] <- hamSim(simfull, fullrand)
         if (length(mw) == length(res$mw)) {
-            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(res$mw), sort(mw))))
+            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(res$mw),
+                                                                sort(mw))))
         }
         if (length(mw) > length(res$mw)) {
-            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(c(res$mw, rep(0, length(mw) - length(res$mw)))), sort(mw))))
+            simres[run, donoise, donem, 1, 6] <-
+                sum(dist(rbind(sort(c(res$mw,
+                                      rep(0, length(mw) - length(res$mw)))),
+                               sort(mw))))
         }
         if (length(mw) < length(res$mw)) {
-            simres[run, donoise, donem, 1, 6] <- sum(dist(rbind(sort(c(mw, rep(0, length(res$mw) - length(mw)))), sort(res$mw))))
+            simres[run, donoise, donem, 1, 6] <-
+                sum(dist(rbind(sort(c(mw,
+                                      rep(0, length(res$mw) - length(mw)))),
+                               sort(res$mw))))
         }
     }
 }
@@ -766,13 +649,13 @@ print(end1 - start1)
 
 for (i in nem) {
     for (j in noise) {    
-        save(simres, noises, nems, file = paste("temp/simres_mnem_", Sgenes, "_", run, "_", j, "_", i, ".rda", sep = ""))
+        save(simres, noises, nems, file = paste("temp/simres_mnem_", Sgenes,
+                                                "_", run, "_", j, "_", i,
+                                                ".rda", sep = ""))
     }
 }
 
 stop("simulations are done")
-
-### load simulations
 
 sim <- list()
 
@@ -782,8 +665,10 @@ for (Sgenes in c(3,5,10,20)) {
     for (i in 1:length(noises)) {
         for (j in 1:length(nems)) {
             for (k in 1:runs) {
-                if (file.exists(paste0("temp/simres_mnem_", Sgenes, "_", k, "_", i, "_", j, ".rda"))) {
-                    load(paste0("temp/simres_mnem_", Sgenes, "_", k, "_", i, "_", j, ".rda"))
+                if (file.exists(paste0("temp/simres_mnem_", Sgenes, "_", k, "_",
+                                       i, "_", j, ".rda"))) {
+                    load(paste0("temp/simres_mnem_", Sgenes, "_", k, "_", i,
+                                "_", j, ".rda"))
                     if (is.null(simresF)) {
                         simresF <- simres
                     } else {
@@ -798,9 +683,6 @@ for (Sgenes in c(3,5,10,20)) {
     sim[[count]] <- simresF
 }
 
-
-### job script to turn normalized count data in log likelihood ratios and apply mnem.
-
 library(mnem)
 library(cluster)
 library(nem)
@@ -808,11 +690,8 @@ library(Rgraphviz)
 
 ## define dataset
 
-#dataset <- "cropseq"
-
-#dataset <- "perturbseq_cc7d"
-
-#dataset <- "perturbseq_p7d"
+datasets <- c("cropseq", "perturbseq_cc7d", "perturbseq_p7d")
+dataset <- datasets[1]
 
 args <- commandArgs()
 
@@ -840,8 +719,6 @@ print(dataset)
 print(dobig)
 print(dosmall)
 print(dollr)
-
-####################################### perturb-seq and crop-seq log likelihood ratio:
 
 if (dollr) {
 
@@ -886,7 +763,10 @@ if (dollr) {
             D <- which(colnames(data) %in% gene)
             cdistr <- ecdf(data[i, C])
             ddistr <- ecdf(data[i, D])
-            llrcol[j] <- log2(min(ddistr(data[i, j]), 1 - ddistr(data[i, j]))/min(cdistr(data[i,j]), 1 - cdistr(data[i,j])))
+            llrcol[j] <-
+                log2(min(ddistr(data[i, j]),
+                         1 - ddistr(data[i, j]))/min(cdistr(data[i,j]),
+                                                     1 - cdistr(data[i,j])))
         }
         return(llrcol)
     }
@@ -902,7 +782,7 @@ if (dollr) {
 
     colnames(llr) <- colnames(data)
 
-    llr <- llr[, which(!(colnames(data) %in% ""))] # !!!
+    llr <- llr[, which(!(colnames(data) %in% ""))]
 
     rownames(llr) <- rownames(data)
 
@@ -911,10 +791,6 @@ if (dollr) {
     print("llr done")
 
 }
-
-## stop()
-
-########### do small set of genes:
 
 if (dosmall) {
 
@@ -968,63 +844,30 @@ if (dosmall) {
     
     for (k in 1:maxk) {
 
-        res[[k]] <- mnem(lods, starts = starts, type = "random", parallel = parallel, k = k, verbose = TRUE, converged = 10^-1, search = "modules")
+        res[[k]] <- mnem(lods, starts = starts, type = "random",
+                         parallel = parallel, k = k, verbose = TRUE,
+                         converged = 10^-1, search = "modules")
         
         res[[k]]$data <- NULL
         
-        save(res, file = paste0("cropseq/", dataset, "_mnem_small", addendum, ".rda"))
+        save(res, file = paste0("cropseq/", dataset, "_mnem_small", addendum,
+                                ".rda"))
         
     }
     
-    save(res, file = paste0("cropseq/", dataset, "_mnem_small", addendum, ".rda"))
+    save(res, file = paste0("cropseq/", dataset, "_mnem_small", addendum,
+                            ".rda"))
 
     stop("small set done")
 
 }
 
-###########################################
-
-stop()
-
-## rm *.sh.*
-
-## ## code to run the job script on hpc:
-
-## module load repo/grid
-## module load grid/grid
-
-## for i in `seq 1 100`; do
-##     cores=1
-##     file=${i}.sh
-##     echo "module load repo/grid" >> $file
-##     echo "module load grid/grid" >> $file
-##     echo "module load R/3.4.0" >> $file
-##     echo "R --slave --args 'dataset=perturbseq_p7d' 'cores=$cores' 'run=$i' 'starts=1' 'dollr=0' 'dobig=1' 'dosmall=0' < mnem/vignettes/job.R" >> $file
-##     qsub -q mpi01.q -pe make $cores $file
-##     rm $file
-## done
-
-## module load r/3.4.0
-
-## for i in `seq 2 100`; do
-##     cores=1
-##     file=Withsomeluck${i}.sh
-##     echo "R --slave --args 'dataset=cropseq' 'cores=$cores' 'run=$i' 'starts=1' 'dollr=0' 'dobig=1' 'dosmall=0' < mnem/vignettes/job.R" >> $file
-##     bsub -M 10000 -q normal.24h -n 1 -e logs/${file}_${i}_error.txt -o logs/${file}_${i}_output.txt < $file
-##     rm $file
-## done
-
-## get the best for several on one core each:
+datasets <- c("cropseq", "perturbseq_cc7d", "perturbseq_p7d")
+dataset <- datasets[1]
 
 maxk <- 5
 
 starts <- 100
-
-dataset <- "cropseq"
-
-#dataset <- "perturbseq_cc7d"
-
-#dataset <- "perturbseq_p7d"
 
 bigorsmall <- "small"
 
@@ -1055,13 +898,9 @@ for (i in 1:starts) {
     }
 }
 
-## load log odds before next step
-
 res <- resMax
 
 res[[5]]$data <- res[[4]]$data <- res[[3]]$data <- res[[2]]$data <- res[[1]]$data <- lods
-
-## save(res, file = paste0(dataset, "_mnem_", bigorsmall, "_final.rda"))
 
 load(paste0(dataset, "_mnem_", bigorsmall, "_final.rda"))
 
@@ -1073,8 +912,6 @@ p7dres <- res
 
 res2 <- list(cropres, cc7dres, p7dres)
 
-## reduce data size as much as possible:
-
 for (i in 1:3) {
     res2[[i]][[1]]$data <- res2[[i]][[1]]$data[1:2, ]
     for (j in 2:5) {
@@ -1083,23 +920,3 @@ for (i in 1:3) {
 }
 
 ```
-	
-# Session information
-
-```{r}
-sessionInfo()
-```
-
-## References:
-   
-Martin Pirkl, Niko Beerenwinkel (2018).  
-Single cell network analysis with a mixture of Nested Effects Models  
-bioRxiv 258202; doi: https://doi.org/10.1101/258202  
-
-Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and Bock, C. (2017).  
-Pooled crispr screening with single-cell transcriptome readout.  
-Nature Methods, 14, 297 EP ???.
-
-Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P., Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R., Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and Regev, A. (2016).  
-Perturb-seq: Dissecting molecular circuits with scalable single-cell rna profiling of pooled genetic screens.  
-Cell, 167(7), 1853???1866.e17.

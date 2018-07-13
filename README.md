@@ -1,7 +1,14 @@
 # M&NEM
 
-  Single cell RNA-seq data sets from pooled CrispR screens provide the possibility to analyzse heterogeneous cell populations. We extended the original Nested Effects Models (NEM) to Mixture Nested Effects Models (M&NEM) to identify not but several causal signaling graphs, each based on the information of a sub-population of cells.
-
+  Single cell RNA-seq data sets from pooled CrispR screens provide the possibility
+       to analyzse hete	rogeneous cell populations. We extended the original
+       Nested Effects Models (NEM) to Mixture Nested Effects Models (M&NEM) to
+       simulataneously identify several causal signalling graphs and
+       corresponding subpopulations of cells. The final result will be a soft
+       clustering of the perturbed cells and a causal signalling graph, which
+       describes the interactions of the perturbed genens for each cluster of
+       cells.
+  
 Install:
 --------
 

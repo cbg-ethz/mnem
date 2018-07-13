@@ -11,6 +11,6 @@ Encoding: UTF-8
 LazyData: true
 biocViews: Pathways, SystemsBiology, NetworkInference, Network, Single-cell, CrispR, RNAi
 RoxygenNote: 6.0.1
-Imports: cluster, nem, epiNEM, graph, Rgraphviz, flexclust, lattice, modeltools, naturalsort, snowfall, stats4, tsne, methods
+Imports: cluster, nem, epiNEM, graph, Rgraphviz, flexclust, lattice, modeltools, naturalsort, snowfall, stats4, tsne
 VignetteBuilder: knitr
-Suggests: knitr
+Suggests: knitr, devtools, rmarkdown, BiocGenerics

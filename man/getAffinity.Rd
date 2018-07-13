@@ -10,6 +10,11 @@ getAffinity(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
 \arguments{
 \item{x}{log odds for l cells and k components as a kxl matrix}
 
+\item{affinity}{0 for standard soft clustering, 1 for hard clustering
+during inference (not recommended)}
+
+\item{norm}{if TRUE normalises to probabilities (recommended)}
+
 \item{logtype}{logarithm type of the data}
 
 \item{mw}{miture weights}
@@ -20,7 +25,7 @@ getAffinity(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
 Calculate responsibilities
 }
 \examples{
-#' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 data <- (sim$data - 0.5)/0.5
 data <- data + rnorm(length(data), 0, 1)
 result <- mnem(data, k = 2, starts = 2)

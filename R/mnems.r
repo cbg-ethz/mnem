@@ -1,12 +1,42 @@
+#' Simulation results
+#' Example data: simulation results
+#' Contains simulation results. How they were
+#' aquired is explained in the vignette.
+#' The data conists of a list of data matrices holding
+#' sensitivity and specificity
+#' (spec, sens) of network edges for the variious methods compared to
+#' the ground truth, sensitivity and specificity (sens2, spec2)
+#' of the expected data for clustNEM and mnem.
+#' @name sim
+#' @docType data
+#' @usage sim
+#' @examples
+#' data(sim)
+NA
+#' Processed scRNAseq from pooled CRISPR screens
+#' Example data: mnem results for
+#' the Dixit et al., 2016 and Datlinger et al., pooled CRISPR screens.
+#' For details see the vignette.
+#' @name app
+#' @docType data
+#' @usage app
+#' @references Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and Bock, C. (2017). Pooled crispr screening with single-cell transcriptome readout. Nature Methods, 14, 297 EP ???.
+#' @references Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P., Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R., Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and Regev, A. (2016). Perturb-seq: Dissecting molecular circuits with scalable single-cell rna profiling of pooled genetic screens. Cell, 167(7), 1853???1866.e17.
+#' @examples
+#' data(app)
+NA
 #' Calculate responsibilities
 #' @param x log odds for l cells and k components as a kxl matrix
+#' @param affinity 0 for standard soft clustering, 1 for hard clustering
+#' during inference (not recommended)
+#' @param norm if TRUE normalises to probabilities (recommended)
 #' @param logtype logarithm type of the data
 #' @param mw miture weights
 #' @param data data in log odds
 #' @author Martin Pirkl
 #' @export
 #' @examples
-#' #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+#' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 2)
@@ -54,27 +84,6 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
     y[which(is.na(y) == TRUE)] <- 0
     return(y)
 }
-#' Example data: simulation results
-#' Contains simulation results. How they were
-#' aquired is explained in the vignette.
-#' The data conists of a list of data matrices holding
-#' sensitivity and specificity
-#' (spec, sens) of network edges for the variious methods compared to
-#' the ground truth, sensitivity and specificity (sens2, spec2)
-#' of the expected data for clustNEM and mnem.
-#' @docType data
-#' @examples 
-#' data(sim)
-#' @name sim
-NA
-#' Example data: mnem results for
-#' the Dixit et al., 2016 and Datlinger et al., pooled CRISPR screens.
-#' For details see the vignette.
-#' @docType data
-#' @examples 
-#' data(app)
-#' @name app
-NA
 #' calculate negative penalized log likelihood
 #' @param x mnem object
 #' @param man logical. manual data penalty
@@ -715,6 +724,7 @@ bootstrap <- function(x, size = 1000, logtype = 2, ...) {
 #' @author Martin Pirkl
 #' @return visualization of mnem result Rgraphviz
 #' @export
+#' @method plot mnem
 #' @import
 #' epiNEM
 #' cluster

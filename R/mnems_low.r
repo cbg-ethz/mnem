@@ -575,11 +575,16 @@ getSgenes <- function(data) {
     return(Sgenes)
 }
 #' @noRd
+#' @importFrom nem enumerate.models
+#' @importFrom utils getFromNamespace
 mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
                   verbose = FALSE, redSpace = NULL,
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
                   ratio = TRUE, domean = TRUE, modulesize = 5, ...) {
+    get.deletions <- getFromNamespace("get.deletions", "nem")
+    get.insertions <- getFromNamespace("get.insertions", "nem")
+    get.reversions <- getFromNamespace("get.reversions", "nem")
     if ("modules" %in% search) {
         if (length(search) > 1) {
             search <- search[-which(search %in% "modules")]
@@ -778,97 +783,6 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 subweights = subweights)
     return(nem)
 }
-## functions from the nem package. update to use the native nem package functions!
-#' @noRd
-get.insertions = function(Phi, trans.close=TRUE){
-    idx = which(Phi == 0)
-    models = list()
-    if(length(idx) > 0){
-        for(i in seq_len(length(idx))){ # test all possible new edges
-            Phinew = Phi
-            Phinew[idx[i]] = 1
-            if(trans.close)
-                Phinew = transitive.closure(Phinew, mat=TRUE,loops=TRUE) 
-            models[[i]] <- Phinew
-        }
-    } 
-    models       
-}
-#' @noRd
-get.deletions = function(Phi){
-    Phi = Phi - diag(ncol(Phi))
-    idx = which(Phi == 1)
-    models = list()
-    if(length(idx) > 0){
-        for(i in 1:length(idx)){ # test all possible edge deletions
-            Phinew = Phi
-            Phinew[idx[i]] = 0
-            diag(Phinew) = 1
-            models[[i]] <- Phinew
-        }
-    } 
-    models       
-}
-#' @noRd
-get.reversions = function(Phi){
-    idx = which(Phi + t(Phi) == 1, arr.ind=TRUE)
-    models = list()
-    if(NROW(idx) > 0){
-        for(i in 1:NROW(idx)){ # test all possible edge reversions
-            Phinew = Phi
-            Phinew[idx[i,1],idx[i,2]] = 0
-            Phinew[idx[i,2],idx[i,1]] = 1
-            diag(Phinew) = 1
-            models[[i]] <- Phinew
-        }
-    } 
-    models       
-}
-#' @noRd
-enumerate.models <- function(x,name=NULL, trans.close=TRUE, verbose=TRUE) {
-
-if (length(x) == 1) {
-            n <- as.numeric(x)
-	    if(is.null(name))
-            	name <- letters[1:n]
-        } else {
-           n <- length(x)
-           name <- x
-        }
-
-#------------------
-# Sanity checks    
-
- if (n==1) stop("nem> choose n>1!")
- if (n>5)  stop("nem> exhaustive enumeration not feasible with more than 5 perturbed genes")            
- if (n==5) cat ("nem> this will take a while ... \n") 
-
-#------------------
-
-  bc <- bincombinations(n*(n-1))
-  fkt1 <- function(x,n,name) {
-    M <- diag(n)
-    M[which(M==0)]<-x
-    dimnames(M) <- list(name,name)	
-    if(trans.close)    
-    	M <- transitive.closure(M,mat=TRUE,loops=TRUE)    
-    return(list(M))
-  }
-  
-  models <- apply(bc,1,fkt1,n,name) 
-  models <- unique(matrix(unlist(models),ncol=n*n,byrow=TRUE))
-  
-  fkt2 <- function(x,n,name){
-     M <- matrix(x,n)
-     dimnames(M) <- list(name,name)
-     return(list(M))
-  }
-  models <- unlist(apply(models,1,fkt2,n,name),recursive=FALSE)
-    
-  if (verbose) cat("Generated",length(models),"unique models ( out of", 2^(n*(n-1)), ")\n")
-
-  return(models)
-}
 #' @noRd
 adj2dnf <- function(A) {
 
@@ -974,4 +888,119 @@ adj2dnf <- function(A) {
     
     return(dnf)
     
+}
+#' @noRd
+simulateDnf <- function(dnf, stimuli = NULL, inhibitors = NULL) {
+    getStateDnf <- function(node, signalStates, graph, children = NULL) {
+        graphCut <- graph[grep(paste("=", node, "$", sep = ""), graph)]
+        if (length(graphCut) == 0) {
+            signalStates[, node] <- 0
+        } else {
+            sop <- numeric(nrow(signalStates))
+            children2 <- gsub("!", "", children)
+            for (i in graphCut) {
+                parents <- gsub("=.*$", "", unlist(strsplit(i, "\\+")))
+                pob <- rep(1, nrow(signalStates))
+                for (j in parents) {
+                    j2 <- gsub("!", "", j)
+                    if (sum(is.na(signalStates[, j2]) == T) ==
+                        length(signalStates[, j2])) {
+                        if (j %in% j2) {
+                            node2 <- node
+                            add1 <- 0
+                        } else {
+                            node2 <- paste("!", node, sep = "")
+                            add1 <- 1
+                        }
+                        if (j2 %in% children2) {
+                            subGraph <- graph[
+                                -grep(paste(".*=", node, "|.*",
+                                            j2, ".*=.*", sep = ""), graph)]
+                            signalStatesTmp <- getStateDnf(
+                                node = j2,
+                                signalStates = signalStates,
+                                graph = subGraph,
+                                children = NULL)
+                            if ((length(
+                                    grep("!",
+                                         children[
+                                             which(
+                                                 children2 %in%
+                                                 j2):length(
+                                                        children2)]))+add1)/2 !=
+                                ceiling((length(grep("!",children[
+                                                             which(
+                                                                 children2 %in%
+                                                                 j2):length(
+                                                                        children2)]))+add1)/2)) {
+                            } else {
+                            }
+                            if (add1 == 0) {
+                                pobMult <- signalStatesTmp[, j2]
+                            } else {
+                                pobMult <- add1 - signalStatesTmp[, j2]
+                            }
+                        } else {
+                            signalStates <-
+                                getStateDnf(node = j2,
+                                            signalStates = signalStates,
+                                            graph = graph,
+                                            children = unique(c(children,
+                                                                node2)))
+                            if (add1 == 0) {
+                                pobMult <- signalStates[, j2]
+                            } else {
+                                pobMult <- add1 - signalStates[, j2]
+                            }
+                        }
+                        pob <- pob*pobMult
+                    } else {
+                        if (j %in% j2) {
+                            add1 <- 0
+                        } else {
+                            add1 <- 1
+                        }
+                        if (add1 == 0) {
+                            pobMult <- signalStates[, j2]
+                        } else {
+                            pobMult <- add1 - signalStates[, j2]
+                        }
+                        pob <- pob*pobMult
+                    }
+                    if (max(pob, na.rm = T) == 0) { break() }
+                }
+                sop <- sop + pob
+                if (min(sop, na.rm = T) > 0) { break() }
+            }
+            sop[sop > 0] <- 1
+            if (node %in% inhibitors) {
+                sop <- sop*0
+            }
+            if (node %in% stimuli) {
+                sop <- max(sop, 1)
+            }
+            signalStates[, node] <- sop
+        }
+        return(signalStates)
+    }
+    signals <-
+        unique(gsub("!", "",
+                    unlist(strsplit(
+                        unlist(strsplit(dnf, "=")), "\\+"))))
+    graph <- dnf
+    signalStates <- matrix(NA, nrow = 1, ncol = length(signals))
+    rownames(signalStates) <- paste(c("stimuli:", stimuli, "inhibitors:",
+                                      inhibitors), collapse = " ")
+    colnames(signalStates) <- signals
+    signalStates[which(signals %in% stimuli)] <- 1
+    for (k in signals) {
+        if (is.na(signalStates[, k]) == T) {
+            signalStates <- getStateDnf(node = k, signalStates = signalStates,
+                                        graph = graph, children = NULL)
+        }
+    }
+    namestmp <- colnames(signalStates)
+    signalStates <- as.vector(signalStates)
+    names(signalStates) <- namestmp
+    return(signalStates = signalStates)
 }
