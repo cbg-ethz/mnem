@@ -219,50 +219,6 @@ getLL <- function(x, logtype = 2, mw = NULL, data = NULL) {
     return(l)
 }
 #' @noRd
-getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
-                        data = matrix(0, 2, ncol(x))) {
-    if (is.null(mw)) { mw <- rep(1, nrow(x))/nrow(x) }
-    if (affinity == 1) {
-        y <- logtype^x
-        y <- apply(y, 2, function(x) {
-            xnmax <- which(x < max(x))
-            if (length(xnmax) > 0) {
-                x[xnmax] <- 0
-            }
-            return(x)
-        })
-        if (is.null(dim(y))) {
-            y <- matrix(y, nrow = 1)
-        }
-        if (norm) {
-            y[which(y != 0)] <- 1
-        }
-    } else {
-        if (nrow(x) > 1) {
-            y <- x
-            if (norm) {
-                if (any(is.infinite(logtype^apply(data, 2, function(x)
-                    return(sum(x[which(x>0)])))))) {
-                    y <- apply(y, 2, function(x) {
-                        xmax <- max(x)
-                        maxnum <- 2^1023
-                        shrinkfac <- log(maxnum)/log(logtype)
-                        x <- x - (xmax - shrinkfac)
-                        return(x)
-                    })
-                }
-                y <- logtype^y
-                y <- y*mw
-                y <- apply(y, 2, function(x) return(x/sum(x)))
-            }
-        } else {
-            y <- matrix(1, nrow(x), ncol(x))
-        }
-    }
-    y[which(is.na(y) == TRUE)] <- 0
-    return(y)
-}
-#' @noRd
 estimateSubtopo <- function(data) {
     effectsums <- effectsds <- matrix(0, nrow(data), length(unique(colnames(data))))
     for (i in seq_len(length(unique(colnames(data))))) {
