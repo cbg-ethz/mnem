@@ -112,8 +112,6 @@ Evaluation of the simulation results by accuracy of the networks, mixture weight
 ```{r, fig.height=8, fig.width=10, fig.cap=fig.cap2}
 data(sim)
 
-load("~/Documents/temp.rda")
-
 noises <- c(1,2.5,5)
 nems <- 1:5
 
@@ -377,8 +375,6 @@ We optimized the mixture for components K=1,2,3,4,5. Hence, we use our penelized
 ```{r, fig.height = 3, fig.width = 11, fig.cap = fig.cap5}
 
 data(app)
-
-load("~/Mount/Euler/app.rda")
 
 res2 <- app
 

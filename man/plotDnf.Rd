@@ -30,9 +30,11 @@ plotDnf(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
 
 \item{inhibitors}{Vertices which can be inhibited.}
 
-\item{connected}{If TRUE, only includes vertices which are connected to other vertices.}
+\item{connected}{If TRUE, only includes vertices which are connected to other
+vertices.}
 
-\item{CNOlist}{CNOlist object. Optional instead of stimuli, inhibitors or signals.}
+\item{CNOlist}{CNOlist object. Optional instead of stimuli, inhibitors or
+signals.}
 
 \item{cex}{Global font size.}
 
@@ -46,7 +48,8 @@ plotDnf(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
 
 \item{edgelwd}{Edgeline width.}
 
-\item{legend}{0 shows no legend. 1 shows legend as a graph. 2 shows legend in a box.}
+\item{legend}{0 shows no legend. 1 shows legend as a graph. 2 shows legend
+in a box.}
 
 \item{x}{x coordinate of box legend.}
 
@@ -80,17 +83,20 @@ plotDnf(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
 
 \item{nodestates}{Binary state of each vertice.}
 
-\item{simulate}{Simulate stimulation and inhibition of a list of vertices. E.g. simulate = list(stimuli = c("A", "B"), inhibitors = c("C", "D")).}
+\item{simulate}{Simulate stimulation and inhibition of a list of vertices.
+E.g. simulate = list(stimuli = c("A", "B"), inhibitors = c("C", "D")).}
 
 \item{andcolor}{not used}
 
-\item{edgecol}{Vector with colors for every edge of the graph (not hyper-graph). E.g. an AND gate consists of three distinct edges.}
+\item{edgecol}{Vector with colors for every edge of the graph
+(not hyper-graph). E.g. an AND gate consists of three distinct edges.}
 
 \item{labels}{Vector with labels for the edges.}
 
 \item{labelcol}{Vector with label colors for the edges.}
 
-\item{nodelabel}{List of vertices with labels as input. E.g. labels = list(A="test", B="label for B").}
+\item{nodelabel}{List of vertices with labels as input.
+E.g. labels = list(A="test", B="label for B").}
 
 \item{nodecol}{List of vertices with colors as input.}
 
@@ -110,7 +116,8 @@ plotDnf(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
 
 \item{lty}{Vector with edge styles (line, dotted,...).}
 
-\item{hierarchy}{List with the hierarchy of the vertices. E.g. list(top = c("A", "B"), bottom = c("C", "D")).}
+\item{hierarchy}{List with the hierarchy of the vertices.
+E.g. list(top = c("A", "B"), bottom = c("C", "D")).}
 
 \item{showall}{See "connected" above.}
 

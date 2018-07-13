@@ -10,6 +10,8 @@ clustNEM(data, k = 2:5, ...)
 \item{data}{data of log ratios with cells in columns and features in rows}
 
 \item{k}{number of clusters}
+
+\item{...}{additional arguments for standard nem function}
 }
 \value{
 family of nems

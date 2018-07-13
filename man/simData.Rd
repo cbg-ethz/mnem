@@ -13,7 +13,8 @@ simData(Sgenes = 5, Egenes = 1, subsample = 1, Nems = 2, reps = NULL,
 
 \item{Egenes}{number of Egenes}
 
-\item{subsample}{range to subsample data. 1 means the full simulated data is used.}
+\item{subsample}{range to subsample data. 1 means the full simulated data is
+used.}
 
 \item{Nems}{numberof components}
 
@@ -28,6 +29,8 @@ simData(Sgenes = 5, Egenes = 1, subsample = 1, Nems = 2, reps = NULL,
 \item{uninform}{number of uninformative Egenes}
 
 \item{unitheta}{uniform theta, if true}
+
+\item{edgeprob}{edge probability}
 }
 \value{
 simulation object with meta information and data

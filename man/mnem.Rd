@@ -14,13 +14,17 @@ mnem(D, inference = "em", search = "modules", start = NULL,
   modulesize = 5, compress = FALSE, increase = TRUE)
 }
 \arguments{
-\item{D}{data with cells indexing the columns and features (E-genes) indexing the rows}
+\item{D}{data with cells indexing the columns and features (E-genes)
+indexing the rows}
 
-\item{inference}{inference method "em" for expectation maximization, "greedy" or "genetic"}
+\item{inference}{inference method "em" for expectation maximization,
+"greedy" or "genetic"}
 
-\item{search}{search method for single network inference "greedy", "exhaustive" or "modules"}
+\item{search}{search method for single network inference "greedy",
+"exhaustive" or "modules"}
 
-\item{start}{A list of n lists of k networks for n starts of the EM and k components}
+\item{start}{A list of n lists of k networks for n starts of the EM and
+k components}
 
 \item{method}{"llr" for log ratios or foldchanges as input (see ratio)}
 
@@ -44,7 +48,8 @@ mnem(D, inference = "em", search = "modules", start = NULL,
 
 \item{max_iter}{maximum iteration if likelihood does not converge}
 
-\item{parallel2}{if parallel=NULL, number of threads for component optimization}
+\item{parallel2}{if parallel=NULL, number of threads for component
+optimization}
 
 \item{converged}{absolute distance for convergence}
 
@@ -76,7 +81,8 @@ mnem(D, inference = "em", search = "modules", start = NULL,
 
 \item{compress}{compress networks after search}
 
-\item{increase}{if set to FALSE, the algorithm will not stop if the likelihood decreases}
+\item{increase}{if set to FALSE, the algorithm will not stop if the
+likelihood decreases}
 }
 \value{
 optimized network for data fit

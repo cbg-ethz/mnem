@@ -1,3 +1,24 @@
+#' Example data: simulation results
+#' Contains simulation results. How they were
+#' aquired is explained in the vignette.
+#' The data conists of a list of data matrices holding
+#' sensitivity and specificity
+#' (spec, sens) of network edges for the variious methods compared to
+#' the ground truth, sensitivity and specificity (sens2, spec2)
+#' of the expected data for clustNEM and mnem.
+#' @docType data
+#' @examples 
+#' data(sim)
+#' @name sim
+NA
+#' Example data: mnem results for
+#' the Dixit et al., 2016 and Datlinger et al., pooled CRISPR screens.
+#' For details see the vignette.
+#' @docType data
+#' @examples 
+#' data(app)
+#' @name app
+NA
 #' calculate negative penalized log likelihood
 #' @param x mnem object
 #' @param man logical. manual data penalty
@@ -15,17 +36,19 @@
 #' data <- data + rnorm(length(data), 0, 1)
 #' pen <- numeric(3)
 #' result <- list()
-#' for (k in seq__len(3)) {
+#' for (k in seq_len(3)) {
 #'     result[[k]] <- mnem(data, k = k, starts = 2)
 #'     pen[k] <- getIC(result[[k]])
 #' }
 #' print(pen)
-getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE, Fnorm = FALSE) {
+getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
+                  useF = FALSE, Fnorm = FALSE) {
     n <- ncol(x$data)
     if (useF) {
         for (i in seq_len(length(x$comp))) {
             tmp <- transitive.closure(x$comp[[i]]$phi, mat = TRUE)
-            tmp2 <- matrix(0, nrow = nrow(tmp), ncol = length(x$comp[[i]]$theta))
+            tmp2 <- matrix(0, nrow = nrow(tmp),
+                           ncol = length(x$comp[[i]]$theta))
             tmp3 <- x$comp[[i]]$theta
             tmp3[which(tmp3 > nrow(tmp2))] <- 0
             tmp2[cbind(tmp3, 1:ncol(tmp2))] <- 1
@@ -56,7 +79,8 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE
                 fpar <- fpar + length(x$comp)*length(x$comp[[1]]$theta)
             }
         } else {
-            fpar <- (length(x$comp[[1]]$phi)+length(x$comp[[1]]$theta))*length(x$comp)
+            fpar <-(length(x$comp[[1]]$phi)+
+                    length(x$comp[[1]]$theta))*length(x$comp)
         }
         if (degree > 0) {
             fpar <- fpar + length(x$comp) - 1
@@ -71,10 +95,14 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE
     return(ic)
 }
 #' learn mixture of networks from a single-ceel knock-down experiment
-#' @param D data with cells indexing the columns and features (E-genes) indexing the rows
-#' @param inference inference method "em" for expectation maximization, "greedy" or "genetic"
-#' @param search search method for single network inference "greedy", "exhaustive" or "modules"
-#' @param start A list of n lists of k networks for n starts of the EM and k components
+#' @param D data with cells indexing the columns and features (E-genes)
+#' indexing the rows
+#' @param inference inference method "em" for expectation maximization,
+#' "greedy" or "genetic"
+#' @param search search method for single network inference "greedy",
+#' "exhaustive" or "modules"
+#' @param start A list of n lists of k networks for n starts of the EM and
+#' k components
 #' @param method "llr" for log ratios or foldchanges as input (see ratio)
 #' @param parallel number of threads
 #' @param reduce logical - reduce search space for exhaustive search
@@ -86,7 +114,8 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE
 #' @param kmax maximum number of components when k=NULL is inferred
 #' @param verbose output
 #' @param max_iter maximum iteration if likelihood does not converge
-#' @param parallel2 if parallel=NULL, number of threads for component optimization
+#' @param parallel2 if parallel=NULL, number of threads for component
+#' optimization
 #' @param converged absolute distance for convergence
 #' @param redSpace space for exhaustive search
 #' @param affinity 0 is default, 1 is for hard clustering
@@ -102,7 +131,8 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE
 #' @param domean average the data (speed imporvment)
 #' @param modulesize max number of S-genes per module in module search
 #' @param compress compress networks after search
-#' @param increase if set to FALSE, the algorithm will not stop if the likelihood decreases
+#' @param increase if set to FALSE, the algorithm will not stop if the
+#' likelihood decreases
 #' @author Martin Pirkl
 #' @return optimized network for data fit
 #' @export
@@ -119,22 +149,30 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2, useF = FALSE
 #' lattice
 #' modeltools
 #' stats4
+#' stats
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 2)
 #' plot(result)
-mnem <- function(D, inference = "em", search = "modules", start = NULL, method = "llr",
-                 parallel = NULL, reduce = FALSE, runs = 1, starts = 3, type = "random",
+mnem <- function(D, inference = "em", search = "modules", start = NULL,
+                 method = "llr",
+                 parallel = NULL, reduce = FALSE, runs = 1, starts = 3,
+                 type = "random",
                  p = NULL, k = NULL, kmax = 10, verbose = FALSE,
                  max_iter = 100, parallel2 = NULL, converged = 10^-1,
                  redSpace = NULL, affinity = 0, evolution = FALSE,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
                  popSize = 10, stallMax = 2, elitism = NULL, maxGens = Inf,
-                 domean = TRUE, modulesize = 5, compress = FALSE, increase = TRUE) {
+                 domean = TRUE, modulesize = 5, compress = FALSE,
+                 increase = TRUE) {
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
-        redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)], search = "exhaustive", reduce = TRUE, verbose = verbose, parallel = c(parallel, parallel2), subtopo = subtopoX, ratio = ratio, domean = FALSE, modulesize = modulesize)$redSpace
+        redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)],
+                          search = "exhaustive", reduce = TRUE,
+                          verbose = verbose, parallel = c(parallel, parallel2),
+                          subtopo = subtopoX, ratio = ratio, domean = FALSE,
+                          modulesize = modulesize)$redSpace
     }
     if (!is.null(parallel)) { if (parallel == 1) { parallel <- NULL } }
     D.backup <- D
@@ -156,15 +194,18 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
     }
     if (!is.null(k)) {
         if (initnets & is.null(start)) {
-            meanet <- mynem(D = data, search = search, start = start, method = method,
-                               parallel = parallel2, reduce = reduce, runs = runs,
-                               verbose = verbose, redSpace = redSpace, ratio = ratio, domean = domean, modulesize = modulesize)
+            meanet <- mynem(D = data, search = search, start = start,
+                            method = method,
+                            parallel = parallel2, reduce = reduce,
+                            runs = runs,
+                            verbose = verbose, redSpace = redSpace,
+                            ratio = ratio, domean = domean,
+                            modulesize = modulesize)
             init <- initComps(data, k, starts, verbose, meanet)
             probscl <- 0
         } else {
             if (type %in% "cluster") {
                 probscl <- initps(data, ks, k, starts = starts)
-                ## starts <- length(probscl)
             } else {
                 probscl <- 0
             }
@@ -172,9 +213,10 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
     } else {
         probscl <- 0
     }
-    ## if we start with specific membership values or networks we do not do several runs:
     if (!is.null(parallel)) { parallel2 <- NULL }
-    if (!is.null(start) | !is.null(p)) { starts <- length(start); k <- max(c(nrow(p), length(start[[1]]))) }
+    if (!is.null(start) | !is.null(p)) {
+        starts <- length(start); k <- max(c(nrow(p), length(start[[1]])))
+    }
     init <- start
     res1 <- NULL
     mw <- rep(1, k)/k
@@ -190,9 +232,13 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
         limits <- list()
         limits[[1]] <- list()
         limits[[1]]$res <- list()
-        limits[[1]]$res[[1]] <- mynem(D = data, search = search, start = start, method = method,
-                               parallel = parallel2, reduce = reduce, runs = runs,
-                               verbose = verbose, redSpace = redSpace, ratio = ratio, domean = domean, modulesize = modulesize)
+        limits[[1]]$res[[1]] <- mynem(D = data, search = search, start = start,
+                                      method = method,
+                                      parallel = parallel2, reduce = reduce,
+                                      runs = runs,
+                                      verbose = verbose, redSpace = redSpace,
+                                      ratio = ratio, domean = domean,
+                                      modulesize = modulesize)
         limits[[1]]$res[[1]]$D <- NULL
         res <- list()
         res[[1]] <- list()
@@ -201,10 +247,12 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
         mw <- 1
         probs0 <- list()
         probs0$probs <- matrix(0, k, ncol(data))
-        for (i in seq_len(2)) { # i == 1 seems to win most of the time
+        for (i in seq_len(2)) {
             probs <- matrix(i - 1, k, ncol(data))
-            probs <- getProbs(probs, k, data, res, method, n, affinity, converged, subtopoX, ratio, mw = mw)
-            if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) > getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
+            probs <- getProbs(probs, k, data, res, method, n, affinity,
+                              converged, subtopoX, ratio, mw = mw)
+            if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) >
+                getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
                 probs0 <- probs
             }
         }
@@ -218,10 +266,16 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                 transitive.closure <- nem::transitive.closure
                 transitive.reduction <- nem::transitive.reduction
                 sfInit(parallel = TRUE, cpus = parallel)
-                sfExport("modules", "mw", "ratio", "getSgeneN", "modData", "sortAdj", "calcEvopen", "evolution", "transitive.reduction", "getSgenes", "estimateSubtopo", "getLL", "getAffinity", "get.insertions", "get.reversions", "get.deletions", "D", "mynem", "scoreAdj", "transitive.closure", "max_iter", "verbose", "llrScore", "search", "redSpace", "affinity", "getProbs", "probscl", "method")#, "start", "better", "traClo", "method", "scoreAdj", "weights", "transitive.closure")
+                sfExport("modules", "mw", "ratio", "getSgeneN", "modData",
+                         "sortAdj", "calcEvopen", "evolution",
+                         "transitive.reduction", "getSgenes", "estimateSubtopo",
+                         "getLL", "getAffinity", "get.insertions",
+                         "get.reversions", "get.deletions", "D", "mynem",
+                         "scoreAdj", "transitive.closure", "max_iter",
+                         "verbose", "llrScore", "search", "redSpace",
+                         "affinity", "getProbs", "probscl", "method")
             }
             do_inits <- function(s) {
-                ## initial with random membership values if not input is given:
                 if (!is.null(init)) {
                     res1 <- list()
                     for (i in seq_len(length(init[[s]]))) {
@@ -238,8 +292,14 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                         probs0$probs <- matrix(0, k, ncol(data))
                         for (i in seq_len(2)) {
                             probs <- matrix(i - 1, k, ncol(data))
-                            probs <- getProbs(probs, k, data, res1, method, n, affinity, converged, subtopoX, ratio, mw = mw)
-                            if (getLL(probs$probs, logtype = logtype, mw = mw, data = data1) > getLL(probs0$probs, logtype = logtype, mw = mw, data = data1)) {
+                            probs <- getProbs(probs, k, data, res1, method, n,
+                                              affinity, converged, subtopoX,
+                                              ratio, mw = mw)
+                            if (getLL(probs$probs, logtype = logtype, mw = mw,
+                                      data = data) > getLL(probs0$probs,
+                                                            logtype = logtype,
+                                                            mw = mw,
+                                                            data = data)) {
                                 probs0 <- probs
                             }
                         }
@@ -253,15 +313,22 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                     if (length(probscl) >= s & type %in% "cluster") {
                         probs <- probscl[[s]]
                     } else {
-                        probs <- matrix(log2(sample(c(0,1), k*ncol(data), replace = TRUE, prob = c(0.9, 0.1))), k, ncol(data))
+                        probs <- matrix(log2(sample(c(0,1), k*ncol(data),
+                                                    replace = TRUE,
+                                                    prob = c(0.9, 0.1))), k,
+                                        ncol(data))
                     }
-                    mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data), 1, sum)
+                    mw <- apply(getAffinity(probs, affinity = affinity,
+                                            norm = TRUE, logtype = logtype,
+                                            mw = mw, data = data), 1, sum)
                     mw <- mw/sum(mw)
                 } else {
                     k <- nrow(p)
                     probs <- p
                 }
-                mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data), 1, sum)
+                mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE,
+                                        logtype = logtype, mw = mw,
+                                        data = data), 1, sum)
                 mw <- mw/sum(mw)
                 if (any(is.na(mw))) { mw <- rep(1, k)/k }
                 if (verbose) {
@@ -275,17 +342,22 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                 count <- 0
                 time0 <- TRUE
                 probsold <- probs
-                while ((((ll - llold > converged & increase) | (abs(ll - llold) > converged & !increase) & count < max_iter)) | time0) {
+                while ((((ll - llold > converged & increase) |
+                         (abs(ll - llold) > converged & !increase) &
+                         count < max_iter)) | time0) {
                     if (!time0) {
                         if (ll - bestll > 0) {
-                            bestll <- ll; bestres <- res1; bestprobs <- probs; bestmw <- mw
+                            bestll <- ll; bestres <- res1
+                            bestprobs <- probs; bestmw <- mw
                         }
                         llold <- ll
                         probsold <- probs
                     }
                     time0 <- FALSE
                     res <- list()
-                    postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data)
+                    postprobs <- getAffinity(probs, affinity = affinity,
+                                             norm = TRUE, logtype = logtype,
+                                             mw = mw, data = data)
                     edgechange <- 0
                     thetachange <- 0
                     for (i in seq_len(k)) {
@@ -303,7 +375,8 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                                 dataR <- data
                                 postprobsR <- postprobs[i, ]
                             } else {
-                                dataR <- cbind(data[, nozero, drop = FALSE], dataF)
+                                dataR <- cbind(data[, nozero, drop = FALSE],
+                                               dataF)
                                 postprobsR <- c(postprobs[i, nozero], rep(0, n))
                             }
                         } else {
@@ -314,9 +387,12 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                             res[[i]] <- mynem(D = dataR, weights = postprobsR,
                                               search = search, start = start0,
                                               method = method,
-                                              parallel = parallel2, reduce = reduce,
+                                              parallel = parallel2,
+                                              reduce = reduce,
                                               runs = runs, verbose = verbose,
-                                              redSpace = redSpace, ratio = ratio, domean = domean, modulesize = modulesize)#, subtopo = subtopoX)
+                                              redSpace = redSpace,
+                                              ratio = ratio, domean = domean,
+                                              modulesize = modulesize)
                         } else {
                             test01 <- list()
                             test01scores <- numeric(3)
@@ -326,41 +402,51 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                                 } else {
                                     start1 <- start0*0 + (j - 1)
                                 }
-                                test01[[j]] <- mynem(D = dataR, weights = postprobsR,
+                                test01[[j]] <- mynem(D = dataR,
+                                                     weights = postprobsR,
                                               search = search, start = start1,
                                               method = method,
-                                              parallel = parallel2, reduce = reduce,
+                                              parallel = parallel2,
+                                              reduce = reduce,
                                               runs = runs, verbose = verbose,
-                                              redSpace = redSpace, ratio = ratio, domean = domean, modulesize = modulesize)#, subtopo = subtopoX)
+                                              redSpace = redSpace,
+                                              ratio = ratio, domean = domean,
+                                              odulesize = modulesize)
                                 test01scores[j] <- max(test01[[j]]$scores)
                             }
                             res[[i]] <- test01[[which.max(test01scores)]]
                         }
-                        edgechange <- edgechange + sum(abs(res[[i]]$adj - res1[[i]]$adj))
-                        thetachange <- thetachange + sum(res[[i]]$subtopo != res1[[i]]$subtopo)
+                        edgechange <- edgechange +
+                            sum(abs(res[[i]]$adj - res1[[i]]$adj))
+                        thetachange <- thetachange +
+                            sum(res[[i]]$subtopo != res1[[i]]$subtopo)
                         res[[i]]$D <- NULL
                         res[[i]]$subweights <- NULL
                         
                     }
                     evopen <- 0
                     if (evolution) {
-                        ## order nems: (do i have to do this once or every damn time?)
                         res <- sortAdj(res)$res
                         evopen <- calcEvopen(res)
                     }
                     res1 <- res
-                    ## e:
+                    # E-step:
                     n <- ncol(res[[1]]$adj)
                     probs0 <- list()
                     probs0$probs <- matrix(0, k, ncol(data))
-                    for (i in seq_len(3)) { # i == 1 seems to win most of the time
+                    for (i in seq_len(3)) {
                         if (i == 3) {
                             probs <- probsold
                         } else {
                             probs <- matrix(i - 1, k, ncol(data))
                         }
-                        probs <- getProbs(probs, k, data, res, method, n, affinity, converged, subtopoX, ratio, mw = mw)
-                        if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) > getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
+                        probs <- getProbs(probs, k, data, res, method, n,
+                                          affinity, converged, subtopoX, ratio,
+                                          mw = mw)
+                        if (getLL(probs$probs, logtype = logtype, mw = mw,
+                                  data = data) > getLL(probs0$probs,
+                                                       logtype = logtype,
+                                                       mw = mw, data = data)) {
                             probs0 <- probs
                         }
                     }
@@ -368,31 +454,37 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                     probs <- probs0$probs
                     modelsize <- n*n*k
                     datasize <- nrow(data)*ncol(data)*k
-                    ll <- getLL(probs, logtype = logtype, mw = mw, data = data) + evopen*datasize*(modelsize^-1)
-                    mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data), 1, sum)
+                    ll <- getLL(probs, logtype = logtype, mw = mw,data = data) +
+                        evopen*datasize*(modelsize^-1)
+                    mw <- apply(getAffinity(probs, affinity = affinity,
+                                            norm = TRUE, logtype = logtype,
+                                            mw = mw, data = data), 1, sum)
                     mw <- mw/sum(mw)
                     if(verbose) {
                         print(paste("ll: ", ll, sep = ""))
-                        print(paste("changes in phi(s): ", edgechange, sep = ""))
-                        print(paste("changes in theta(s): ", thetachange, sep = ""))
+                        print(paste("changes in phi(s): ",
+                                    edgechange, sep = ""))
+                        print(paste("changes in theta(s): ",
+                                    thetachange, sep = ""))
                         if (evolution) {
-                            print(paste("evolution penalty: ", evopen, sep = ""))
+                            print(paste("evolution penalty: ",
+                                        evopen, sep = ""))
                         }
                     }
                     lls <- c(lls, ll)
                     count <- count + 1
                 }
                 if (ll - bestll > 0) {
-                    bestll <- ll; bestres <- res1; bestprobs <- probs; bestmw <- mw
+                    bestll <- ll; bestres <- res1
+                    bestprobs <- probs; bestmw <- mw
                 }
-                if (abs(ll - llold) > converged | llold > ll) { # llold > ll probably hardly happens but when it does it prob goes into a cycle for 100 iterations. not necesssarily. e.g. with modulesearch I do not give the last optimum as a starting network and cannot guarantee ll increase. improve modulesearch to add a starting network....
+                if (abs(ll - llold) > converged | llold > ll) {
                     if (verbose & (increase | max_iter <= count)) {
                         print("no convergence")
                     }
                 }
-                ## ## one last M-step? I think this is actually wrong! If I do one last M-step I have to recalculate the weights, otherwise we loose consistency.
                 limits <- list()
-                limits$probs <- bestprobs # I have to set the old ones because if the max_iter hits, we lose the best otherwise!
+                limits$probs <- bestprobs
                 limits$res <- bestres
                 limits$ll <- lls
                 limits$k <- k
@@ -439,7 +531,6 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
                 }
             }
         }
-        ## I try to merge components based on the fact, that some components can be completely included in the others and are obsolete:
         dead <- NULL
         for (i in seq_len(length(unique))) {
             dups <- NULL
@@ -467,7 +558,8 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
         unique <- unique2
         probs <- best$probs[added, , drop = FALSE]
         colnames(probs) <- colnames(D.backup)
-        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data)
+        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE,
+                                 logtype = logtype, mw = mw, data = data)
         if (!is.null(dim(postprobs))) {
             lambda <- apply(postprobs, 1, sum)
             lambda0 <- lambda/sum(lambda)
@@ -485,7 +577,8 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
     } else {
         probs <- best$probs[, , drop = FALSE]
         colnames(probs) <- colnames(D.backup)
-        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = best$mw, data = data)
+        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE,
+                                 logtype = logtype, mw = best$mw, data = data)
         if (!is.null(dim(postprobs))) {
             lambda <- apply(postprobs, 1, sum)
             lambda0 <- lambda/sum(lambda)
@@ -501,7 +594,9 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL, method =
             comp[[i]]$theta <- best$res[[i]]$subtopo
         }
     }
-    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda, probs = probs, lls = best$ll, ll = getLL(probs, logtype = logtype, mw = lambda, data = data))
+    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda,
+                probs = probs, lls = best$ll,
+                ll = getLL(probs, logtype = logtype, mw = lambda, data = data))
     class(res) <- "mnem"
     return(res)
 }
@@ -528,7 +623,8 @@ bootstrap <- function(x, size = 1000, logtype = 2, ...) {
         dataR <- t(t(data)*post[i, ])
         bootres[[i]] <- x$comp[[i]]$phi*0
         for (j in seq_len(size)) {
-            dataRR <- dataR[sample(seq_len(nrow(dataR)), ceiling(0.5*nrow(dataR)), replace = TRUE), ]
+            dataRR <- dataR[sample(seq_len(nrow(dataR)),
+                                   ceiling(0.5*nrow(dataR)), replace = TRUE), ]
             res <- mynem(dataRR, ...)
             bootres[[i]] <- bootres[[i]]+transitive.closure(res$adj, mat = TRUE)
         }
@@ -570,19 +666,28 @@ bootstrap <- function(x, size = 1000, logtype = 2, ...) {
 #' graph
 #' Rgraphviz
 #' tsne
+#' graphics
+#' stats
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 2)
 #' plot(result)
-plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2, cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE, bestCell = TRUE, showprobs = FALSE, shownull = TRUE, ratio = TRUE, method = "llr", showweights = TRUE, ...) {
+plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
+                      cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE,
+                      sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2,
+                      cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE,
+                      bestCell = TRUE, showprobs = FALSE, shownull = TRUE,
+                      ratio = TRUE, method = "llr", showweights = TRUE, ...) {
 
     x2 <- x
 
     data <- x$data
     
-    laymat <- rbind(1:(length(x$comp)+1), c(length(x$comp)+2, rep(length(x$comp)+3, length(x$comp))))
+    laymat <- rbind(1:(length(x$comp)+1),
+                    c(length(x$comp)+2, rep(length(x$comp)+3,
+                                            length(x$comp))))
 
     if (legend & !showdata) {
         laymat <- matrix(1:(length(x$comp)+1), nrow = 1)
@@ -591,20 +696,31 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         laymat <- matrix(1:(length(x$comp)), nrow = 1)
     }
     if (!legend & showdata) {
-        laymat <- rbind(1:(length(x$comp)), c(length(x$comp)+1, rep(length(x$comp)+2, length(x$comp)-1)))
+        laymat <- rbind(1:(length(x$comp)),
+                        c(length(x$comp)+1, rep(length(x$comp)+2,
+                                                length(x$comp)-1)))
     }
     layout(laymat)
     
     par(oma=oma)
     if (legend) {
-    plotDnf(c("Sgenes=Egenes", "Egenes=Cells", "Cells=Fit"), edgecol = rep("transparent", 3),
-            nodeshape = list(Sgenes = "circle", Egenes = "box", Cells = "diamond", Fit = "circle"),
-            nodelabel = list(Sgenes = "signaling\ngenes", Egenes = "effect\nreporters", Cells = "single\ncells", Fit = "highest\nresponsibility"),
-            nodeheight = list(Sgenes = 2, Egenes = 0.5, Cells = 0.5, Fit = 0.5), nodewidth = list(Sgenes = 2, Egenes = 0.5, Cells = 0.5, Fit = 0.5),
+        plotDnf(c("Sgenes=Egenes", "Egenes=Cells", "Cells=Fit"),
+                edgecol = rep("transparent", 3),
+                nodeshape = list(Sgenes = "circle", Egenes = "box",
+                                 Cells = "diamond", Fit = "circle"),
+                nodelabel = list(Sgenes = "signaling\ngenes",
+                                 Egenes = "effect\nreporters",
+                                 Cells = "single\ncells",
+                                 Fit = "highest\nresponsibility"),
+                nodeheight = list(Sgenes = 2, Egenes = 0.5,
+                                  Cells = 0.5, Fit = 0.5),
+                nodewidth = list(Sgenes = 2, Egenes = 0.5,
+                                 Cells = 0.5, Fit = 0.5),
             layout = "circo")
     }
     full <- x$comp[[1]]$phi
-    mixnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw, data = data)
+    mixnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE,
+                           logtype = logtype, mw = x$mw, data = data)
     mixnorm <- apply(mixnorm, 2, function(x) {
         xmax <- max(x)
         x[which(x != xmax)] <- 0
@@ -623,10 +739,13 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
     SgeneN <- length(Sgenes)
     for (i in seq_len(length(x$comp))) {
 
-        shared <- unique(colnames(mixnorm)[which(apply(mixnorm, 2, function(x) return(sum(x != 0))) != 1 & mixnorm[i, ] != 0)])
+        shared <- unique(colnames(mixnorm)[
+            which(apply(mixnorm, 2,function(x)
+                return(sum(x != 0))) != 1 & mixnorm[i, ] != 0)])
         net <- x$comp[[i]]$phi
         for (j in seq_len(SgeneN)) {
-            colnames(net)[which(colnames(net) %in% j)] <- rownames(net)[which(rownames(net) %in% j)] <- Sgenes[j]
+            colnames(net)[which(colnames(net) %in% j)] <-
+                rownames(net)[which(rownames(net) %in% j)] <- Sgenes[j]
             shared[which(shared %in% j)] <- Sgenes[j]
         }
         graph <- adj2dnf(net)
@@ -638,8 +757,11 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             enodewidth <- list()
             probs <- x$probs
             if (is.null(x$comp[[i]]$theta)) {
-                weights <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw, data = data)
-                subtopo <- scoreAdj(modData(x$data), x$comp[[i]]$phi, method = method, weights = weights[i, ],
+                weights <- getAffinity(x$probs, affinity = affinity,
+                                       norm = TRUE, logtype = logtype,
+                                       mw = x$mw, data = data)
+                subtopo <- scoreAdj(modData(x$data), x$comp[[i]]$phi,
+                                    method = method, weights = weights[i, ],
                                     ratio = ratio, ...)$subtopo
             } else {
                 subtopo <- x$comp[[i]]$theta
@@ -662,7 +784,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         }
         if (cells) {
             datanorm <- modData(x$data)
-            pnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw, data = data)
+            pnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE,
+                                 logtype = logtype, mw = x$mw, data = data)
             pnorm <- apply(pnorm, 2, function(x) {
                 xmax <- max(x)
                 x[which(x != xmax)] <- 0
@@ -678,7 +801,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             cnodewidth <- list()
             for (j in seq_len(SgeneN)) {
                 tmpN <- paste("__9247C", j, sep = "_")
-                cnodes[[tmpN]] <- sum(colnames(datanorm)[which(pnorm[i, ] == 1)] == j)
+                cnodes[[tmpN]] <-
+                    sum(colnames(datanorm)[which(pnorm[i, ] == 1)] == j)
                 cnodeshape[[tmpN]] <- "diamond"
                 cnodewidth[[tmpN]] <- 0.5
                 cnodeheight[[tmpN]] <- 0.5
@@ -695,7 +819,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         if (bestCell) {
             bnodes <- bnodeshape <- bnodeheight <- bnodewidth <- list()
             if (nrow(x$probs) > 1) {
-                gam <- getAffinity(x$probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = x$mw, data = data)
+                gam <- getAffinity(x$probs, affinity = affinity, norm = TRUE,
+                                   logtype = logtype, mw = x$mw, data = data)
             } else {
                 gam <- (logtype^x$probs)*x$mw
                 gam <- gam/gam
@@ -703,7 +828,9 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             for (bnode in naturalsort(unique(colnames(gam)))) {
                 tmpN <- paste0("_9247bnode", bnode)
                 graph <- c(graph, paste0(bnode, "=_9247bnode", bnode))
-                bnodes[[tmpN]] <- paste0(round(max(gam[i, which(colnames(gam) %in% bnode)]), 2)*100, "%")
+                bnodes[[tmpN]] <-
+                    paste0(round(max(gam[
+                        i,which(colnames(gam) %in% bnode)]), 2)*100, "%")
                 bnodeheight[[tmpN]] <- 0.5
                 bnodewidth[[tmpN]] <- 0.5
                 bnodeshape[[tmpN]] <- "circle"
@@ -711,7 +838,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
         } else {
             bnodes <- bnodeshape <- bnodeheight <- bnodewidth <- NULL
         }
-        edgecol <- c(rep("black", pathedges), rep("grey", length(graph) - pathedges))
+        edgecol <- c(rep("black", pathedges),
+                     rep("grey", length(graph) - pathedges))
         if (egenes) {
             enodes[["_9247Null"]] <- "NULL"
             enodeshape[["_9247Null"]] <- "circle"
@@ -724,20 +852,22 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE, cexAnno 
             enodeheight[["_9247Nulltargets"]] <- 0.5
             graph <- c(graph, "_9247Null=_9247Nulltargets")
         }
-        edgecol <- c(rep("black", pathedges), rep("grey", length(graph) - pathedges))
+        edgecol <- c(rep("black", pathedges),
+                     rep("grey", length(graph) - pathedges))
         if (showweights) {
-            mainweights = paste("Cells: ", realpct[i], "% (unique: ", unipct[i], "%)\n
+            mainweights = paste("Cells: ",
+                                realpct[i], "% (unique: ", unipct[i], "%)\n
 Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
         } else {
             mainweights <- NULL
         }
-        plotDnf(graph, main = mainweights, bordercol = i+1, width = 1, connected = FALSE,
-# signals = shared, inhibitors = Sgenes,
-nodelabel = c(cnodes, enodes, bnodes),
-nodeshape = c(cnodeshape, enodeshape, bnodeshape),
-nodewidth = c(cnodewidth, enodewidth, bnodewidth),
-nodeheight = c(cnodeheight, enodeheight, bnodeheight),
-edgecol = edgecol)
+        plotDnf(graph, main = mainweights, bordercol = i+1, width = 1,
+                connected = FALSE,
+                nodelabel = c(cnodes, enodes, bnodes),
+                nodeshape = c(cnodeshape, enodeshape, bnodeshape),
+                nodewidth = c(cnodewidth, enodewidth, bnodewidth),
+                nodeheight = c(cnodeheight, enodeheight, bnodeheight),
+                edgecol = edgecol)
         full <- net + full
     }
 
@@ -752,8 +882,14 @@ edgecol = edgecol)
                 pnorm <- matrix(pnorm, 1, length(pnorm))
             }
             pcols <- rep(1, ncol(pnorm))
-            pcols[which(apply(mixnorm, 2, max) == 1)] <- apply(mixnorm[, which(apply(mixnorm, 2, max) == 1)]*((matrix(1:nrow(mixnorm), nrow(mixnorm), ncol(mixnorm)))[, which(apply(mixnorm, 2, max) == 1), drop = FALSE]+1), 2, max)
-            pcols[which(apply(mixnorm, 2, function(x) return(sum(x != 0))) != 1)] <- 1
+            pcols[which(apply(mixnorm, 2, max) == 1)] <-
+                apply(mixnorm[, which(apply(mixnorm, 2, max) == 1)]*
+                      ((matrix(1:nrow(mixnorm), nrow(mixnorm),
+                               ncol(mixnorm)))[,which(apply(mixnorm,
+                                                            2, max) == 1),
+                                               drop = FALSE]+1), 2, max)
+            pcols[which(apply(mixnorm, 2, function(x)
+                return(sum(x != 0))) != 1)] <- 1
             if (tsne) {
                 pres <- list()
                 pres$rotation <- tsne(t(pnorm))
@@ -765,7 +901,8 @@ edgecol = edgecol)
                 pres$rotation <- t(pnorm)
             }
             for (i in seq_len(SgeneN)) {
-                rownames(pres$rotation)[which(rownames(pres$rotation) %in% i)] <- Sgenes[i]
+                rownames(pres$rotation)[
+                    which(rownames(pres$rotation) %in% i)] <- Sgenes[i]
             }
             jittered <- pres$rotation[, 1:2]
             if (!sep) {
@@ -801,15 +938,27 @@ edgecol = edgecol)
                     maxind <- maxind0
                 }
                 if (sep) {
-                    jittered[which(pcols == i), 1] <- (prtmp$rotation[maxind, 1] - mean(prtmp$rotation[maxind, 1]))*scale + jittered[maxind0, 1]
-                    jittered[which(pcols == i), 2] <- (prtmp$rotation[maxind, 2] - mean(prtmp$rotation[maxind, 2]))*scale + jittered[maxind0, 2]
+                    jittered[which(pcols == i), 1] <-
+                        (prtmp$rotation[maxind, 1] -
+                         mean(prtmp$rotation[maxind, 1]))*scale +
+                        jittered[maxind0, 1]
+                    jittered[which(pcols == i), 2] <-
+                        (prtmp$rotation[maxind, 2] -
+                         mean(prtmp$rotation[maxind, 2]))*scale +
+                        jittered[maxind0, 2]
                 } else {
                     if (!global) {
-                        jittered[which(pcols == i), 1] <- (prtmp$rotation[maxind, 1] - mean(prtmp$rotation[maxind, 1]))
-                        jittered[which(pcols == i), 2] <- (prtmp$rotation[maxind, 2] - mean(prtmp$rotation[maxind, 2]))
+                        jittered[which(pcols == i), 1] <-
+                            (prtmp$rotation[maxind, 1] -
+                             mean(prtmp$rotation[maxind, 1]))
+                        jittered[which(pcols == i), 2] <-
+                            (prtmp$rotation[maxind, 2] -
+                             mean(prtmp$rotation[maxind, 2]))
                     } else {
-                        jittered[which(pcols == i), 1] <- prtmp$rotation[maxind, 1]
-                        jittered[which(pcols == i), 2] <- prtmp$rotation[maxind, 2]
+                        jittered[which(pcols == i), 1] <-
+                            prtmp$rotation[maxind, 1]
+                        jittered[which(pcols == i), 2] <-
+                            prtmp$rotation[maxind, 2]
                     }
                 }
             }
@@ -845,9 +994,13 @@ edgecol = edgecol)
 #' clusters the data and performs standard nem on each cluster
 #' @param data data of log ratios with cells in columns and features in rows
 #' @param k number of clusters
+#' @param ... additional arguments for standard nem function
 #' @author Martin Pirkl
 #' @return family of nems
 #' @export
+#' @import
+#' stats
+#' cluster
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
@@ -911,7 +1064,8 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' simulate single cell data from a mixture of networks
 #' @param Sgenes number of Sgenes
 #' @param Egenes number of Egenes
-#' @param subsample range to subsample data. 1 means the full simulated data is used.
+#' @param subsample range to subsample data. 1 means the full simulated data is
+#' used.
 #' @param Nems numberof components
 #' @param reps number of relicates, if set (not realistice for cells)
 #' @param mw mixture weights
@@ -919,6 +1073,7 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' @param nCells number of cells
 #' @param uninform number of uninformative Egenes
 #' @param unitheta uniform theta, if true
+#' @param edgeprob edge probability
 #' @author Martin Pirkl
 #' @return simulation object with meta information and data
 #' @export
@@ -1022,7 +1177,8 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
 #' @param a adjacency matrix
 #' @param b adjacency matrix
 #' @param diag if 1 includes diagonal in distance, if 0 not
-#' @param symmetric comparing a to b is asymmetrical, if TRUE includes comparison b to a
+#' @param symmetric comparing a to b is asymmetrical, if TRUE includes
+#' comparison b to a
 #' @author Martin Pirkl
 #' @return normalized hamming accuracy
 #' @export
@@ -1079,15 +1235,18 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 #' @param stimuli Vertices which can be stimulated.
 #' @param signals Vertices which regulate E-genes.
 #' @param inhibitors Vertices which can be inhibited.
-#' @param connected If TRUE, only includes vertices which are connected to other vertices.
-#' @param CNOlist CNOlist object. Optional instead of stimuli, inhibitors or signals.
+#' @param connected If TRUE, only includes vertices which are connected to other
+#' vertices.
+#' @param CNOlist CNOlist object. Optional instead of stimuli, inhibitors or
+#' signals.
 #' @param cex Global font size.
 #' @param fontsize Vertice label size.
 #' @param labelsize Edge label size.
 #' @param type Different plot types.
 #' @param lwd Line width.
 #' @param edgelwd Edgeline width.
-#' @param legend 0 shows no legend. 1 shows legend as a graph. 2 shows legend in a box.
+#' @param legend 0 shows no legend. 1 shows legend as a graph. 2 shows legend
+#' in a box.
 #' @param x x coordinate of box legend.
 #' @param y y coordinate of box legend.
 #' @param xjust Justification of legend box left, right or center (-1,1,0).
@@ -1104,12 +1263,15 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 #' @param col.sub Font color of subtitle.
 #' @param fontcolor Global font color.
 #' @param nodestates Binary state of each vertice.
-#' @param simulate Simulate stimulation and inhibition of a list of vertices. E.g. simulate = list(stimuli = c("A", "B"), inhibitors = c("C", "D")).
+#' @param simulate Simulate stimulation and inhibition of a list of vertices.
+#' E.g. simulate = list(stimuli = c("A", "B"), inhibitors = c("C", "D")).
 #' @param andcolor not used
-#' @param edgecol Vector with colors for every edge of the graph (not hyper-graph). E.g. an AND gate consists of three distinct edges.
+#' @param edgecol Vector with colors for every edge of the graph
+#' (not hyper-graph). E.g. an AND gate consists of three distinct edges.
 #' @param labels Vector with labels for the edges.
 #' @param labelcol Vector with label colors for the edges.
-#' @param nodelabel List of vertices with labels as input. E.g. labels = list(A="test", B="label for B").
+#' @param nodelabel List of vertices with labels as input.
+#' E.g. labels = list(A="test", B="label for B").
 #' @param nodecol List of vertices with colors as input.
 #' @param bordercol List of vertices with colors as input.
 #' @param nodeshape List of vertices with shapes (diamond, box, square,...).
@@ -1119,7 +1281,8 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 #' @param nodewidth List of vertices with width as input.
 #' @param edgewidth Vector with edge widths.
 #' @param lty Vector with edge styles (line, dotted,...).
-#' @param hierarchy List with the hierarchy of the vertices. E.g. list(top = c("A", "B"), bottom = c("C", "D")).
+#' @param hierarchy List with the hierarchy of the vertices.
+#' E.g. list(top = c("A", "B"), bottom = c("C", "D")).
 #' @param showall See "connected" above.
 #' @param nodefontsize not used
 #' @param edgehead Vector with edge heads.

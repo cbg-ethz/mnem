@@ -1,12 +1,15 @@
 #' @noRd
-#' @export
 sortAdj <- function(res, list = FALSE) {
     resmat <- NULL
     for (i in seq_len(length(res))) {
         if (list) {
-            resmat <- rbind(resmat, as.vector(transitive.closure(res[[i]], mat = TRUE))) # trans close?
+            resmat <-
+                rbind(resmat,
+                      as.vector(transitive.closure(res[[i]], mat = TRUE)))
         } else {
-            resmat <- rbind(resmat, as.vector(transitive.closure(res[[i]]$adj, mat = TRUE))) # trans close?
+            resmat <-
+                rbind(resmat,
+                      as.vector(transitive.closure(res[[i]]$adj, mat = TRUE)))
         }
     }
     d <- as.matrix(dist(resmat))
@@ -24,17 +27,16 @@ sortAdj <- function(res, list = FALSE) {
     return(list(res = res2, order = resorder))
 }
 #' @noRd
-#' @export
 calcEvopen <- function(res) {
     evopen <- 0
     for (i in seq_len(length(res)-1)) {
-        evopen <- evopen + sum(abs(res[[i]]$adj - res[[(i+1)]]$adj))/length(res[[i]]$adj)
+        evopen <- evopen + sum(abs(res[[i]]$adj -
+                                   res[[(i+1)]]$adj))/length(res[[i]]$adj)
     }
     evopen <- -evopen#/(k-1)
     return(evopen)
 }
 #' @noRd
-#' @export
 llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     if (is.null(weights)) {
         weights <- rep(1, ncol(data))
@@ -51,7 +53,6 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     return(score)
 }
 #' @noRd
-#' @export
 modAdj <- function(adj, D) {
     Sgenes <- naturalsort(unique(colnames(D)))
     SgeneN <- getSgeneN(D)
@@ -61,7 +62,6 @@ modAdj <- function(adj, D) {
     return(adj)
 }
 #' @noRd
-#' @export
 getOmega <- function(data) {
     
     Sgenes <- unique(unlist(strsplit(colnames(data), "_")))
@@ -78,7 +78,6 @@ getOmega <- function(data) {
     return(Omega)
 }
 #' @noRd
-#' @export
 initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     n <- getSgeneN(data)
     nets <- list()
@@ -100,9 +99,7 @@ initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     return(init)
 }
 #' @noRd
-#' @export
 initps <- function(data, ks, k, starts = 3) {
-    ## based on the clustering for each knock-down, we estimate non-random membership values for each start of the em:
     clusters <- list()
     for (i in seq_len(length(unique(colnames(data))))) {
         d <- dist(t(data[, which(colnames(data) %in% i)]))
@@ -140,7 +137,8 @@ initps <- function(data, ks, k, starts = 3) {
         }
         for (i in seq_len(k)) {
             for (j in seq_len(n)) {
-                tmp[i, which(colnames(data) == j)[which(clusters[[j]] == takes[i, j])]] <- 1
+                tmp[i, which(colnames(data) == j)[
+                           which(clusters[[j]] == takes[i, j])]] <- 1
             }
         }
         takestmp <- paste(takes, collapse = "")
@@ -154,7 +152,6 @@ initps <- function(data, ks, k, starts = 3) {
     return(probscl)
 }
 #' @noRd
-#' @export
 modData <- function(D) {
     SgeneN <- getSgeneN(D)
     Sgenes <- naturalsort(unique(colnames(D)))
@@ -169,7 +166,6 @@ modData <- function(D) {
     return(D)
 }
 #' @noRd
-#' @export
 learnk <- function(data, kmax = 10, verbose = FALSE) {
     ks <- numeric(length(unique(colnames(data))))
     lab <- list()
@@ -209,10 +205,10 @@ learnk <- function(data, kmax = 10, verbose = FALSE) {
     return(list(ks = ks, k = k, lab = lab))
 }
 #' @noRd
-#' @export
 getLL <- function(x, logtype = 2, mw = NULL, data = NULL) {
     if (is.null(mw)) { mw = rep(1, nrow(x))/nrow(x) }
-    if (any(is.infinite(logtype^apply(data, 2, function(x) return(sum(x[which(x>0)])))))) {
+    if (any(is.infinite(logtype^apply(data, 2, function(x)
+        return(sum(x[which(x>0)])))))) {
         Z <- getAffinity(x, logtype = logtype, mw = mw, data = data)
         l <- sum(apply(Z*(x + log(mw)/log(logtype)), 2, sum))
     } else {
@@ -223,8 +219,8 @@ getLL <- function(x, logtype = 2, mw = NULL, data = NULL) {
     return(l)
 }
 #' @noRd
-#' @export
-getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL, data = matrix(0, 2, ncol(x))) {
+getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
+                        data = matrix(0, 2, ncol(x))) {
     if (is.null(mw)) { mw <- rep(1, nrow(x))/nrow(x) }
     if (affinity == 1) {
         y <- logtype^x
@@ -245,7 +241,8 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL, da
         if (nrow(x) > 1) {
             y <- x
             if (norm) {
-                if (any(is.infinite(logtype^apply(data, 2, function(x) return(sum(x[which(x>0)])))))) {
+                if (any(is.infinite(logtype^apply(data, 2, function(x)
+                    return(sum(x[which(x>0)])))))) {
                     y <- apply(y, 2, function(x) {
                         xmax <- max(x)
                         maxnum <- 2^1023
@@ -266,7 +263,6 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL, da
     return(y)
 }
 #' @noRd
-#' @export
 estimateSubtopo <- function(data) {
     effectsums <- effectsds <- matrix(0, nrow(data), length(unique(colnames(data))))
     for (i in seq_len(length(unique(colnames(data))))) {
@@ -283,8 +279,9 @@ estimateSubtopo <- function(data) {
     return(subtopoX)
 }
 #' @noRd
-#' @export
-getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, converged = 10^-2, subtopoX = NULL, ratio = TRUE, logtype = 2, mw = NULL) {
+getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
+                     converged = 10^-2, subtopoX = NULL, ratio = TRUE,
+                     logtype = 2, mw = NULL) {
     if (is.null(subtopoX)) {
         subtopoX <- estimateSubtopo(data)
     }
@@ -295,7 +292,8 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
     max_count <- 100
     ll0 <- 0
     stop <- FALSE
-    mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE, mw = mw, logtype = logtype, data = data), 1, sum)
+    mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE,
+                            mw = mw, logtype = logtype, data = data), 1, sum)
     mw <- mw/sum(mw)
     if (any(is.na(mw))) { mw <- rep(1, k)/k }
     while((!stop | time0) & count < max_count) {
@@ -304,7 +302,8 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
         probsold <- probs
         subtopo0 <- matrix(0, k, nrow(data))
         subweights0 <- matrix(0, nrow(data), n+1) # account for null node
-        postprobsold <- getAffinity(probsold, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data)
+        postprobsold <- getAffinity(probsold, affinity = affinity, norm = TRUE,
+                                    logtype = logtype, mw = mw, data = data)
         align <- list()
         for (i in seq_len(k)) {
             n <- getSgeneN(data)
@@ -319,14 +318,15 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
                 postprobsoldR <- rep(0, n)
             }
             align[[i]] <- scoreAdj(dataR, res[[i]]$adj,
-                                   method = method, ratio = ratio, weights = postprobsoldR)
+                                   method = method, ratio = ratio,
+                                   weights = postprobsoldR)
             subtopo0[i, ] <- align[[i]]$subtopo
             subweights0 <- subweights0 + align[[i]]$subweights
         }
         subtopoMax <- apply(subweights0, 1, which.max)
-        subtopoMax[which(subtopoMax > n)] <- subtopoMax[which(subtopoMax > n)] - n
+        subtopoMax[which(subtopoMax > n)] <-
+            subtopoMax[which(subtopoMax > n)] - n
         subtopo0 <- rbind(subtopoMax, subtopo0, subtopoX, subtopoY)
-        ## go through all individual subtopolgies, the last subtopolgy and the max subtopology over all components
         probs0 <- list()
         ll0 <- numeric(nrow(subtopo0)+1)
         for (do in seq_len(nrow(subtopo0)+1)) {
@@ -342,9 +342,11 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
                 adj1 <- cbind(adj1, "0" = 0)
                 adj2 <- adj1[, subtopo]
                 tmp <- llrScore(t(data), t(adj2), ratio = ratio)
-                probs0[[do]][i, ] <- tmp[cbind(1:nrow(tmp), as.numeric(rownames(tmp)))]
+                probs0[[do]][i, ] <-
+                    tmp[cbind(1:nrow(tmp), as.numeric(rownames(tmp)))]
             }
-            ll0[do] <- getLL(probs0[[do]], logtype = logtype, mw = mw, data = data)
+            ll0[do] <- getLL(probs0[[do]], logtype = logtype, mw = mw,
+                             data = data)
         }
         if (which.max(ll0) == 1) {
             sdo <- 1
@@ -360,23 +362,21 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0, conve
         if (max(ll0) - llold <= converged) {
             stop <- TRUE
         }
-        mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE, logtype = logtype, mw = mw, data = data), 1, sum)
+        mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE,
+                                logtype = logtype, mw = mw, data = data), 1,
+                    sum)
         mw <- mw/sum(mw)
         count <- count + 1
-        ## if (verbose) { print(max(ll0)) }
     }
-    ## if (count == max_count) { print(paste("no cell score convergence (", max_count, " iterations)", sep = "")) }
     return(list(probs = bestprobs, subtopoX = bestsubtopoY))
 }
 #' @noRd
-#' @export
 annotAdj <- function(adj, data) {
     Sgenes <- sort(unique(colnames(data)))
     colnames(adj) <- rownames(adj) <- sort(Sgenes)
     return(adj)
 }
 #' @noRd
-#' @export
 nemEst <- function(data, maxiter = 100, start = "null",
                    sumf = mean, alpha = 1, cut = 0,
                    kernel = "cosim", monoton = FALSE,
@@ -510,7 +510,6 @@ nemEst <- function(data, maxiter = 100, start = "null",
     return(nem)
 }
 #' @noRd
-#' @export
 modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
                     start = NULL,
                     verbose = FALSE, trans.close = TRUE, redSpace = NULL,
@@ -610,19 +609,16 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
     return(fullnet)
 }
 #' @noRd
-#' @export
 getSgeneN <- function(data) {
     Sgenes <- length(unique(unlist(strsplit(colnames(data), ","))))
     return(Sgenes)
 }
 #' @noRd
-#' @export
 getSgenes <- function(data) {
     Sgenes <- sort(as.numeric(unique(unlist(strsplit(colnames(data), ",")))))
     return(Sgenes)
 }
 #' @noRd
-#' @export
 mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
                   verbose = FALSE, redSpace = NULL,
@@ -828,7 +824,6 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
 }
 ## functions from the nem package. update to use the native nem package functions!
 #' @noRd
-#' @export
 get.insertions = function(Phi, trans.close=TRUE){
     idx = which(Phi == 0)
     models = list()
@@ -844,7 +839,6 @@ get.insertions = function(Phi, trans.close=TRUE){
     models       
 }
 #' @noRd
-#' @export
 get.deletions = function(Phi){
     Phi = Phi - diag(ncol(Phi))
     idx = which(Phi == 1)
@@ -860,7 +854,6 @@ get.deletions = function(Phi){
     models       
 }
 #' @noRd
-#' @export
 get.reversions = function(Phi){
     idx = which(Phi + t(Phi) == 1, arr.ind=TRUE)
     models = list()
@@ -876,7 +869,6 @@ get.reversions = function(Phi){
     models       
 }
 #' @noRd
-#' @export
 enumerate.models <- function(x,name=NULL, trans.close=TRUE, verbose=TRUE) {
 
 if (length(x) == 1) {
@@ -922,7 +914,6 @@ if (length(x) == 1) {
   return(models)
 }
 #' @noRd
-#' @export
 adj2dnf <- function(A) {
 
   dnf <- NULL
@@ -946,8 +937,7 @@ adj2dnf <- function(A) {
 
 }
 #' @noRd
-#' @export
-plot.adj <- function(x) {
+plot.adj <- function(x, ...) {
     adj2graph <- function(adj.matrix) {
         V   <- rownames(adj.matrix)
         edL <- vector("list", length=nrow(adj.matrix))
@@ -963,7 +953,6 @@ plot.adj <- function(x) {
     plot(g)
 }
 #' @noRd
-#' @export
 graph2adj <- function(gR) {
     adj.matrix <- matrix(0,
                          length(nodes(gR)),
@@ -977,7 +966,6 @@ graph2adj <- function(gR) {
     return(adj.matrix)
 }
 #' @noRd
-#' @export
 scoreAdj <- function(D, adj, method = "llr", weights = NULL,
                      trans.close = TRUE, subtopo = NULL,
                      prior = NULL, ratio = TRUE) {
@@ -1008,7 +996,6 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     return(list(score = score, subtopo = subtopo, subweights = subweights))
 }
 #' @noRd
-#' @export
 adj2dnf <- function(A) {
 
   dnf <- NULL

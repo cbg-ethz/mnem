@@ -13,7 +13,8 @@ hamSim(a, b, diag = 1, symmetric = TRUE)
 
 \item{diag}{if 1 includes diagonal in distance, if 0 not}
 
-\item{symmetric}{comparing a to b is asymmetrical, if TRUE includes comparison b to a}
+\item{symmetric}{comparing a to b is asymmetrical, if TRUE includes
+comparison b to a}
 }
 \value{
 normalized hamming accuracy
