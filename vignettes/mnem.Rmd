@@ -25,10 +25,7 @@ Single cell RNA-seq data sets from pooled CrispR screens provide the possibility
 
 ## Installation
 
-Download and install the package manually or use the R package 'devtools'.
-```{r style, echo = FALSE, results = 'asis'}
-BiocStyle::markdown()
-```	
+Download and install the package manually or use the R package 'devtools'.	
 ```{r, global_options, include=FALSE}
 knitr::opts_chunk$set(message=FALSE)
 fig.cap1 <- "Accuracy of the inferred networks. The rows denote the number
@@ -57,7 +54,7 @@ fig.cap10 <- "Second highest scoring mixture for the PERTURBSeq dataset of cell 
 fig.cap11 <- "Highest scoring mixture for the PERTURBSeq dataset of transcription factors."
 fig.cap12 <- "Second highest scoring mixture for the PERTURBSeq dataset of transcription factors."
 ```		
-```{r, eval=FALSE}
+```{r, warning=FALSE}
 library(devtools)
 install_github("cbg-ethz/mnem")
 library(mnem)
@@ -237,7 +234,7 @@ mixrand <- matrix(0, runs, maxk)
 for (j in 1:5) {
     nem <- j
     tmp <- numeric(runs)
-    for (i in 1:runs) {
+    for (i in seq_len(runs)) {
         mw <- runif(nem, 0.1, 1)
         mw <- sort(mw/sum(mw))
         mw <- c(rep(0, 5 - length(mw)), mw)
@@ -272,7 +269,7 @@ for (j in 1:3) {
     }
     bics <- rep(0, maxk)
     ll <- rep(0, maxk)
-    for (i in 1:maxk) {
+    for (i in seq_len(maxk)) {
         bics[i] <- getIC(res[[i]])
         ll[i] <- max(res[[i]]$ll)
     }
@@ -314,7 +311,7 @@ for (j in 1:3) {
     }
     bics <- rep(0, maxk)
     ll <- rep(0, maxk)
-    for (i in 1:maxk) {
+    for (i in seq_len(maxk)) {
         bics[i] <- getIC(res[[i]])
         ll[i] <- max(res[[i]]$ll)
     }
@@ -347,7 +344,7 @@ for (j in 1:3) {
     }
     bics <- rep(0, maxk)
     ll <- rep(0, maxk)
-    for (i in 1:maxk) {
+    for (i in seq_len(maxk)) {
         bics[i] <- getIC(res[[i]])
         ll[i] <- max(res[[i]]$ll)
     }
@@ -406,7 +403,7 @@ data <- data[, -1]
 data <- as.matrix(data)
 rownames(data) <- data.backup$GENE
 cn <- character(ncol(data))
-for (i in 1:length(c2g[[1]])) {
+for (i in seq_len(length(c2g[[1]]))) {
     cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
     cn[which(colnames(data) %in% cells)] <- paste(cn[
         which(colnames(data) %in% cells)],
@@ -489,7 +486,7 @@ for (donoise in noise) {
                        mw = mw, uninform = floor(Sgenes*Egenes*0.1))
         simfull <- NULL
         fullsim <- sim$Nem[[1]]*0
-        for (i in 1:length(sim$Nem)) {
+        for (i in seq_len(length(sim$Nem))) {
             tmp <- transitive.closure(sim$Nem[[i]], mat = TRUE)
             simfull <- cbind(simfull, t(tmp))
             fullsim <- fullsim + transitive.closure(sim$Nem[[i]], mat = TRUE)
@@ -509,7 +506,7 @@ for (donoise in noise) {
                         verbose = verbose)
         } else {
             bics <- rep(Inf, maxk)
-            for (k in 1:maxk) {
+            for (k in seq_len(maxk)) {
                 res[[k]] <- mnem(data, starts = starts, search = search, k = k,
                                  verbose = verbose)
                 bics[k] <- getIC(res[[k]])
@@ -521,7 +518,7 @@ for (donoise in noise) {
             as.numeric(format(Sys.time(), "%s")) - start
         resfull <- NULL
         fullres <- res$comp[[1]]$phi*0
-        for (i in 1:length(res$comp)) {
+        for (i in seq_len(length(res$comp))) {
             tmp <- transitive.closure(res$comp[[i]]$phi, mat = TRUE)
             resfull <- cbind(resfull, t(tmp))
             fullres <- fullres + transitive.closure(res$comp[[i]]$phi,
@@ -607,7 +604,7 @@ for (donoise in noise) {
             as.numeric(format(Sys.time(), "%s")) - start
          resfull <- NULL
         fullres <- res$comp[[1]]$phi*0
-        for (i in 1:length(res$comp)) {
+        for (i in seq_len(length(res$comp))) {
             tmp <- transitive.closure(res$comp[[i]]$phi, mat = TRUE)
             resfull <- cbind(resfull, t(tmp))
             fullres <- fullres + transitive.closure(res$comp[[i]]$phi,
@@ -662,9 +659,9 @@ sim <- list()
 count <- 0
 for (Sgenes in c(3,5,10,20)) {
     simresF <- NULL
-    for (i in 1:length(noises)) {
-        for (j in 1:length(nems)) {
-            for (k in 1:runs) {
+    for (i in seq_len(length(noises))) {
+        for (j in seq_len(length(nems))) {
+            for (k in seq_len(runs)) {
                 if (file.exists(paste0("temp/simres_mnem_", Sgenes, "_", k, "_",
                                        i, "_", j, ".rda"))) {
                     load(paste0("temp/simres_mnem_", Sgenes, "_", k, "_", i,
@@ -842,7 +839,7 @@ if (dosmall) {
 
     res <- list()
     
-    for (k in 1:maxk) {
+    for (k in seq_len(maxk)) {
 
         res[[k]] <- mnem(lods, starts = starts, type = "random",
                          parallel = parallel, k = k, verbose = TRUE,
@@ -877,7 +874,7 @@ llmins <- matrix(0, 5, starts)
 
 resMax <- list()
 
-for (i in 1:starts) {
+for (i in seq_len(starts)) {
     print(i)
     if (file.exists(paste0("cropseq/", dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))) {
         load(paste0("cropseq/", dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))
@@ -885,7 +882,7 @@ for (i in 1:starts) {
         next()
     }
     lls[1, i] <- res[[1]]$ll
-    for (j in 1:min(maxk, length(res))) {
+    for (j in seq_len(min(maxk, length(res)))) {
         lls[j, i] <- res[[j]]$ll
         llmins[j, i] <- min(res[[j]]$limits[[1]]$ll)
         if (i == 1 | length(resMax) < j) {

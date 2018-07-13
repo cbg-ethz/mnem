@@ -575,7 +575,7 @@ getSgenes <- function(data) {
     return(Sgenes)
 }
 #' @noRd
-#' @importFrom nem enumerate.models
+#' @importFrom nem enumerate.models transitive.closure transitive.reduction
 #' @importFrom utils getFromNamespace
 mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
@@ -641,13 +641,10 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     score <- score$score
     oldscore <- score
     allscores <- score
-    traClo <- nem::transitive.closure
     
     if (!is.null(parallel)) {
-        transitive.closure <- nem::transitive.closure
-        transitive.reduction <- nem::transitive.reduction
         sfInit(parallel = TRUE, cpus = parallel)
-        sfExport("modules", "D", "start", "better", "traClo", "method",
+        sfExport("modules", "D", "start", "better", "transitive.closure", "method",
                  "scoreAdj",
                  "weights", "transitive.closure", "llrScore",
                  "transitive.reduction")
@@ -697,12 +694,12 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 }
                 scores[is.na(scores)] <- 0
                 best <- models[[which.max(scores)]]
-                best <- traClo(best, mat = TRUE)
+                best <- transitive.closure(best, mat = TRUE)
                 if (max(scores, na.rm = TRUE) > oldscore |
                     (max(scores, na.rm = TRUE) == oldscore &
                      sum(better == 1) > sum(best == 1))) {
                     better <- best
-                    better <- traClo(better, mat = TRUE)
+                    better <- transitive.closure(better, mat = TRUE)
                     oldscore <- max(scores)
                     allscores <- c(allscores, oldscore)
                 } else {
@@ -745,7 +742,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
             scores <- unlist(sfLapply(1:length(models), doScores))
         }
         best <- which.max(scores)
-        better <- traClo(models[[best]], mat = TRUE)
+        better <- transitive.closure(models[[best]], mat = TRUE)
         diag(better) <- 1
     }
     
@@ -775,7 +772,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         subtopo <- subtopo$subtopo
     }
 
-    better <- nem::transitive.reduction(better)
+    better <- transitive.reduction(better)
     better <- better[order(as.numeric(rownames(better))),
                      order(as.numeric(colnames(better)))]
     nem <- list(adj = better, score = oldscore, scores = allscores,
@@ -807,6 +804,7 @@ adj2dnf <- function(A) {
 
 }
 #' @noRd
+#' @importFrom methods new
 plot.adj <- function(x, ...) {
     adj2graph <- function(adj.matrix) {
         V   <- rownames(adj.matrix)

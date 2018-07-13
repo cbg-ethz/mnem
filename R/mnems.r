@@ -95,6 +95,7 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
 #' @author Martin Pirkl
 #' @return penlized likelihood
 #' @export
+#' @importFrom nem transitive.closure transitive.reduction
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
@@ -328,8 +329,6 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
     } else {
         if (inference %in% "em") {
             if (!is.null(parallel)) {
-                transitive.closure <- nem::transitive.closure
-                transitive.reduction <- nem::transitive.reduction
                 sfInit(parallel = TRUE, cpus = parallel)
                 sfExport("modules", "mw", "ratio", "getSgeneN", "modData",
                          "sortAdj", "calcEvopen", "evolution",
@@ -1173,7 +1172,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                        order(apply(adj, 2, sum), decreasing = FALSE)]
             adj[lower.tri(adj)] <- 0
             diag(adj) <- 1
-            adj <- nem::transitive.closure(adj, mat = TRUE)
+            adj <- transitive.closure(adj, mat = TRUE)
             colnames(adj) <- rownames(adj) <- sample(1:Sgenes, Sgenes)
             adj <- adj[order(as.numeric(rownames(adj))),
                        order(as.numeric(colnames(adj)))]
@@ -1205,7 +1204,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
         } else {
             reps2 <- reps
         }
-        Nem[[i]] <- nem::transitive.reduction(adj)
+        Nem[[i]] <- transitive.reduction(adj)
         data_tmp <- t(adj)
         colntmp <- rep(1:ncol(data_tmp), reps2)
         data_tmp <- data_tmp[, rep(1:ncol(data_tmp), reps2)]
