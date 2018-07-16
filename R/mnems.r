@@ -137,7 +137,7 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
                            ncol = length(x$comp[[i]]$theta))
             tmp3 <- x$comp[[i]]$theta
             tmp3[which(tmp3 > nrow(tmp2))] <- 0
-            tmp2[cbind(tmp3, 1:ncol(tmp2))] <- 1
+            tmp2[cbind(tmp3, seq_len(ncol(tmp2)))] <- 1
             tmp4 <- tmp%*%tmp2
             if (i == 1) {
                 fpar <- tmp4
@@ -229,11 +229,8 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
 #' graph
 #' Rgraphviz
 #' naturalsort
-#' flexclust
 #' snowfall
-#' grid
 #' lattice
-#' modeltools
 #' stats4
 #' stats
 #' @examples
@@ -243,6 +240,7 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
 #' result <- mnem(data, k = 2, starts = 2)
 #' plot(result)
 mnem <- function(D, inference = "em", search = "modules", start = NULL,
+                 ## imports deleted: modeltools, grid
                  method = "llr",
                  parallel = NULL, reduce = FALSE, runs = 1, starts = 3,
                  type = "random",
@@ -308,7 +306,6 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
     mw <- rep(1, k)/k
     if (starts <= 1) { parallel2 <- parallel; parallel <- NULL }
     if (!is.null(parallel)) { parallel2 <- NULL }
-    ## learn "mixture" of k = 1 or k > 1:
     if (k == 1) {
         if (!is.null(init)) {
             start <- start[[1]][[1]]
@@ -452,7 +449,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                         }
                         n <- getSgeneN(data)
                         dataF <- matrix(0, nrow(data), n)
-                        colnames(dataF) <- 1:n
+                        colnames(dataF) <- seq_len(n)
                         nozero <- which(postprobs[i, ] != 0)
                         if (length(nozero) != 0) {
                             if (length(nozero) == ncol(data)) {
@@ -577,9 +574,9 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                 return(limits)
             }
             if (!is.null(parallel)) {
-                limits <- sfLapply(1:starts, do_inits)
+                limits <- sfLapply(seq_len(starts), do_inits)
             } else {
-                limits <- lapply(1:starts, do_inits)
+                limits <- lapply(seq_len(starts), do_inits)
             }
             if (!is.null(parallel)) {
                 sfStop()
@@ -624,15 +621,15 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                 b <- transitive.closure(unique[[j]]$adj, mat = TRUE)
                 dups <- c(dups, which(apply(abs(a - b), 1, sum) == 0))
             }
-            if (all(1:nrow(unique[[i]]$adj) %in% dups)) {
+            if (all(seq_len(nrow(unique[[i]]$adj)) %in% dups)) {
                 dead <- c(dead, i)
             }
         }
         if (is.null(dead)) {
-            ulength <- 1:length(unique)
+            ulength <- seq_len(length(unique))
         } else {
             added <- added[-dead]
-            ulength <- (1:length(unique))[-dead]
+            ulength <- (seq_len(length(unique)))[-dead]
         }
         count <- 0
         unique2 <- list()
@@ -751,8 +748,8 @@ bootstrap <- function(x, size = 1000, logtype = 2, ...) {
 #' graph
 #' Rgraphviz
 #' tsne
-#' graphics
 #' stats
+#' @importFrom graphics layout par text
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
@@ -760,6 +757,7 @@ bootstrap <- function(x, size = 1000, logtype = 2, ...) {
 #' result <- mnem(data, k = 2, starts = 2)
 #' plot(result)
 plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
+                      # import deleted graphics
                       cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE,
                       sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2,
                       cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE,
@@ -770,18 +768,18 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
 
     data <- x$data
     
-    laymat <- rbind(1:(length(x$comp)+1),
+    laymat <- rbind(seq_len(length(x$comp)+1),
                     c(length(x$comp)+2, rep(length(x$comp)+3,
                                             length(x$comp))))
 
     if (legend & !showdata) {
-        laymat <- matrix(1:(length(x$comp)+1), nrow = 1)
+        laymat <- matrix(seq_len(length(x$comp)+1), nrow = 1)
     }
     if (!legend & !showdata) {
-        laymat <- matrix(1:(length(x$comp)), nrow = 1)
+        laymat <- matrix(seq_len(length(x$comp)), nrow = 1)
     }
     if (!legend & showdata) {
-        laymat <- rbind(1:(length(x$comp)),
+        laymat <- rbind(seq_len(length(x$comp)),
                         c(length(x$comp)+1, rep(length(x$comp)+2,
                                                 length(x$comp)-1)))
     }
@@ -969,7 +967,7 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
             pcols <- rep(1, ncol(pnorm))
             pcols[which(apply(mixnorm, 2, max) == 1)] <-
                 apply(mixnorm[, which(apply(mixnorm, 2, max) == 1)]*
-                      ((matrix(1:nrow(mixnorm), nrow(mixnorm),
+                      ((matrix(seq_len(nrow(mixnorm)), nrow(mixnorm),
                                ncol(mixnorm)))[,which(apply(mixnorm,
                                                             2, max) == 1),
                                                drop = FALSE]+1), 2, max)
@@ -989,7 +987,7 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
                 rownames(pres$rotation)[
                     which(rownames(pres$rotation) %in% i)] <- Sgenes[i]
             }
-            jittered <- pres$rotation[, 1:2]
+            jittered <- pres$rotation[, seq_len(2)]
             if (!sep) {
                 global <- TRUE
             }
@@ -1018,7 +1016,7 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
                     } else {
                         prtmp <- prcomp(x$data[, which(pcols == i)])
                     }
-                    maxind <- 1:nrow(prtmp$rotation)
+                    maxind <- seq_len(nrow(prtmp$rotation))
                 } else {
                     maxind <- maxind0
                 }
@@ -1057,7 +1055,7 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
             } else {
                 plot(jittered, col = pcols, main = main, pch = pch)
             }
-            unique <- unique(pres$rotation[which(pcols != 1), 1:2])
+            unique <- unique(pres$rotation[which(pcols != 1), seq_len(2)])
             if (all(dim(unique) != 0) & !global) {
                 for (i in seq_len(nrow(unique))) {
                     for (j in seq_len(nrow(unique))) {
@@ -1071,7 +1069,7 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 
             prtmp <- prcomp(x$data)
 
-            plot(prtmp$rotation[, 1:2], pch = ".")
+            plot(prtmp$rotation[, seq_len(2)], pch = ".")
 
         }
     }
@@ -1193,7 +1191,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
             adj[lower.tri(adj)] <- 0
             diag(adj) <- 1
             adj <- transitive.closure(adj, mat = TRUE)
-            colnames(adj) <- rownames(adj) <- sample(1:Sgenes, Sgenes)
+            colnames(adj) <- rownames(adj) <- sample(seq_len(Sgenes), Sgenes)
             adj <- adj[order(as.numeric(rownames(adj))),
                        order(as.numeric(colnames(adj)))]
         } else {
@@ -1226,30 +1224,32 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
         }
         Nem[[i]] <- transitive.reduction(adj)
         data_tmp <- t(adj)
-        colntmp <- rep(1:ncol(data_tmp), reps2)
-        data_tmp <- data_tmp[, rep(1:ncol(data_tmp), reps2)]
+        colntmp <- rep(seq_len(ncol(data_tmp)), reps2)
+        data_tmp <- data_tmp[, rep(seq_len(ncol(data_tmp)), reps2)]
         colnames(data_tmp) <- colntmp
         if (!is.null(mw)) {
-            tmpsamp <- sample(1:ncol(data_tmp), ceiling(mw[i]*ncol(data_tmp)))
+            tmpsamp <- sample(seq_len(ncol(data_tmp)),
+                              ceiling(mw[i]*ncol(data_tmp)))
             data_tmp <- data_tmp[, tmpsamp, drop = FALSE]
         } else {
             if (is.null(reps)) {
-                data_tmp <- data_tmp[, 1:ceiling(nCells/Nems)]
+                data_tmp <- data_tmp[, seq_len(ceiling(nCells/Nems))]
             }
         }
         index <- c(index, rep(i, ncol(data_tmp)))
-        data_tmp <- data_tmp[rep(1:Sgenes, each = Egenes), , drop = FALSE]
+        data_tmp <- data_tmp[rep(seq_len(Sgenes), each = Egenes), ,
+                             drop = FALSE]
         if (!unitheta) {
-            eorder <- sample(1:nrow(data_tmp), nrow(data_tmp))
+            eorder <- sample(seq_len(nrow(data_tmp)), nrow(data_tmp))
             data_tmp <- data_tmp[eorder, ]
             theta[[i]] <- rownames(data_tmp)[eorder]
         }
         data <- cbind(data, data_tmp)
     }
     if (subsample < 1) {
-        subsample <- sample(1:ncol(data), ceiling(ncol(data)*subsample))
+        subsample <- sample(seq_len(ncol(data)), ceiling(ncol(data)*subsample))
         data <- data[, subsample]
-        index <- rep(1:Nems, each = Sgenes*reps)[subsample]
+        index <- rep(seq_len(Nems), each = Sgenes*reps)[subsample]
     }
     if (uninform > 0) {
         data <- rbind(data, matrix(sample(c(0,1),
@@ -1524,7 +1524,8 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         Vneg <-unique(c(c(unique(unlist(strsplit(
             unlist(strsplit(dnf, "=")), "\\+"))))))
         if (length(grep("\\+", dnf)) > 0) {
-            Vneg <- c(Vneg, paste("and", 1:length(grep("\\+", dnf)), sep = ""))
+            Vneg <- c(Vneg, paste("and", seq_len(length(grep("\\+", dnf))),
+                                  sep = ""))
         }
         V <- unique(gsub("!", "", Vneg))
         stimuli <- intersect(stimuli, V)
@@ -1535,7 +1536,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
             unlist(strsplit(dnf, "=")), "\\+")))), stimuli,
             signals, inhibitors))
         if (length(grep("\\+", dnf)) > 0) {
-            Vneg <- c(Vneg, paste("and", 1:length(grep("\\+", dnf)),
+            Vneg <- c(Vneg, paste("and", seq_len(length(grep("\\+", dnf))),
                                   sep = ""))
         }
         V <- unique(gsub("!", "", Vneg))
@@ -1796,13 +1797,13 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                 if (k2 == 1) {
                     edgecolindex <- inputN2
                 } else {
-                    if (length(grep("\\+", graph[1:(k2-1)])) == 0) {
-                        edgecolindex <- length(graph[1:(k2-1)]) + inputN2
+                    if (length(grep("\\+", graph[seq_len(k2-1)])) == 0) {
+                        edgecolindex <- length(graph[seq_len(k2-1)]) + inputN2
                     } else {
                         edgecolindex <-
-                            length(unlist(strsplit(dnf[1:(k2-1)],
+                            length(unlist(strsplit(dnf[seq_len(k2-1)],
                                                    "\\+"))) +
-                            length(grep("\\+", dnf[1:(k2-1)])) + inputN2
+                            length(grep("\\+", dnf[seq_len(k2-1)])) + inputN2
                     }
                 }
                 ## end
@@ -1897,12 +1898,13 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                 if (k2 == 1) {
                     edgecolindex <- k2
                 } else {
-                    if (length(grep("\\+", dnf[1:(k2-1)])) == 0) {
+                    if (length(grep("\\+", dnf[seq_len(k2-1)])) == 0) {
                         edgecolindex <- k2
                     } else {
                         edgecolindex <-
-                            length(unlist(strsplit(dnf[1:(k2-1)], "\\+"))) +
-                            length(grep("\\+", dnf[1:(k2-1)])) + 1
+                            length(unlist(strsplit(dnf[seq_len(k2-1)],
+                                                   "\\+"))) +
+                            length(grep("\\+", dnf[seq_len(k2-1)])) + 1
                     }
                 }
                 ## end

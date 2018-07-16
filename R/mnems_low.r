@@ -37,6 +37,7 @@ calcEvopen <- function(res) {
     return(evopen)
 }
 #' @noRd
+#' @importFrom flexclust dist2
 llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     if (is.null(weights)) {
         weights <- rep(1, ncol(data))
@@ -84,7 +85,7 @@ initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     for (i in seq_len(starts*k)) {
         tmp <- matrix(sample(c(0,1), replace = TRUE), n, n)
         tmp[lower.tri(tmp)] <- 0
-        colnames(tmp) <- rownames(tmp) <- sample(1:n, n)
+        colnames(tmp) <- rownames(tmp) <- sample(seq_len(n), n)
         tmp <- tmp[order(rownames(tmp)), order(colnames(tmp))]
         nets[[i]] <- tmp
     }
@@ -124,15 +125,15 @@ initps <- function(data, ks, k, starts = 3) {
         counter <- counter + 1
         tmp <- matrix(0, k, ncol(data))
         if (ks[1] < k) {
-            takes <- as.matrix(sample(1:ks[1], k, replace = TRUE), k, 1)
+            takes <- as.matrix(sample(seq_len(ks[1]), k, replace = TRUE), k, 1)
         } else {
-            takes <- as.matrix(sample(1:ks[1], k), k, 1)
+            takes <- as.matrix(sample(seq_len(ks[1]), k), k, 1)
         }
         for (i in 2:length(unique(colnames(data)))) {
             if (ks[i] < k) {
-                takes <- cbind(takes, sample(1:ks[i], k, replace = TRUE))
+                takes <- cbind(takes, sample(seq_len(ks[i]), k, replace = TRUE))
             } else {
-                takes <- cbind(takes, sample(1:ks[i], k))
+                takes <- cbind(takes, sample(seq_len(ks[i]), k))
             }
         }
         for (i in seq_len(k)) {
@@ -162,7 +163,7 @@ modData <- function(D) {
         }
         colnames(D) <- as.numeric(colnamesD)
     }
-    rownames(D) <- as.numeric(1:nrow(D))
+    rownames(D) <- as.numeric(seq_len(nrow(D)))
     return(D)
 }
 #' @noRd
@@ -265,7 +266,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
         for (i in seq_len(k)) {
             n <- getSgeneN(data)
             dataF <- matrix(0, nrow(data), n)
-            colnames(dataF) <- 1:n
+            colnames(dataF) <- seq_len(n)
             nozero <- which(postprobsold[i, ] != 0)
             if (length(nozero) != 0) {
                 dataR <- cbind(data[, nozero, drop = FALSE], dataF)
@@ -300,7 +301,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                 adj2 <- adj1[, subtopo]
                 tmp <- llrScore(t(data), t(adj2), ratio = ratio)
                 probs0[[do]][i, ] <-
-                    tmp[cbind(1:nrow(tmp), as.numeric(rownames(tmp)))]
+                    tmp[cbind(seq_len(nrow(tmp)), as.numeric(rownames(tmp)))]
             }
             ll0[do] <- getLL(probs0[[do]], logtype = logtype, mw = mw,
                              data = data)
@@ -393,7 +394,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     } else if (any(start %in% "rand")) {
         phi <- phi*0
         diag(phi) <- 1
-        phi[1:length(phi)] <- sample(c(0,1), length(phi), replace = TRUE)
+        phi[seq_len(length(phi))] <- sample(c(0,1), length(phi), replace = TRUE)
     } else if (any(start %in% "null")) {
         phi <- phi*0
         diag(phi) <- 1
@@ -412,7 +413,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         subtopo <- as.numeric(gsub(
             ncol(phi)+1, 0, apply(P, 1,function(x) return(which.max(x)))))
         theta <- t(R)*0
-        theta[cbind(subtopo, 1:ncol(theta))] <- 1
+        theta[cbind(subtopo, seq_len(ncol(theta)))] <- 1
         Oold <- O
         ll <- sum(diag(theta%*%P))
         if (ll %in% lls | all(phi == phibest)) {
@@ -449,7 +450,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
                 ncol(phi)+1, 0,apply(O, 1,
                                      function(x) return(which(x == max(x))))))
             phi <- phi*0
-            phi[cbind(supertopo, 1:ncol(phi))] <- 1
+            phi[cbind(supertopo, seq_len(ncol(phi)))] <- 1
         }
     }
     phibest <- transitive.closure(phibest, mat = TRUE)
@@ -458,7 +459,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     subtopo <- as.numeric(gsub(
         ncol(phibest)+1, 0, apply(P, 1, function(x) return(which.max(x)))))
     thetabest <- t(R)*0
-    thetabest[cbind(subtopo, 1:ncol(thetabest))] <- 1
+    thetabest[cbind(subtopo, seq_len(ncol(thetabest)))] <- 1
     llbest <- sum(diag(thetabest%*%P))
     nem <- list(phi = phibest, theta = thetabest, iter = iter,
                 ll = llbest, lls = lls, num = numbest, C = Cz,
@@ -487,7 +488,7 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
                 apply(D[, which(colnames(D) %in% i), drop = FALSE], 1, mean)
         }
         D <- mD
-        colnames(D) <- 1:length(Sgenes)
+        colnames(D) <- seq_len(length(Sgenes))
         sumdata <- data <- D
     } else {
         sumdata <- matrix(0, nrow(data), n)
@@ -499,7 +500,7 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
             sumdata[, i] <-
                 apply(D[, which(colnames(D) %in% i), drop = FALSE], 1, sum)
         }
-        colnames(sumdata) <- 1:n
+        colnames(sumdata) <- seq_len(n)
         rownames(sumdata) <- rownames(D)
     }
     D <- NULL
@@ -620,7 +621,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 apply(D[, which(colnames(D) %in% i), drop = FALSE], 1, mean)
         }
         D <- mD
-        colnames(D) <- 1:length(Sgenes)
+        colnames(D) <- seq_len(length(Sgenes))
     }
     if (is.null(start)) {
         start2 <- "null"
@@ -688,9 +689,11 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                                    get.reversions(better),
                                    get.deletions(better)))
                 if (is.null(parallel)) {
-                    scores <- unlist(lapply((1:length(models)), doScores))
+                    scores <- unlist(lapply((seq_len(length(models))),
+                                            doScores))
                 } else {
-                    scores <- unlist(sfLapply((1:length(models)), doScores))
+                    scores <- unlist(sfLapply((seq_len(length(models))),
+                                              doScores))
                 }
                 scores[is.na(scores)] <- 0
                 best <- models[[which.max(scores)]]
@@ -737,9 +740,9 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
             return(score)
         }
         if (is.null(parallel)) {
-            scores <- unlist(lapply(1:length(models), doScores))
+            scores <- unlist(lapply(seq_len(length(models)), doScores))
         } else {
-            scores <- unlist(sfLapply(1:length(models), doScores))
+            scores <- unlist(sfLapply(seq_len(length(models)), doScores))
         }
         best <- which.max(scores)
         better <- transitive.closure(models[[best]], mat = TRUE)
@@ -849,7 +852,7 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     subweights <- score
     ll <- "max"
     if (ll %in% "max") {
-        score <- sum(score[cbind(1:nrow(score), subtopo)])
+        score <- sum(score[cbind(seq_len(nrow(score)), subtopo)])
     }
     if (ll %in% "marg") {
         score <- log(sum(apply(exp(score), 1, sum))/length(score))
