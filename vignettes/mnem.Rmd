@@ -23,8 +23,7 @@ clustering of the perturbed cells and a causal signalling graph, which
 describes the interactions of the perturbed genens for each cluster of
 cells.
 
-## Installation
-Download and install the package manually or use the R package 'devtools'.
+## Installation and loading
 ```{r, global_options, include=FALSE}
 knitr::opts_chunk$set(message=FALSE)
 fig.cap1 <- "Accuracy of the inferred networks. The rows denote the number
@@ -59,9 +58,13 @@ transcription factors."
 fig.cap12 <- "Second highest scoring mixture for the PERTURBSeq dataset of
 transcription factors."
 ```
-```{r, warning=FALSE}
-library(devtools)
-install_github("cbg-ethz/mnem")
+Install the package with the bioconductor function.
+```{r, eval=FALSE}
+source("https://bioconductor.org/biocLite.R")
+biocLite("mnem")
+```
+Load the package with the library function.	
+```{r}
 library(mnem)
 ```
   
@@ -390,12 +393,12 @@ Perturb-seq: Dissecting molecular circuits with scalable single-cell rna
 profiling of pooled genetic screens.  
 Cell, 167(7), 1853???1866.e17.
 
-# Data generation
+# Generating the data objects
 
 The following code was used to generate the data for the simulation and
-    application results.
+    application results. See the accompanying R code.
 
-```{r, eval=FALSE}
+```{r, eval=FALSE, include=FALSE}
 data <- read.csv("GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv",
                  stringsAsFactors = FALSE)
 counts <- data[, grep("condition|^stim", colnames(data))]

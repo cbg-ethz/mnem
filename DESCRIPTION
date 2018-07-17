@@ -1,7 +1,7 @@
 Package: mnem
 Type: Package
 Title: mnem
-Version: 0.99.4
+Version: 0.99.5
 Author: Martin Pirkl
 Maintainer: Martin Pirkl <martin.pirkl@bsse.ethz.ch>
 Description: Given a single cell populations from different perturbation experiments mnem infers sub populations with different states for a signaling pathway.
