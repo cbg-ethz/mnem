@@ -1,12 +1,7 @@
 #' Simulation results
 #' Example data: simulation results
-#' Contains simulation results. How they were
-#' aquired is explained in the vignette.
-#' The data conists of a list of data matrices holding
-#' sensitivity and specificity
-#' (spec, sens) of network edges for the variious methods compared to
-#' the ground truth, sensitivity and specificity (sens2, spec2)
-#' of the expected data for clustNEM and mnem.
+#' Contains simulation results.
+#' For details see the vignette.
 #' @name sim
 #' @docType data
 #' @usage sim
@@ -33,13 +28,17 @@ NA
 #' @examples
 #' data(app)
 NA
-#' Calculate responsibilities
+#' Calculate responsibilities.
+#' This function calculates the responsibilities
+#' of each component for all cells from the expected log distribution of the
+#' hidden data.
 #' @param x log odds for l cells and k components as a kxl matrix
 #' @param affinity 0 for standard soft clustering, 1 for hard clustering
 #' during inference (not recommended)
 #' @param norm if TRUE normalises to probabilities (recommended)
-#' @param logtype logarithm type of the data
-#' @param mw miture weights
+#' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
+#' for natural)
+#' @param mw mixture weights of the components
 #' @param data data in log odds
 #' @return responsibilities as a kxl matrix (k components, l cells)
 #' @author Martin Pirkl
@@ -104,16 +103,28 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
     y[which(is.na(y) == TRUE)] <- 0
     return(y)
 }
-#' calculate negative penalized log likelihood
+#' Calculate negative penalized log likelihood.
+#' This function calculates
+#' a negative penalized log likelihood given a object of class mnem. This
+#' penalized likelihood is based on the normal likelihood and penalizes
+#' complexity of the mixture components (i.e. the networks).
 #' @param x mnem object
-#' @param man logical. manual data penalty
-#' @param degree different degree of complexity
-#' @param logtype logarithm type of the data
-#' @param pen penalty weight for the data
+#' @param man logical. manual data penalty, e.g. man=TRUE and pen=2 for an
+#' approximation of the Akaike Information Criterion
+#' @param degree different degree of penalty for complexity: positive entries
+#' of transitively reduced phis or phi^r (degree=0), phi^r and mixture
+#' components minus one k-1 (1), phi^r, k-1 and positive entries of thetas (2),
+#' positive entries of transitively closed phis or phi^t, k-1 (3), phi^t, theta,
+#' k-1 (4, default), all entries of phis, thetas and k-1 (5)
+#' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
+#' for natural)
+#' @param pen penalty weight for the data (e.g. pen=2 for approximate Akaike
+#' Information Criterion)
 #' @param useF use F (see publication) as complexity instead of phi and theta
-#' @param Fnorm normalize complexity of F
+#' @param Fnorm normalize complexity of F, i.e. if two components have the
+#' same entry in F, it is only counted once
 #' @author Martin Pirkl
-#' @return penlized likelihood
+#' @return penalized likelihood
 #' @export
 #' @importFrom nem transitive.closure transitive.reduction
 #' @examples
@@ -180,47 +191,55 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
     }
     return(ic)
 }
-#' learn mixture of networks from a single-ceel knock-down experiment
+#' Mixture NEMs - main function.
+#' This function simultaneously learns a mixture
+#' of causal networks and clusters of a cell population from single cell
+#' perturbation data (e.g. log odds of fold change) with a mutli-trait
+#' readout. E.g. Pooled CRISPR scRNA-Seq data (Perturb-Seq. Dixit et al., 2016,
+#' Crop-Seq. Datlinger et al., 2017).
 #' @param D data with cells indexing the columns and features (E-genes)
 #' indexing the rows
-#' @param inference inference method "em" for expectation maximization,
-#' "greedy" or "genetic"
+#' @param inference inference method "em" for expectation maximization
 #' @param search search method for single network inference "greedy",
 #' "exhaustive" or "modules"
 #' @param start A list of n lists of k networks for n starts of the EM and
 #' k components
 #' @param method "llr" for log ratios or foldchanges as input (see ratio)
-#' @param parallel number of threads
-#' @param reduce logical - reduce search space for exhaustive search
-#' @param runs how many runs for greedy search
-#' @param starts how many starts for em
+#' @param parallel number of threads for parallelization of the number of
+#' em runs
+#' @param reduce logical - reduce search space for exhaustive search to
+#' unique networks
+#' @param runs number of runs for greedy search
+#' @param starts number of starts for the em
 #' @param type initialize with "random" probabilities or "cluster" the data
-#' @param p initial probabilities
+#' @param p initial probabilities as a k (components) times l (cells) matrix
 #' @param k number of components
 #' @param kmax maximum number of components when k=NULL is inferred
-#' @param verbose output
-#' @param max_iter maximum iteration if likelihood does not converge
-#' @param parallel2 if parallel=NULL, number of threads for component
+#' @param verbose verbose output
+#' @param max_iter maximum iteration, if likelihood does not converge
+#' @param parallel2 if parallel=NULL, number of threads for single component
 #' optimization
-#' @param converged absolute distance for convergence
-#' @param redSpace space for exhaustive search
-#' @param affinity 0 is default, 1 is for hard clustering
-#' @param evolution logical, penalty on difference of components
-#' @param subtopoX hard prior on theta
+#' @param converged absolute distance for convergence between new and old log
+#' likelihood
+#' @param redSpace space for "exhaustive" search
+#' @param affinity 0 is default for soft clustering, 1 is for hard clustering
+#' @param evolution logical. If TRUE components are penelized for being
+#' different from each other.
+#' @param subtopoX hard prior on theta as a vector of S-genes for all E-genes
 #' @param ratio logical, if true data is log ratios, if false foldchanges
-#' @param logtype logarithm of the data
-#' @param initnets initial networks in a list
-#' @param popSize population size
-#' @param stallMax maximum number of stall generations till convergence
-#' @param elitism number of networks to keep during evolution
-#' @param maxGens maximum numbero f generations
-#' @param domean average the data (speed imporvment)
+#' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
+#' for natural)
+#' @param initnets initial networks as a list of phis
+#' @param domean average the data, when calculating a single NEM (speed
+#' improvment)
 #' @param modulesize max number of S-genes per module in module search
-#' @param compress compress networks after search
+#' @param compress compress networks after search (warning: penelized
+#' likelihood not interpretable)
 #' @param increase if set to FALSE, the algorithm will not stop if the
 #' likelihood decreases
 #' @author Martin Pirkl
-#' @return optimized network for data fit
+#' @return object of class mnem with the log expected of the hidden data
+#' and phi and theta for all components k
 #' @export
 #' @import
 #' epiNEM
@@ -248,7 +267,6 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                  max_iter = 100, parallel2 = NULL, converged = 10^-1,
                  redSpace = NULL, affinity = 0, evolution = FALSE,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
-                 popSize = 10, stallMax = 2, elitism = NULL, maxGens = Inf,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE) {
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
@@ -378,9 +396,9 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                                               ratio, mw = mw)
                             if (getLL(probs$probs, logtype = logtype, mw = mw,
                                       data = data) > getLL(probs0$probs,
-                                                            logtype = logtype,
-                                                            mw = mw,
-                                                            data = data)) {
+                                                           logtype = logtype,
+                                                           mw = mw,
+                                                           data = data)) {
                                 probs0 <- probs
                             }
                         }
@@ -426,135 +444,161 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                 while ((((ll - llold > converged & increase) |
                          (abs(ll - llold) > converged & !increase) &
                          count < max_iter)) | time0) {
-                    if (!time0) {
-                        if (ll - bestll > 0) {
-                            bestll <- ll; bestres <- res1
-                            bestprobs <- probs; bestmw <- mw
-                        }
-                        llold <- ll
-                        probsold <- probs
-                    }
-                    time0 <- FALSE
-                    res <- list()
-                    postprobs <- getAffinity(probs, affinity = affinity,
-                                             norm = TRUE, logtype = logtype,
-                                             mw = mw, data = data)
-                    edgechange <- 0
-                    thetachange <- 0
-                    for (i in seq_len(k)) {
-                        if (!is.null(res1) & !("modules" %in% search)) {
-                            start0 <- res1[[i]]$adj
-                        } else {
-                            start0 <- NULL
-                        }
-                        n <- getSgeneN(data)
-                        dataF <- matrix(0, nrow(data), n)
-                        colnames(dataF) <- seq_len(n)
-                        nozero <- which(postprobs[i, ] != 0)
-                        if (length(nozero) != 0) {
-                            if (length(nozero) == ncol(data)) {
-                                dataR <- data
-                                postprobsR <- postprobs[i, ]
-                            } else {
-                                dataR <- cbind(data[, nozero, drop = FALSE],
-                                               dataF)
-                                postprobsR <- c(postprobs[i, nozero], rep(0, n))
-                            }
-                        } else {
-                            dataR <- dataF
-                            postprobsR <- rep(0, n)
-                        }
-                        if (is.null(start0)) {
-                            res[[i]] <- mynem(D = dataR, weights = postprobsR,
-                                              search = search, start = start0,
-                                              method = method,
-                                              parallel = parallel2,
-                                              reduce = reduce,
-                                              runs = runs, verbose = verbose,
-                                              redSpace = redSpace,
-                                              ratio = ratio, domean = domean,
-                                              modulesize = modulesize)
-                        } else {
-                            test01 <- list()
-                            test01scores <- numeric(3)
-                            for (j in seq_len(3)) {
-                                if (j == 3) {
-                                    start1 <- start0
-                                } else {
-                                    start1 <- start0*0 + (j - 1)
-                                }
-                                test01[[j]] <- mynem(D = dataR,
-                                                     weights = postprobsR,
-                                              search = search, start = start1,
-                                              method = method,
-                                              parallel = parallel2,
-                                              reduce = reduce,
-                                              runs = runs, verbose = verbose,
-                                              redSpace = redSpace,
-                                              ratio = ratio, domean = domean,
-                                              odulesize = modulesize)
-                                test01scores[j] <- max(test01[[j]]$scores)
-                            }
-                            res[[i]] <- test01[[which.max(test01scores)]]
-                        }
-                        edgechange <- edgechange +
-                            sum(abs(res[[i]]$adj - res1[[i]]$adj))
-                        thetachange <- thetachange +
-                            sum(res[[i]]$subtopo != res1[[i]]$subtopo)
-                        res[[i]]$D <- NULL
-                        res[[i]]$subweights <- NULL
-                        
-                    }
-                    evopen <- 0
-                    if (evolution) {
-                        res <- sortAdj(res)$res
-                        evopen <- calcEvopen(res)
-                    }
-                    res1 <- res
-                    # E-step:
-                    n <- ncol(res[[1]]$adj)
-                    probs0 <- list()
-                    probs0$probs <- matrix(0, k, ncol(data))
-                    for (i in seq_len(3)) {
-                        if (i == 3) {
-                            probs <- probsold
-                        } else {
-                            probs <- matrix(i - 1, k, ncol(data))
-                        }
-                        probs <- getProbs(probs, k, data, res, method, n,
-                                          affinity, converged, subtopoX, ratio,
-                                          mw = mw)
-                        if (getLL(probs$probs, logtype = logtype, mw = mw,
-                                  data = data) > getLL(probs0$probs,
-                                                       logtype = logtype,
-                                                       mw = mw, data = data)) {
-                            probs0 <- probs
-                        }
-                    }
-                    subtopoX <- probs0$subtopoX
-                    probs <- probs0$probs
-                    modelsize <- n*n*k
-                    datasize <- nrow(data)*ncol(data)*k
-                    ll <- getLL(probs, logtype = logtype, mw = mw,data = data) +
-                        evopen*datasize*(modelsize^-1)
-                    mw <- apply(getAffinity(probs, affinity = affinity,
-                                            norm = TRUE, logtype = logtype,
-                                            mw = mw, data = data), 1, sum)
-                    mw <- mw/sum(mw)
-                    if(verbose) {
-                        print(paste("ll: ", ll, sep = ""))
-                        print(paste("changes in phi(s): ",
-                                    edgechange, sep = ""))
-                        print(paste("changes in theta(s): ",
-                                    thetachange, sep = ""))
-                        if (evolution) {
-                            print(paste("evolution penalty: ",
-                                        evopen, sep = ""))
-                        }
-                    }
-                    lls <- c(lls, ll)
-                    count <- count + 1
-                }
+                             if (!time0) {
+                                 if (ll - bestll > 0) {
+                                     bestll <- ll; bestres <- res1
+                                     bestprobs <- probs; bestmw <- mw
+                                 }
+                                 llold <- ll
+                                 probsold <- probs
+                             }
+                             time0 <- FALSE
+                             res <- list()
+                             postprobs <- getAffinity(probs, affinity =
+                                                                 affinity,
+                                                      norm = TRUE, logtype =
+                                                                       logtype,
+                                                      mw = mw, data = data)
+                             edgechange <- 0
+                             thetachange <- 0
+                             for (i in seq_len(k)) {
+                                 if (!is.null(res1) &
+                                     !("modules" %in% search)) {
+                                     start0 <- res1[[i]]$adj
+                                 } else {
+                                     start0 <- NULL
+                                 }
+                                 n <- getSgeneN(data)
+                                 dataF <- matrix(0, nrow(data), n)
+                                 colnames(dataF) <- seq_len(n)
+                                 nozero <- which(postprobs[i, ] != 0)
+                                 if (length(nozero) != 0) {
+                                     if (length(nozero) == ncol(data)) {
+                                         dataR <- data
+                                         postprobsR <- postprobs[i, ]
+                                     } else {
+                                         dataR <- cbind(data[, nozero,
+                                                             drop = FALSE],
+                                                        dataF)
+                                         postprobsR <- c(postprobs[i, nozero],
+                                                         rep(0, n))
+                                     }
+                                 } else {
+                                     dataR <- dataF
+                                     postprobsR <- rep(0, n)
+                                 }
+                                 if (is.null(start0)) {
+                                     res[[i]] <- mynem(D = dataR,
+                                                       weights = postprobsR,
+                                                       search = search,
+                                                       start = start0,
+                                                       method = method,
+                                                       parallel = parallel2,
+                                                       reduce = reduce,
+                                                       runs = runs,
+                                                       verbose = verbose,
+                                                       redSpace = redSpace,
+                                                       ratio = ratio,
+                                                       domean = domean,
+                                                       modulesize = modulesize)
+                                 } else {
+                                     test01 <- list()
+                                     test01scores <- numeric(3)
+                                     for (j in seq_len(3)) {
+                                         if (j == 3) {
+                                             start1 <- start0
+                                         } else {
+                                             start1 <- start0*0 + (j - 1)
+                                         }
+                                         test01[[j]] <- mynem(D = dataR,
+                                                              weights =
+                                                                  postprobsR,
+                                                              search = search,
+                                                              start = start1,
+                                                              method = method,
+                                                              parallel =
+                                                                  parallel2,
+                                                              reduce = reduce,
+                                                              runs = runs,
+                                                              verbose = verbose,
+                                                              redSpace =
+                                                                  redSpace,
+                                                              ratio = ratio,
+                                                              domean = domean,
+                                                              odulesize =
+                                                                  modulesize)
+                                         test01scores[j] <-
+                                             max(test01[[j]]$scores)
+                                     }
+                                     res[[i]] <-
+                                         test01[[which.max(test01scores)]]
+                                 }
+                                 edgechange <- edgechange +
+                                     sum(abs(res[[i]]$adj - res1[[i]]$adj))
+                                 thetachange <- thetachange +
+                                     sum(res[[i]]$subtopo != res1[[i]]$subtopo)
+                                 res[[i]]$D <- NULL
+                                 res[[i]]$subweights <- NULL
+                                 
+                             }
+                             evopen <- 0
+                             if (evolution) {
+                                 res <- sortAdj(res)$res
+                                 evopen <- calcEvopen(res)
+                             }
+                             res1 <- res
+                                        # E-step:
+                             n <- ncol(res[[1]]$adj)
+                             probs0 <- list()
+                             probs0$probs <- matrix(0, k, ncol(data))
+                             for (i in seq_len(3)) {
+                                 if (i == 3) {
+                                     probs <- probsold
+                                 } else {
+                                     probs <- matrix(i - 1, k, ncol(data))
+                                 }
+                                 probs <- getProbs(probs, k, data, res, method,
+                                                   n,
+                                                   affinity, converged,
+                                                   subtopoX, ratio,
+                                                   mw = mw)
+                                 if (getLL(probs$probs, logtype = logtype,
+                                           mw = mw,
+                                           data = data) > getLL(probs0$probs,
+                                                                logtype =
+                                                                    logtype,
+                                                                mw = mw,
+                                                                data = data)) {
+                                     probs0 <- probs
+                                 }
+                             }
+                             subtopoX <- probs0$subtopoX
+                             probs <- probs0$probs
+                             modelsize <- n*n*k
+                             datasize <- nrow(data)*ncol(data)*k
+                             ll <- getLL(probs, logtype = logtype, mw = mw,
+                                         data = data) +
+                                 evopen*datasize*(modelsize^-1)
+                             mw <- apply(getAffinity(probs, affinity = affinity,
+                                                     norm = TRUE,
+                                                     logtype = logtype,
+                                                     mw = mw,
+                                                     data = data), 1, sum)
+                             mw <- mw/sum(mw)
+                             if(verbose) {
+                                 print(paste("ll: ", ll, sep = ""))
+                                 print(paste("changes in phi(s): ",
+                                             edgechange, sep = ""))
+                                 print(paste("changes in theta(s): ",
+                                             thetachange, sep = ""))
+                                 if (evolution) {
+                                     print(paste("evolution penalty: ",
+                                                 evopen, sep = ""))
+                                 }
+                             }
+                             lls <- c(lls, ll)
+                             count <- count + 1
+                         }
                 if (ll - bestll > 0) {
                     bestll <- ll; bestres <- res1
                     bestprobs <- probs; bestmw <- mw
@@ -664,6 +708,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
             lambda <- apply(postprobs, 1, sum)
             lambda0 <- lambda/sum(lambda)
             lambda <- best$mw
+            if (k == 1) { lambda <- 1 }
             if (verbose) { print(all(lambda == lambda0)) }
         } else {
             lambda <- 1
@@ -681,13 +726,18 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
     class(res) <- "mnem"
     return(res)
 }
-#' run bootstrap simulations on the components
+#' Bootstrap.
+#' Run bootstrap simulations on the components (phi)  of an object of
+#' class mnem.
 #' @param x mnem object
 #' @param size size of the booststrap simulations
-#' @param logtype logarithm type of the data
+#' @param p percentage of samples (e.g. for 100 E-genes p=0.5 means
+#' sampling 50)
+#' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
+#' for natural)
 #' @param ... additional parameters for hte nem function
 #' @author Martin Pirkl
-#' @return returns bootstrap support for each edge
+#' @return returns bootstrap support for each edge in each component (phi)
 #' @export
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
@@ -695,8 +745,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 2)
 #' boot <- bootstrap(result, size = 10)
-bootstrap <- function(x, size = 1000, logtype = 2, ...) {
-    ## bootstrap on the components to get frequencies
+bootstrap <- function(x, size = 1000, p = 1, logtype = 2, ...) {
     data <- x$data
     post <- getAffinity(x$probs, logtype = logtype, mw = x$mw, data = data)
     bootres <- list()
@@ -705,40 +754,89 @@ bootstrap <- function(x, size = 1000, logtype = 2, ...) {
         bootres[[i]] <- x$comp[[i]]$phi*0
         for (j in seq_len(size)) {
             dataRR <- dataR[sample(seq_len(nrow(dataR)),
-                                   ceiling(0.5*nrow(dataR)), replace = TRUE), ]
+                                   ceiling(p*nrow(dataR)), replace = TRUE), ]
             res <- mynem(dataRR, ...)
             bootres[[i]] <- bootres[[i]]+transitive.closure(res$adj, mat = TRUE)
         }
         bootres[[i]] <- bootres[[i]]/size
+        colnames(bootres[[i]]) <- rownames(bootres[[i]]) <-
+            naturalsort(unique(colnames(data)))
     }
+    class(bootres) <- "bootmnem"
     return(bootres)
 }
-#' plot mnem result
+#' Plot boostrap mnem result.
+#' @param x bootmnem object
+#' @param reduce if TRUE transitively reduces the graphs
+#' @param ... additional parameters for the plotting function plotDNF
+#' @author Martin Pirkl
+#' @return visualization of bootstrap mnem result with Rgraphviz
+#' @export
+#' @method plot bootmnem
+#' @examples
+#' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+#' data <- (sim$data - 0.5)/0.5
+#' data <- data + rnorm(length(data), 0, 1)
+#' result <- mnem(data, k = 2, starts = 2)
+#' boot <- bootstrap(result, size = 10)
+#' plot(boot)
+plot.bootmnem <- function(x, reduce = TRUE, ...) {
+    dnfs <- freqs <- NULL
+    for (i in seq_len(length(x))) {
+        adj <- adj2 <- x[[i]]
+        rownames(adj) <- colnames(adj) <- paste0(rownames(adj), "_", i)
+        adj[which(adj <= 0.5)] <- 0
+        if (reduce) {
+            adj <- transitive.reduction(adj)*x[[i]]
+        } else {
+            adj <- x[[i]]
+        }
+        adj2 <- adj
+        adj2[which(adj > 0.5)] <- 0
+        bidi <- which(adj2+t(adj2) > 0.5)
+        adj[which(adj <= 0.5)] <- 0
+        adj[bidi] <- (adj2+t(adj2))[bidi]
+        diag(adj) <- 0
+        dnf <- adj2dnf(apply(adj, c(1,2), ceiling))
+        dnf <- dnf[-(1:nrow(adj))]
+        freq <- as.vector(t(adj))
+        freq <- freq[which(freq != 0)]
+        dnfs <- c(dnfs, dnf)
+        freqs <- c(freqs, freq)
+    }
+    plotDnf(dnfs, edgelabel = freqs, ...)
+}
+#' Plot mnem result.
 #' @param x mnem object
 #' @param oma outer margin
 #' @param main main text
-#' @param anno annotate cells
-#' @param cexAnno text size
-#' @param scale scale cells
-#' @param global global clustering
-#' @param egenes show egene attachments
-#' @param sep seperate clusters
-#' @param tsne use tsne
-#' @param affinity logical use hard clustering if true
-#' @param logtype logarithm type of the data
-#' @param cells show ccell attachments
+#' @param anno annotate cells by their perturbed gene
+#' @param cexAnno text size of the cell annotations
+#' @param scale scale cells to show relative and not absolute distances
+#' @param global if TRUE clusters all cells, if FALSE clusters cells within
+#' a component
+#' @param egenes show egene attachments, i.e. number of E-genes
+#' assigned to each S-gene
+#' @param sep seperate clusters and not put them on top of each other
+#' for better visualization
+#' @param tsne if TRUE use tsne instead of pca
+#' @param affinity use hard clustering if TRUE
+#' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
+#' for natural)
+#' @param cells show cell attachments, .i.e how many cells are assigned
+#' to each S-gene
 #' @param pch cell symbol
 #' @param legend show legend
-#' @param showdata show data if true
-#' @param bestCell show probability of best fitting cell
-#' @param showprobs show probabilities
-#' @param shownull show null node
-#' @param ratio use log ratios (if true) or foldchanges
+#' @param showdata show data if TRUE
+#' @param bestCell show probability of best fitting cell for each S-gene
+#' @param showprobs if TRUE, shows responsibilities for all cells and components
+#' @param shownull if TRUE, shows the null node
+#' @param ratio use log ratios (TRUE) or foldchanges (FALSE)
 #' @param method "llr" for ratios
-#' @param showweights shwo weights
+#' @param showweights if TRUE, shows mixture weights for all components
 #' @param ... additional parameters
 #' @author Martin Pirkl
-#' @return visualization of mnem result Rgraphviz
+#' @return visualization of mnem result with Rgraphviz
 #' @export
 #' @method plot mnem
 #' @import
@@ -757,7 +855,7 @@ bootstrap <- function(x, size = 1000, logtype = 2, ...) {
 #' result <- mnem(data, k = 2, starts = 2)
 #' plot(result)
 plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
-                      # import deleted graphics
+                                        # import deleted graphics
                       cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE,
                       sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2,
                       cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE,
@@ -799,7 +897,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                                   Cells = 0.5, Fit = 0.5),
                 nodewidth = list(Sgenes = 2, Egenes = 0.5,
                                  Cells = 0.5, Fit = 0.5),
-            layout = "circo")
+                layout = "circo")
     }
     full <- x$comp[[1]]$phi
     mixnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE,
@@ -1074,7 +1172,8 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
         }
     }
 }
-#' clusters the data and performs standard nem on each cluster
+#' Cluster NEM.
+#' This function clusters the data and performs standard nem on each cluster.
 #' @param data data of log ratios with cells in columns and features in rows
 #' @param k number of clusters
 #' @param ... additional arguments for standard nem function
@@ -1144,19 +1243,21 @@ clustNEM <- function(data, k = 2:5, ...) {
     res$probs <- matrix(res$mw, K, ncol(data))
     return(res)
 }
-#' simulate single cell data from a mixture of networks
+#' Simulate data. This function simulates single cell data from a random
+#' mixture of networks.
 #' @param Sgenes number of Sgenes
 #' @param Egenes number of Egenes
 #' @param subsample range to subsample data. 1 means the full simulated data is
 #' used.
-#' @param Nems numberof components
-#' @param reps number of relicates, if set (not realistice for cells)
-#' @param mw mixture weights
-#' @param evolution evovling network, if set to true
+#' @param Nems number of components
+#' @param reps number of replicates, if set (not realistic for cells)
+#' @param mw mixture weights (has to be vector of length Nems)
+#' @param evolution evovling and not purely random network, if set to TRUE
 #' @param nCells number of cells
 #' @param uninform number of uninformative Egenes
-#' @param unitheta uniform theta, if true
-#' @param edgeprob edge probability
+#' @param unitheta uniform theta, if TRUE
+#' @param edgeprob edge probability, value between 0 and 1 for sparse or
+#' dense networks
 #' @author Martin Pirkl
 #' @return simulation object with meta information and data
 #' @export
@@ -1256,16 +1357,20 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                                           ncol(data)*uninform, replace = TRUE),
                                    uninform, ncol(data)))
     }
-    return(list(Nem = Nem, theta = theta, data = data, index = index))
+    sim <- list(Nem = Nem, theta = theta, data = data, index = index)
+    class(sim) <- "mnemsim"
+    return(sim)
 }
-#' normalized hamming accuracy of the columns of two adjacency matrices
-#' @param a adjacency matrix
-#' @param b adjacency matrix
+#' Accuracy for two phis.
+#' This function uses the hamming distance to calculate
+#' an accuracy for two networks (phi).
+#' @param a adjacency matrix (phi)
+#' @param b adjacency matrix (phi)
 #' @param diag if 1 includes diagonal in distance, if 0 not
 #' @param symmetric comparing a to b is asymmetrical, if TRUE includes
 #' comparison b to a
 #' @author Martin Pirkl
-#' @return normalized hamming accuracy
+#' @return normalized hamming accuracy for a and b
 #' @export
 #' @import
 #' epiNEM
@@ -1314,24 +1419,29 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
     ham <- min(c(ham2, ham3))
     return(ham)
 }
-#' function for visualizing graphs in normal form
-#' @param dnf Hyper-graph in disjunctive normal form.
-#' @param freq Frequency of hyper-edges.
-#' @param stimuli Vertices which can be stimulated.
-#' @param signals Vertices which regulate E-genes.
-#' @param inhibitors Vertices which can be inhibited.
+#' Plot disjunctive normal form.
+#' This function visualizes a graph encodedas a disjunctive nromal form.
+#' @param dnf Hyper-graph in disjunctive normal form,
+#' e.g. c("A=B", "A=C+D", "E=!B") with the child on the left and the parents
+#' on the right of the equation with "A=C+D" for A = C AND D. Alternatively,
+#' dnf can be an adjacency matrix, which is converted on the fly to a
+#' disjunctive normal form.
+#' @param freq Frequency of hyper-edges which are placed on the edges.
+#' @param stimuli Highlights vertices which can be stimulated.
+#' @param signals Highlights vertices which regulate E-genes.
+#' @param inhibitors Highlights vertices which can be inhibited.
 #' @param connected If TRUE, only includes vertices which are connected to other
 #' vertices.
 #' @param CNOlist CNOlist object. Optional instead of stimuli, inhibitors or
-#' signals.
+#' signals. See package CellNOptR.
 #' @param cex Global font size.
 #' @param fontsize Vertice label size.
 #' @param labelsize Edge label size.
-#' @param type Different plot types.
+#' @param type Different plot types. 2 for Rgraphviz and 1 for graph.
 #' @param lwd Line width.
 #' @param edgelwd Edgeline width.
 #' @param legend 0 shows no legend. 1 shows legend as a graph. 2 shows legend
-#' in a box.
+#' in a standard box.
 #' @param x x coordinate of box legend.
 #' @param y y coordinate of box legend.
 #' @param xjust Justification of legend box left, right or center (-1,1,0).
@@ -2563,7 +2673,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                         g@renderInfo@nodes$labelX[
                             which(names(g@renderInfo@nodes$labelX) %in% i)] +
                         200 - g@renderInfo@nodes$rWidth[[i]] - 10,
-                                                     length.out = 4))
+                        length.out = 4))
                 tmp.splines[2] <- tmp.splines[2] + 50
                 tmp.splines <- as.integer(tmp.splines)
                 g@renderInfo@edges$splines[[paste(tmp.name, "~", i,
@@ -2602,7 +2712,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                 g@renderInfo@nodes$labelY <-
                     c(g@renderInfo@nodes$labelY,
                       g@renderInfo@nodes$labelY[
-                         which(names(g@renderInfo@nodes$labelY) %in% i)])
+                          which(names(g@renderInfo@nodes$labelY) %in% i)])
                 names(g@renderInfo@nodes$labelX)[
                     length(g@renderInfo@nodes$labelX)] <-
                     paste(i, "_inhibited", sep = "")

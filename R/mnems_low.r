@@ -762,19 +762,17 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         subweights <- Dw%*%cbind(tmp$phi[colnames(Dw), ], 0)
         subtopo <- apply(subweights, 1, which.max)
     }
-
+    
     if (!is.null(parallel)) {
         sfStop()
     }
-
-    if (is.null(subtopo)) {
-        subtopo <- scoreAdj(D, better, method = method, weights = weights,
-                            subtopo = subtopo, prior = prior,
-                            ratio = ratio)
-        subweights <- subtopo$subweights
-        subtopo <- subtopo$subtopo
-    }
-
+    
+    subtopo <- scoreAdj(D, better, method = method, weights = weights,
+                        subtopo = subtopo, prior = prior,
+                        ratio = ratio)
+    subweights <- subtopo$subweights
+    subtopo <- subtopo$subtopo
+    
     better <- transitive.reduction(better)
     better <- better[order(as.numeric(rownames(better))),
                      order(as.numeric(colnames(better)))]
@@ -786,24 +784,24 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
 #' @noRd
 adj2dnf <- function(A) {
 
-  dnf <- NULL
-  
-  for (i in seq_len(ncol(A))) {
-    for (j in seq_len(nrow(A))) {
-      if (i %in% j) { next() }
-      if (A[i, j] == 1) {
-        dnf <- c(dnf, paste(colnames(A)[i], rownames(A)[j], sep = "="))
-      }
-      if (A[i, j] == -1) {
-          dnf <- c(dnf, paste("!", colnames(A)[i], "=",
-                              rownames(A)[j], sep = ""))
-      }
+    dnf <- NULL
+    
+    for (i in seq_len(ncol(A))) {
+        for (j in seq_len(nrow(A))) {
+            if (i %in% j) { next() }
+            if (A[i, j] == 1) {
+                dnf <- c(dnf, paste(colnames(A)[i], rownames(A)[j], sep = "="))
+            }
+            if (A[i, j] == -1) {
+                dnf <- c(dnf, paste("!", colnames(A)[i], "=",
+                                    rownames(A)[j], sep = ""))
+            }
+        }
     }
-  }
 
-  dnf <- unique(dnf)
-  
-  return(dnf)
+    dnf <- unique(dnf)
+    
+    return(dnf)
 
 }
 #' @noRd
@@ -869,8 +867,8 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
 #' @noRd
 adj2dnf <- function(A) {
 
-  dnf <- NULL
-  
+    dnf <- NULL
+    
     for (i in seq_len(ncol(A))) {
         dnf <- c(dnf, rownames(A))
         for (j in seq_len(nrow(A))) {

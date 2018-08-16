@@ -2,7 +2,8 @@
 % Please edit documentation in R/mnems.r
 \name{clustNEM}
 \alias{clustNEM}
-\title{clusters the data and performs standard nem on each cluster}
+\title{Cluster NEM.
+This function clusters the data and performs standard nem on each cluster.}
 \usage{
 clustNEM(data, k = 2:5, ...)
 }
@@ -17,7 +18,8 @@ clustNEM(data, k = 2:5, ...)
 family of nems
 }
 \description{
-clusters the data and performs standard nem on each cluster
+Cluster NEM.
+This function clusters the data and performs standard nem on each cluster.
 }
 \examples{
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))

@@ -2,7 +2,8 @@
 % Please edit documentation in R/mnems.r
 \name{simData}
 \alias{simData}
-\title{simulate single cell data from a mixture of networks}
+\title{Simulate data. This function simulates single cell data from a random
+mixture of networks.}
 \usage{
 simData(Sgenes = 5, Egenes = 1, subsample = 1, Nems = 2, reps = NULL,
   mw = NULL, evolution = FALSE, nCells = 1000, uninform = 0,
@@ -16,27 +17,29 @@ simData(Sgenes = 5, Egenes = 1, subsample = 1, Nems = 2, reps = NULL,
 \item{subsample}{range to subsample data. 1 means the full simulated data is
 used.}
 
-\item{Nems}{numberof components}
+\item{Nems}{number of components}
 
-\item{reps}{number of relicates, if set (not realistice for cells)}
+\item{reps}{number of replicates, if set (not realistic for cells)}
 
-\item{mw}{mixture weights}
+\item{mw}{mixture weights (has to be vector of length Nems)}
 
-\item{evolution}{evovling network, if set to true}
+\item{evolution}{evovling and not purely random network, if set to TRUE}
 
 \item{nCells}{number of cells}
 
 \item{uninform}{number of uninformative Egenes}
 
-\item{unitheta}{uniform theta, if true}
+\item{unitheta}{uniform theta, if TRUE}
 
-\item{edgeprob}{edge probability}
+\item{edgeprob}{edge probability, value between 0 and 1 for sparse or
+dense networks}
 }
 \value{
 simulation object with meta information and data
 }
 \description{
-simulate single cell data from a mixture of networks
+Simulate data. This function simulates single cell data from a random
+mixture of networks.
 }
 \examples{
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))

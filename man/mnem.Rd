@@ -2,23 +2,26 @@
 % Please edit documentation in R/mnems.r
 \name{mnem}
 \alias{mnem}
-\title{learn mixture of networks from a single-ceel knock-down experiment}
+\title{Mixture NEMs - main function.
+This function simultaneously learns a mixture
+of causal networks and clusters of a cell population from single cell
+perturbation data (e.g. log odds of fold change) with a mutli-trait
+readout. E.g. Pooled CRISPR scRNA-Seq data (Perturb-Seq. Dixit et al., 2016,
+Crop-Seq. Datlinger et al., 2017).}
 \usage{
 mnem(D, inference = "em", search = "modules", start = NULL,
   method = "llr", parallel = NULL, reduce = FALSE, runs = 1,
   starts = 3, type = "random", p = NULL, k = NULL, kmax = 10,
   verbose = FALSE, max_iter = 100, parallel2 = NULL, converged = 10^-1,
   redSpace = NULL, affinity = 0, evolution = FALSE, subtopoX = NULL,
-  ratio = TRUE, logtype = 2, initnets = FALSE, popSize = 10,
-  stallMax = 2, elitism = NULL, maxGens = Inf, domean = TRUE,
+  ratio = TRUE, logtype = 2, initnets = FALSE, domean = TRUE,
   modulesize = 5, compress = FALSE, increase = TRUE)
 }
 \arguments{
 \item{D}{data with cells indexing the columns and features (E-genes)
 indexing the rows}
 
-\item{inference}{inference method "em" for expectation maximization,
-"greedy" or "genetic"}
+\item{inference}{inference method "em" for expectation maximization}
 
 \item{search}{search method for single network inference "greedy",
 "exhaustive" or "modules"}
@@ -28,67 +31,72 @@ k components}
 
 \item{method}{"llr" for log ratios or foldchanges as input (see ratio)}
 
-\item{parallel}{number of threads}
+\item{parallel}{number of threads for parallelization of the number of
+em runs}
 
-\item{reduce}{logical - reduce search space for exhaustive search}
+\item{reduce}{logical - reduce search space for exhaustive search to
+unique networks}
 
-\item{runs}{how many runs for greedy search}
+\item{runs}{number of runs for greedy search}
 
-\item{starts}{how many starts for em}
+\item{starts}{number of starts for the em}
 
 \item{type}{initialize with "random" probabilities or "cluster" the data}
 
-\item{p}{initial probabilities}
+\item{p}{initial probabilities as a k (components) times l (cells) matrix}
 
 \item{k}{number of components}
 
 \item{kmax}{maximum number of components when k=NULL is inferred}
 
-\item{verbose}{output}
+\item{verbose}{verbose output}
 
-\item{max_iter}{maximum iteration if likelihood does not converge}
+\item{max_iter}{maximum iteration, if likelihood does not converge}
 
-\item{parallel2}{if parallel=NULL, number of threads for component
+\item{parallel2}{if parallel=NULL, number of threads for single component
 optimization}
 
-\item{converged}{absolute distance for convergence}
+\item{converged}{absolute distance for convergence between new and old log
+likelihood}
 
-\item{redSpace}{space for exhaustive search}
+\item{redSpace}{space for "exhaustive" search}
 
-\item{affinity}{0 is default, 1 is for hard clustering}
+\item{affinity}{0 is default for soft clustering, 1 is for hard clustering}
 
-\item{evolution}{logical, penalty on difference of components}
+\item{evolution}{logical. If TRUE components are penelized for being
+different from each other.}
 
-\item{subtopoX}{hard prior on theta}
+\item{subtopoX}{hard prior on theta as a vector of S-genes for all E-genes}
 
 \item{ratio}{logical, if true data is log ratios, if false foldchanges}
 
-\item{logtype}{logarithm of the data}
+\item{logtype}{logarithm type of the data (e.g. 2 for log2 data or exp(1)
+for natural)}
 
-\item{initnets}{initial networks in a list}
+\item{initnets}{initial networks as a list of phis}
 
-\item{popSize}{population size}
-
-\item{stallMax}{maximum number of stall generations till convergence}
-
-\item{elitism}{number of networks to keep during evolution}
-
-\item{maxGens}{maximum numbero f generations}
-
-\item{domean}{average the data (speed imporvment)}
+\item{domean}{average the data, when calculating a single NEM (speed
+improvment)}
 
 \item{modulesize}{max number of S-genes per module in module search}
 
-\item{compress}{compress networks after search}
+\item{compress}{compress networks after search (warning: penelized
+likelihood not interpretable)}
 
 \item{increase}{if set to FALSE, the algorithm will not stop if the
 likelihood decreases}
 }
 \value{
-optimized network for data fit
+object of class mnem with the log expected of the hidden data
+and phi and theta for all components k
 }
 \description{
-learn mixture of networks from a single-ceel knock-down experiment
+Mixture NEMs - main function.
+This function simultaneously learns a mixture
+of causal networks and clusters of a cell population from single cell
+perturbation data (e.g. log odds of fold change) with a mutli-trait
+readout. E.g. Pooled CRISPR scRNA-Seq data (Perturb-Seq. Dixit et al., 2016,
+Crop-Seq. Datlinger et al., 2017).
 }
 \examples{
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))

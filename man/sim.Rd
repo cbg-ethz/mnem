@@ -5,26 +5,16 @@
 \alias{sim}
 \title{Simulation results
 Example data: simulation results
-Contains simulation results. How they were
-aquired is explained in the vignette.
-The data conists of a list of data matrices holding
-sensitivity and specificity
-(spec, sens) of network edges for the variious methods compared to
-the ground truth, sensitivity and specificity (sens2, spec2)
-of the expected data for clustNEM and mnem.}
+Contains simulation results.
+For details see the vignette.}
 \usage{
 sim
 }
 \description{
 Simulation results
 Example data: simulation results
-Contains simulation results. How they were
-aquired is explained in the vignette.
-The data conists of a list of data matrices holding
-sensitivity and specificity
-(spec, sens) of network edges for the variious methods compared to
-the ground truth, sensitivity and specificity (sens2, spec2)
-of the expected data for clustNEM and mnem.
+Contains simulation results.
+For details see the vignette.
 }
 \examples{
 data(sim)

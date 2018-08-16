@@ -2,7 +2,10 @@
 % Please edit documentation in R/mnems.r
 \name{getAffinity}
 \alias{getAffinity}
-\title{Calculate responsibilities}
+\title{Calculate responsibilities.
+This function calculates the responsibilities
+of each component for all cells from the expected log distribution of the
+hidden data.}
 \usage{
 getAffinity(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
   data = matrix(0, 2, ncol(x)))
@@ -15,9 +18,10 @@ during inference (not recommended)}
 
 \item{norm}{if TRUE normalises to probabilities (recommended)}
 
-\item{logtype}{logarithm type of the data}
+\item{logtype}{logarithm type of the data (e.g. 2 for log2 data or exp(1)
+for natural)}
 
-\item{mw}{miture weights}
+\item{mw}{mixture weights of the components}
 
 \item{data}{data in log odds}
 }
@@ -25,7 +29,10 @@ during inference (not recommended)}
 responsibilities as a kxl matrix (k components, l cells)
 }
 \description{
-Calculate responsibilities
+Calculate responsibilities.
+This function calculates the responsibilities
+of each component for all cells from the expected log distribution of the
+hidden data.
 }
 \examples{
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))

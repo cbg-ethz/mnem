@@ -2,14 +2,16 @@
 % Please edit documentation in R/mnems.r
 \name{hamSim}
 \alias{hamSim}
-\title{normalized hamming accuracy of the columns of two adjacency matrices}
+\title{Accuracy for two phis.
+This function uses the hamming distance to calculate
+an accuracy for two networks (phi).}
 \usage{
 hamSim(a, b, diag = 1, symmetric = TRUE)
 }
 \arguments{
-\item{a}{adjacency matrix}
+\item{a}{adjacency matrix (phi)}
 
-\item{b}{adjacency matrix}
+\item{b}{adjacency matrix (phi)}
 
 \item{diag}{if 1 includes diagonal in distance, if 0 not}
 
@@ -17,10 +19,12 @@ hamSim(a, b, diag = 1, symmetric = TRUE)
 comparison b to a}
 }
 \value{
-normalized hamming accuracy
+normalized hamming accuracy for a and b
 }
 \description{
-normalized hamming accuracy of the columns of two adjacency matrices
+Accuracy for two phis.
+This function uses the hamming distance to calculate
+an accuracy for two networks (phi).
 }
 \examples{
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))

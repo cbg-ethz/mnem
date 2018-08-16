@@ -2,7 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{plot.mnem}
 \alias{plot.mnem}
-\title{plot mnem result}
+\title{Plot mnem result.}
 \usage{
 \method{plot}{mnem}(x, oma = c(3, 1, 1, 3), main = "M&NEM", anno = TRUE,
   cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE,
@@ -18,51 +18,56 @@
 
 \item{main}{main text}
 
-\item{anno}{annotate cells}
+\item{anno}{annotate cells by their perturbed gene}
 
-\item{cexAnno}{text size}
+\item{cexAnno}{text size of the cell annotations}
 
-\item{scale}{scale cells}
+\item{scale}{scale cells to show relative and not absolute distances}
 
-\item{global}{global clustering}
+\item{global}{if TRUE clusters all cells, if FALSE clusters cells within
+a component}
 
-\item{egenes}{show egene attachments}
+\item{egenes}{show egene attachments, i.e. number of E-genes
+assigned to each S-gene}
 
-\item{sep}{seperate clusters}
+\item{sep}{seperate clusters and not put them on top of each other
+for better visualization}
 
-\item{tsne}{use tsne}
+\item{tsne}{if TRUE use tsne instead of pca}
 
-\item{affinity}{logical use hard clustering if true}
+\item{affinity}{use hard clustering if TRUE}
 
-\item{logtype}{logarithm type of the data}
+\item{logtype}{logarithm type of the data (e.g. 2 for log2 data or exp(1)
+for natural)}
 
-\item{cells}{show ccell attachments}
+\item{cells}{show cell attachments, .i.e how many cells are assigned
+to each S-gene}
 
 \item{pch}{cell symbol}
 
 \item{legend}{show legend}
 
-\item{showdata}{show data if true}
+\item{showdata}{show data if TRUE}
 
-\item{bestCell}{show probability of best fitting cell}
+\item{bestCell}{show probability of best fitting cell for each S-gene}
 
-\item{showprobs}{show probabilities}
+\item{showprobs}{if TRUE, shows responsibilities for all cells and components}
 
-\item{shownull}{show null node}
+\item{shownull}{if TRUE, shows the null node}
 
-\item{ratio}{use log ratios (if true) or foldchanges}
+\item{ratio}{use log ratios (TRUE) or foldchanges (FALSE)}
 
 \item{method}{"llr" for ratios}
 
-\item{showweights}{shwo weights}
+\item{showweights}{if TRUE, shows mixture weights for all components}
 
 \item{...}{additional parameters}
 }
 \value{
-visualization of mnem result Rgraphviz
+visualization of mnem result with Rgraphviz
 }
 \description{
-plot mnem result
+Plot mnem result.
 }
 \examples{
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))

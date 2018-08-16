@@ -2,24 +2,32 @@
 % Please edit documentation in R/mnems.r
 \name{bootstrap}
 \alias{bootstrap}
-\title{run bootstrap simulations on the components}
+\title{Bootstrap.
+Run bootstrap simulations on the components (phi)  of an object of
+class mnem.}
 \usage{
-bootstrap(x, size = 1000, logtype = 2, ...)
+bootstrap(x, size = 1000, p = 1, logtype = 2, ...)
 }
 \arguments{
 \item{x}{mnem object}
 
 \item{size}{size of the booststrap simulations}
 
-\item{logtype}{logarithm type of the data}
+\item{p}{percentage of samples (e.g. for 100 E-genes p=0.5 means
+sampling 50)}
+
+\item{logtype}{logarithm type of the data (e.g. 2 for log2 data or exp(1)
+for natural)}
 
 \item{...}{additional parameters for hte nem function}
 }
 \value{
-returns bootstrap support for each edge
+returns bootstrap support for each edge in each component (phi)
 }
 \description{
-run bootstrap simulations on the components
+Bootstrap.
+Run bootstrap simulations on the components (phi)  of an object of
+class mnem.
 }
 \examples{
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))

@@ -2,7 +2,8 @@
 % Please edit documentation in R/mnems.r
 \name{plotDnf}
 \alias{plotDnf}
-\title{function for visualizing graphs in normal form}
+\title{Plot disjunctive normal form.
+This function visualizes a graph encodedas a disjunctive nromal form.}
 \usage{
 plotDnf(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
   inhibitors = c(), connected = TRUE, CNOlist = NULL, cex = NULL,
@@ -20,21 +21,25 @@ plotDnf(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
   draw = TRUE, ...)
 }
 \arguments{
-\item{dnf}{Hyper-graph in disjunctive normal form.}
+\item{dnf}{Hyper-graph in disjunctive normal form,
+e.g. c("A=B", "A=C+D", "E=!B") with the child on the left and the parents
+on the right of the equation with "A=C+D" for A = C AND D. Alternatively,
+dnf can be an adjacency matrix, which is converted on the fly to a
+disjunctive normal form.}
 
-\item{freq}{Frequency of hyper-edges.}
+\item{freq}{Frequency of hyper-edges which are placed on the edges.}
 
-\item{stimuli}{Vertices which can be stimulated.}
+\item{stimuli}{Highlights vertices which can be stimulated.}
 
-\item{signals}{Vertices which regulate E-genes.}
+\item{signals}{Highlights vertices which regulate E-genes.}
 
-\item{inhibitors}{Vertices which can be inhibited.}
+\item{inhibitors}{Highlights vertices which can be inhibited.}
 
 \item{connected}{If TRUE, only includes vertices which are connected to other
 vertices.}
 
 \item{CNOlist}{CNOlist object. Optional instead of stimuli, inhibitors or
-signals.}
+signals. See package CellNOptR.}
 
 \item{cex}{Global font size.}
 
@@ -42,14 +47,14 @@ signals.}
 
 \item{labelsize}{Edge label size.}
 
-\item{type}{Different plot types.}
+\item{type}{Different plot types. 2 for Rgraphviz and 1 for graph.}
 
 \item{lwd}{Line width.}
 
 \item{edgelwd}{Edgeline width.}
 
 \item{legend}{0 shows no legend. 1 shows legend as a graph. 2 shows legend
-in a box.}
+in a standard box.}
 
 \item{x}{x coordinate of box legend.}
 
@@ -139,7 +144,8 @@ E.g. list(top = c("A", "B"), bottom = c("C", "D")).}
 Rgraphviz object
 }
 \description{
-function for visualizing graphs in normal form
+Plot disjunctive normal form.
+This function visualizes a graph encodedas a disjunctive nromal form.
 }
 \examples{
 g <- c("!A+B=G", "C=G", "!D=G", "C+D+E=G")
