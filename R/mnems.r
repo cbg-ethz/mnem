@@ -798,7 +798,7 @@ plot.bootmnem <- function(x, reduce = TRUE, ...) {
         adj[bidi] <- (adj2+t(adj2))[bidi]
         diag(adj) <- 0
         dnf <- adj2dnf(apply(adj, c(1,2), ceiling))
-        dnf <- dnf[-(1:nrow(adj))]
+        dnf <- dnf[-seq_len(nrow(adj))]
         freq <- as.vector(t(adj))
         freq <- freq[which(freq != 0)]
         dnfs <- c(dnfs, dnf)
