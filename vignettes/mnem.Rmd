@@ -403,7 +403,8 @@ over-fitting.
 The data object 'app' consists of three lists containing the results
 for CROPSeq, PERTURBSeq (transcription factors) and PERTURBSeq
 (cell cycle regulators). Each list contains the results for
-$k=1,2,3,4,5$ (number of components).
+$k=1,2,3,4,5$ (number of components). See section 'Data generation'
+for details.
 
 For each of the three data sets we show the raw log likelihood
 together with the penalized likelihood. We choose the optimal $k$ at
@@ -444,7 +445,7 @@ for (j in 1:3) {
 ```
 Figure 8 shows that for each data set, the optimal mixture is $k=2$ according to
 our penalized log likelihood. However, while for the first and second
-data set even $k=2$ beats just a single network, for the third data set
+data set even $k=3$ beats just a single network, for the third data set
 there is only weak evidence for a mixture of $k>1$.
 
 Each cell has a certain probability (responsibility) to have been
@@ -595,9 +596,10 @@ Perturb-seq: Dissecting molecular circuits with scalable single-cell rna
 profiling of pooled genetic screens.  
 Cell, 167(7), 1853???1866.e17.
 
-# Generating the data objects
+# Data Generation
 
-The R code for generating the data objects is shown in the accompanying R file.
+The R code for generating the data objects 'sim' and 'app' is shown
+in the accompanying R file.
 
 ```{r, eval=FALSE, include=FALSE}
 data <- read.csv("GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv",
