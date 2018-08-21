@@ -1,4 +1,66 @@
 #' @noRd
+random_probs <- function(k, data, full = FALSE) {
+    probs <- matrix(log2(sample(c(0,1), k*ncol(data),
+                                replace = TRUE,
+                                prob = c(0.9, 0.1))), k,
+                    ncol(data))
+    if (full) {
+        for (i in seq_len(k)) {
+            if (i == 1) { next() }
+            infcells <- which(apply(probs, 2, function(x) {
+                bad <- FALSE
+                if (all(is.infinite(x))) {
+                    bad <- TRUE
+                }
+                return(bad)
+            }))
+            if (i == k) {
+                probs[i, infcells] <- log2(1)
+            } else {
+                probs[i, infcells] <-
+                    log2(sample(c(0,1),
+                                length(infcells),
+                                replace = TRUE,
+                                prob = c(1-1/k, 1/k)))
+            }
+        }
+    }
+    while(any(apply(probs, 1, function(x) {
+        bad <- FALSE
+        if (all(is.infinite(x)) | all(x == 0)) {
+            bad <- TRUE
+        }
+        return(bad)
+    }))) {
+        probs <- matrix(log2(sample(c(0,1), k*ncol(data),
+                                    replace = TRUE,
+                                    prob = c(0.9, 0.1))), k,
+                        ncol(data))
+        if (full) {
+            for (i in seq_len(k)) {
+                if (i == 1) { next() }
+                infcells <- which(apply(probs, 2, function(x) {
+                    bad <- FALSE
+                    if (all(is.infinite(x))) {
+                        bad <- TRUE
+                    }
+                    return(bad)
+                }))
+                if (i == k) {
+                    probs[i, infcells] <- log2(1)
+                } else {
+                    probs[i, infcells] <-
+                        log2(sample(c(0,1),
+                                    length(infcells),
+                                    replace = TRUE,
+                                    prob = c(1-1/k, 1/k)))
+                }
+            }
+        }
+    }
+    return(probs)
+}
+#' @noRd
 sortAdj <- function(res, list = FALSE) {
     resmat <- NULL
     for (i in seq_len(length(res))) {

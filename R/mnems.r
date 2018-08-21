@@ -412,10 +412,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                     if (length(probscl) >= s & type %in% "cluster") {
                         probs <- probscl[[s]]
                     } else {
-                        probs <- matrix(log2(sample(c(0,1), k*ncol(data),
-                                                    replace = TRUE,
-                                                    prob = c(0.9, 0.1))), k,
-                                        ncol(data))
+                        probs <- random_probs(k, data)
                     }
                     mw <- apply(getAffinity(probs, affinity = affinity,
                                             norm = TRUE, logtype = logtype,
