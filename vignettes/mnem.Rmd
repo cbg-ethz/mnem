@@ -37,13 +37,21 @@ knitr::opts_chunk$set(message=FALSE, out.width="125%", fig.align="center",
                       #out.extra='style="display:block; margin:auto;"',
                       fig.height = 4, fig.width = 8, error=FALSE)
 fig.cap0 <- "Heatmap of the simulated log odds. Effects are blue and no effects
-are red."
+are red. Rows denote the observed E-genes and columns the S-genes. Each S-gene
+has been perturbed in many cells. The E-genes are annotated as how they are
+attached in the groudn truth. E.g. E-genes named '1' are attached to S-gene
+'1' in the ground truth."
 fig.cap01 <- "Mixture NEM result for the simulated data. On top we show
-the cell assignments for hard clustering and the mixture weights. The large
-circular vertices depict the S-genes, the small ones the responsibility for
-the best fitting cell, the diamonds the number of assigned cells and the boxes
-the number of assigned E-genes."
+the cell assignment percentages for hard clustering and the mixture weights.
+The large circular vertices depict the S-genes, the small ones the
+responsibility for the best fitting cell, the diamonds the number of assigned
+cells and the boxes the number of assigned E-genes."
 fig.cap02 <- "Ground truth causal networks of our simulated mixture of cells"
+fig.cap03 <- "Model selection. Raw log likelihood of the models with different
+components (left, blue) and penalized log likelihood (right, red)."
+fig.cap04 <- "Responsibility distributions. Histograms of the responsibilities
+for the best fitting two component model (left) and the overfitting three
+component model( right)."
 fig.cap1 <- "Accuracy of the inferred networks. The rows denote the number
 of components of the ground truth (1 to 5). The accuracy of mixture NEMs is
 shown in red, for a naive clustering approach in blue and for standard NEM
@@ -121,18 +129,18 @@ The input data is an m times n matrix of log odds (e.g. for fold changes as in
     for feature (E-gene) i in cell j. As in the case of the original NEM, the
     data consists of a multitude of E-genes. However, where for the original
     NEM only one column complies to each perturbed signaling gene (S-gene),
-    M\&NEM can is designed for single cell data and therefore can handle and
+    M\&NEM is designed for single cell data and therefore can handle and
     draws its power from multiple cells for each perturbed S-gene.
 
 The M\&NEM package includes a functions for the simulation of typical single
     cell log odds. We use this function to create data for three S-genes and
     eight E-genes. Two E-genes for each S-gene and two uninformative E-genes.
-    Additionally we assume generate the data from a mixture of two components
+    Additionally we generate the data from a mixture of two components
     and sample $100$ cells, $20$ for one and $80$ for the other component
     (approx. mixture weights: mw). The function simulates discreet data ($1$
     for effect and $0$ for no effect). We transform the discreet data to log
-    odds by adding Gaussian with mean $1$ to all $1$s and with mean $-1$ to
-    all $0$s. Figure 1 shows a heatmap of our generated data.Since we used
+    odds by adding Gaussian noise with mean $1$ to all $1$s and with mean $-1$
+    to all $0$s. Figure 1 shows a heatmap of our generated data. Since we used
     only little noise, effects and no effects are still clearly distinguished
     into shades of blue and red. We can identify the uninformative E-genes
     (no rownames) by their random/unique patterns. Cells perturbed by S-gene
@@ -152,31 +160,61 @@ epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
                   bordercol = "transparent", xrot = 0, dendrogram = "both")
 ```
 
-We "forget" the solution stored in sim$Nem and use the 'mnem' function to infer
+We forget the solution stored in 'sim$Nem' and use the 'mnem' function to infer
    the network. We choose our a greedy search for the M-step and $10$
    independent starts. Since the number of components $k$ is a priori
    not known, we perform optimization for $k=1,2,3$ and use our penalized
    log likelihood to choose the best $k$. Figure 2 shows the best mixture of
    our causal networks with $k=2$. We indeed have found the same causal
-   networks we used to simulate the data. Notice, that our input for the
+   networks we used to generate the data. Notice, that our input for the
    mixture weights is only an approximation, since the real mixture of the
    data is dependent on the ground truth networks (e.g. how similar they are)
    and noise.
 ```{r, fig.height=6, fig.width=14, fig.cap=fig.cap01}
 mlist <- list()
-mpen <- numeric(3)
+mpen <- mllh <- numeric(3)
 for (k in 1:3) {
     mlist[[k]] <- mnem(data, k = k, search = "greedy", runs = 10)
     mpen[k] <- getIC(mlist[[k]])
+    mllh[k] <- mlist[[k]]$ll
 }
 plot(mlist[[which.min(mpen)]])
 ```
 ```{r, fig.cap=fig.cap02, out.width="75%"}
 par(mfrow=c(1,2))
 plotDnf(simmini$Nem[[1]], nodelabels=list(A="1", B="2", C="3"),
-        bordercol="red", main = "Mixture weigth: 20%")
+        bordercol="red", main = "Mixture weight: 20%")
 plotDnf(simmini$Nem[[2]], nodelabels=list(A="1", B="2", C="3"),
-        bordercol="blue", main = "Mixture weigth: 80%")
+        bordercol="blue", main = "Mixture weight: 80%")
+```
+
+```{r, fig.cap=fig.cap03}
+par(mfrow=c(1,2)) 
+plot(mllh, col = "blue", main = "raw log likelihood", type = "b",
+     xlab = "number of components", ylab = "score")
+plot(mpen, col = "red", main = "penalized log likelihood", type = "b",
+     xlab = "number of components", ylab = "score")
+```
+
+We look at the actual log likelihood (left, blue) compared to the penalized
+(right, red), we see that the raw log likelihood is at least equally good
+for the two and three component models. However, if we penalized complexity
+the two component model gives us the best score (minimal). Even the one
+component model beats the three component model due to complexity or lack
+thereof, respectively.
+
+Last but not least, we look at the actual rsponsibilities of the two and
+three component models. While the two component model has very stable and
+high responsibilities between $80$ and $100\%$, the three
+component model's responsibilities are wildly distributed. and many cells
+have ambiguous responsibilities around $50\%$. Due to its nature the two
+component model's responsibilities also follow a symmetric distribution. 
+```{r, fig.cap=fig.cap04}
+par(mfrow=c(1,2))
+postprobs <- getAffinity(mlist[[2]]$probs, mw = mlist[[2]]$mw)
+hist(postprobs, xlab = "responsibilities", main = "")
+postprobs <- getAffinity(mlist[[3]]$probs, mw = mlist[[3]]$mw)
+hist(postprobs, xlab = "responsibilities", main = "")
 ```
 
 ## Simulations
@@ -188,7 +226,7 @@ of networks $k$. See also section 'Data generation' at the end of the vignette.
 Simulation results are evaluated by accuracy of the networks, mixture
 weights and number of components.
 
-The data object 'sim' contains four lists with results of mixture with
+The data object 'sim' contains four lists with results of mixtures with
 $3$, $5$, $10$ and $20$ S-genes. Each list consists of an array including $100$
 runs for three different noise levels, five different numbers of
 components $(1,2,3,4,5)$ and three different methods, which results in overall
@@ -196,8 +234,8 @@ $2400$ runs. For each run the array includes values for time,
 over-fit, component accuracy (accuracy) and mixing weight accuracy
 (mixing).
 
-The different methods we compared are besides M\&NEM, random drawing of of the
-causal network and a naive cluster approach (cNEM). For cNEM we first
+The different methods we compared are besides M\&NEM, the standard NEM approach
+and a naive cluster approach (cNEM). For cNEM we first
 cluster (k-means) all cells based on a correlation distance and then use the
 standard NEM approach on each cluster.
 
@@ -255,7 +293,7 @@ for (i in 1:4) {
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
 }
 ```
-For the code of the latter two (only minmal difference in code) see the R code
+For the code of the latter two (only different array indices) see the R code
     of this vignette.
 ```{r, fig.height=8, fig.width=10, fig.cap=fig.cap2, echo=FALSE}
 noises <- c(1,2.5,5)
@@ -391,7 +429,7 @@ causal networks, number of components and mixture weights.
 
 We apply M\&NEM to three different data sets from two different pooled CRISPR
 screens, CROPSeq (Datlinger *et al.*, 2017) and
-PERTURBSeq (Dixit *et al.*, 2016). Those screen consists of single cell RNAseq
+PERTURBSeq (Dixit *et al.*, 2016). Those screens consists of single cell RNAseq
 data. Each cell has been perturbed by a knock-down of a gene
 (S-gene) and each cell is observed by its gene expression profile
 (E-genes).
@@ -443,7 +481,8 @@ for (j in 1:3) {
 
 }
 ```
-Figure 8 shows that for each data set, the optimal mixture is $k=2$ according to
+Figure 10 shows that for each data set, the optimal mixture is $k=2$ according
+to
 our penalized log likelihood. However, while for the first and second
 data set even $k=3$ beats just a single network, for the third data set
 there is only weak evidence for a mixture of $k>1$.
@@ -477,7 +516,7 @@ for (j in 1:3) {
           at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*0.27)
 }
 ```
-Figure 9 shows the distribution of responsibilities for all three data sets.
+Figure 11 shows the distribution of responsibilities for all three data sets.
 The responsibilities for the first data set are almost binary, i.e.
 almost each cell belongs to $100\%$ to one mixture component. For the
 other two data sets there is a much more smooth transition. While
@@ -682,9 +721,9 @@ simres <- array(0, c(runs, length(noises), length(nems), 4, 7),
 
 for (i in nem) {
     for (j in noise) {    
-        if (file.exists(paste("temp/simres_mnem_", Sgenes, "_", run, "_", j,
+        if (file.exists(paste("simres_mnem_", Sgenes, "_", run, "_", j,
                               "_", i, ".rda", sep = ""))) {
-            print(paste("temp/simres_mnem_", Sgenes, "_", run, "_", j, "_",
+            print(paste("simres_mnem_", Sgenes, "_", run, "_", j, "_",
                         i, ".rda", sep = ""))
             stop("simulation result already exists")
         }
@@ -880,9 +919,9 @@ for (Sgenes in c(3,5,10,20)) {
     for (i in seq_len(length(noises))) {
         for (j in seq_len(length(nems))) {
             for (k in seq_len(runs)) {
-                if (file.exists(paste0("temp/simres_mnem_", Sgenes, "_", k, "_",
+                if (file.exists(paste0("simres_mnem_", Sgenes, "_", k, "_",
                                        i, "_", j, ".rda"))) {
-                    load(paste0("temp/simres_mnem_", Sgenes, "_", k, "_", i,
+                    load(paste0("simres_mnem_", Sgenes, "_", k, "_", i,
                                 "_", j, ".rda"))
                     if (is.null(simresF)) {
                         simresF <- simres
@@ -1065,12 +1104,12 @@ if (dosmall) {
         
         res[[k]]$data <- NULL
         
-        save(res, file = paste0("cropseq/", dataset, "_mnem_small", addendum,
+        save(res, file = paste0(dataset, "_mnem_small", addendum,
                                 ".rda"))
         
     }
     
-    save(res, file = paste0("cropseq/", dataset, "_mnem_small", addendum,
+    save(res, file = paste0(dataset, "_mnem_small", addendum,
                             ".rda"))
 
     stop("small set done")
@@ -1094,9 +1133,9 @@ resMax <- list()
 
 for (i in seq_len(starts)) {
     print(i)
-    if (file.exists(paste0("cropseq/",
+    if (file.exists(paste0(
                            dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))) {
-        load(paste0("cropseq/",
+        load(paste0(
                     dataset, "_mnem_", bigorsmall, "_run", i, ".rda"))
     } else {
         next()
@@ -1136,5 +1175,4 @@ for (i in 1:3) {
         res2[[i]][[j]]$data <- NULL
     }
 }
-
 ```
