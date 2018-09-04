@@ -345,7 +345,12 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                 adj1 <- transitive.closure(res[[i]]$adj, mat = TRUE)
                 adj1 <- cbind(adj1, "0" = 0)
                 adj2 <- adj1[, subtopo]
-                tmp <- llrScore(t(data), t(adj2), ratio = ratio)
+                if (method %in% "llr") {
+                    tmp <- llrScore(t(data), t(adj2), ratio = ratio)
+                }
+                if (method %in% "disc") {
+                    tmp <- discScore(t(data), t(adj2))
+                }
                 probs0[[do]][i, ] <-
                     tmp[cbind(seq_len(nrow(tmp)), as.numeric(rownames(tmp)))]
             }
@@ -466,7 +471,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
             P <- ((1-fn)^(t(t(R)*weights)%*%phi))*
                 (fn^((1-t(t(R)*weights))%*%phi))*
                 (fp^(t(t(R)*weights)%*%(1-phi)))*
-                ((1-fp)^((1-t(t(R)*weights))%*%(1-phi)))                                     
+                ((1-fp)^((1-t(t(R)*weights))%*%(1-phi)))
             P <- cbind(P, 0.5^nrow(R))
         }
         P[, grep("_", colnames(phi))] <- min(P)
@@ -549,7 +554,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         P <- ((1-fn)^(t(t(R)*weights)%*%phibest))*
             (fn^((1-t(t(R)*weights))%*%phibest))*
             (fp^(t(t(R)*weights)%*%(1-phibest)))*
-            ((1-fp)^((1-t(t(R)*weights))%*%(1-phibest)))                                     
+            ((1-fp)^((1-t(t(R)*weights))%*%(1-phibest)))
         P <- cbind(P, 0.5^ncol(R))
     }
     P[, grep("_", colnames(phibest))] <- min(P)
@@ -687,6 +692,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   verbose = FALSE, redSpace = NULL,
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
                   ratio = TRUE, domean = TRUE, modulesize = 5, ...) {
+    if (length(table(D)) == 2) { method <- "disc" } else { method <- "llr" }
     get.deletions <- getFromNamespace("get.deletions", "nem")
     get.insertions <- getFromNamespace("get.insertions", "nem")
     get.reversions <- getFromNamespace("get.reversions", "nem")
@@ -957,25 +963,26 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
 }
 #' @noRd
 discScore <- function(data, adj, weights = NULL) {
+    if (is.null(weights)) { weights <- rep(1, ncol(data)) }
     fp <- fn <- 0.1
     tp <- tn <- 0.9
-    if (is.null(weights)) {
-        weights <- rep(1, ncol(data))
-        score <- (tp^(data%*%adj))*
-            (fn^((1-data)%*%adj))*
-            (fp^(data%*%(1-adj)))*
-            (tn^((1-data)%*%(1-adj)))
-    } else {
-        fp <- t(matrix(fp/(weights - 2*fp*(1-weights)), ncol(data), nrow(data)))
-        fn <- t(matrix(fn/(weights - 2*fn*(1-weights)), ncol(data), nrow(data)))
-        tp <- t(matrix(tp/(weights - 2*tp*(1-weights)), ncol(data), nrow(data)))
-        tn <- t(matrix(tn/(weights - 2*tn*(1-weights)), ncol(data), nrow(data)))
-        score <- (tp^(data%*%adj))*
-            (fn^((1-data)%*%adj))*
-            (fp^(data%*%(1-adj)))*
-            (tn^((1-data)%*%(1-adj)))
-    }
-    score <- cbind(score, 0.5^nrow(data))
+    tp <- t(matrix(tp*weights + (1-weights)*0.5, ncol(data), nrow(data)))
+    fn <- t(matrix(fn*weights + (1-weights)*0.5, ncol(data), nrow(data)))
+    fp <- t(matrix(fp*weights + (1-weights)*0.5, ncol(data), nrow(data)))
+    tn <- t(matrix(tn*weights + (1-weights)*0.5, ncol(data), nrow(data)))
+    TP <- log2(data*tp)
+    TP[is.infinite(TP)] <- 0
+    FN <- log2((1-data)*fn)
+    FN[is.infinite(FN)] <- 0
+    FP <- log2(data*fp)
+    FP[is.infinite(FP)] <- 0
+    TN <- log2((1-data)*tn)
+    TN[is.infinite(TN)] <- 0
+    score <- (TP%*%adj)+
+        (FN%*%adj)+
+        (FP%*%(1-adj))+
+        (TN%*%(1-adj))
+    score <- cbind(score, log2(0.5)*ncol(data))
     return(score)
 }
 #' @noRd
@@ -989,8 +996,8 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
         score <- llrScore(D, adj1, weights = weights, ratio = ratio)
     }
     if (method %in% "disc") {
-        ll <- "marg"
-        score <- discScore(D, adj, weights = weights)
+        ll <- "max"
+        score <- discScore(D, adj1[, -ncol(adj1)], weights = weights)
     }
     if (is.null(subtopo)) {
         subtopo <- apply(score, 1, which.max)
