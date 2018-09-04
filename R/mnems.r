@@ -347,15 +347,13 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
         n <- ncol(res[[1]]$adj)
         mw <- 1
         probs0 <- list()
-        probs0$probs <- matrix(0, k, ncol(data))
-        for (i in seq_len(2)) {
-            probs <- matrix(i - 1, k, ncol(data))
-            probs <- getProbs(probs, k, data, res, method, n, affinity,
-                              converged, subtopoX, ratio, mw = mw)
-            if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) >
-                getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
-                probs0 <- probs
-            }
+        probs0$probs <- matrix(-Inf, k, ncol(data))
+        probs <- matrix(0, k, ncol(data))
+        probs <- getProbs(probs, k, data, res, method, n, affinity,
+                          converged, subtopoX, ratio, mw = mw)
+        if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) >
+            getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
+            probs0 <- probs
         }
         subtopoX <- probs0$subtopoX
         probs <- probs0$probs
@@ -364,15 +362,24 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
     } else {
         if (inference %in% "em") {
             if (!is.null(parallel)) {
+                get.deletions <- getFromNamespace("get.deletions", "nem")
+                get.insertions <- getFromNamespace("get.insertions", "nem")
+                get.reversions <- getFromNamespace("get.reversions", "nem")
+                naturalsort <- naturalsort::naturalsort
+                transitive.reduction <- nem::transitive.reduction
+                transitive.closure <- nem::transitive.closure
                 sfInit(parallel = TRUE, cpus = parallel)
                 sfExport("modules", "mw", "ratio", "getSgeneN", "modData",
                          "sortAdj", "calcEvopen", "evolution",
-                         "transitive.reduction", "getSgenes", "estimateSubtopo",
-                         "getLL", "getAffinity", "get.insertions",
-                         "get.reversions", "get.deletions", "D", "mynem",
-                         "scoreAdj", "transitive.closure", "max_iter",
+                         "getSgenes", "estimateSubtopo",
+                         "getLL", "getAffinity", "D", "mynem",
+                         "scoreAdj", "max_iter", "random_probs",
                          "verbose", "llrScore", "search", "redSpace",
-                         "affinity", "getProbs", "probscl", "method")
+                         "affinity", "getProbs", "probscl", "method",
+                         "naturalsort",
+                         "transitive.reduction", "get.insertions",
+                         "transitive.closure", "get.deletions",
+                         "get.reversions", "nemEst", "discScore")
             }
             do_inits <- function(s) {
                 if (!is.null(init)) {
@@ -388,19 +395,17 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                     n <- ncol(res1[[1]]$adj)
                     if (is.null(p)) {
                         probs0 <- list()
-                        probs0$probs <- matrix(0, k, ncol(data))
-                        for (i in seq_len(2)) {
-                            probs <- matrix(i - 1, k, ncol(data))
-                            probs <- getProbs(probs, k, data, res1, method, n,
-                                              affinity, converged, subtopoX,
-                                              ratio, mw = mw)
-                            if (getLL(probs$probs, logtype = logtype, mw = mw,
-                                      data = data) > getLL(probs0$probs,
-                                                           logtype = logtype,
-                                                           mw = mw,
-                                                           data = data)) {
-                                probs0 <- probs
-                            }
+                        probs0$probs <- matrix(-Inf, k, ncol(data))
+                        probs <- matrix(0, k, ncol(data))
+                        probs <- getProbs(probs, k, data, res1, method, n,
+                                          affinity, converged, subtopoX,
+                                          ratio, mw = mw)
+                        if (getLL(probs$probs, logtype = logtype, mw = mw,
+                                  data = data) > getLL(probs0$probs,
+                                                       logtype = logtype,
+                                                       mw = mw,
+                                                       data = data)) {
+                            probs0 <- probs
                         }
                         subtopoX <- probs0$subtopoX
                         probs <- probs0$probs
@@ -544,30 +549,24 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                                  evopen <- calcEvopen(res)
                              }
                              res1 <- res
-                                        # E-step:
+                             ## E-step:
                              n <- ncol(res[[1]]$adj)
                              probs0 <- list()
-                             probs0$probs <- matrix(0, k, ncol(data))
-                             for (i in seq_len(3)) {
-                                 if (i == 3) {
-                                     probs <- probsold
-                                 } else {
-                                     probs <- matrix(i - 1, k, ncol(data))
-                                 }
-                                 probs <- getProbs(probs, k, data, res, method,
-                                                   n,
-                                                   affinity, converged,
-                                                   subtopoX, ratio,
-                                                   mw = mw)
-                                 if (getLL(probs$probs, logtype = logtype,
-                                           mw = mw,
-                                           data = data) > getLL(probs0$probs,
-                                                                logtype =
-                                                                    logtype,
-                                                                mw = mw,
-                                                                data = data)) {
-                                     probs0 <- probs
-                                 }
+                             probs0$probs <- probsold
+                             probs <- probsold
+                             probs <- getProbs(probs, k, data, res, method,
+                                               n,
+                                               affinity, converged,
+                                               subtopoX, ratio,
+                                               mw = mw)
+                             if (getLL(probs$probs, logtype = logtype,
+                                       mw = mw,
+                                       data = data) > getLL(probs0$probs,
+                                                            logtype =
+                                                                logtype,
+                                                            mw = mw,
+                                                            data = data)) {
+                                 probs0 <- probs
                              }
                              subtopoX <- probs0$subtopoX
                              probs <- probs0$probs

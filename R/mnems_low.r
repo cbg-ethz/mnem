@@ -294,7 +294,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
     time0 <- TRUE
     count <- 0
     max_count <- 100
-    ll0 <- 0
+    ll0 <- -Inf
     stop <- FALSE
     mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE,
                             mw = mw, logtype = logtype, data = data), 1, sum)
@@ -692,7 +692,6 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   verbose = FALSE, redSpace = NULL,
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
                   ratio = TRUE, domean = TRUE, modulesize = 5, ...) {
-    if (length(table(D)) == 2) { method <- "disc" } else { method <- "llr" }
     get.deletions <- getFromNamespace("get.deletions", "nem")
     get.insertions <- getFromNamespace("get.insertions", "nem")
     get.reversions <- getFromNamespace("get.reversions", "nem")
@@ -755,10 +754,17 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     allscores <- score
     
     if (!is.null(parallel)) {
+        get.deletions <- getFromNamespace("get.deletions", "nem")
+        get.insertions <- getFromNamespace("get.insertions", "nem")
+        get.reversions <- getFromNamespace("get.reversions", "nem")
+        naturalsort <- naturalsort::naturalsort
+        transitive.reduction <- nem::transitive.reduction
+        transitive.closure <- nem::transitive.closure
         sfInit(parallel = TRUE, cpus = parallel)
-        sfExport("modules", "D", "start", "better", "transitive.closure",
+        sfExport("modules", "D", "start", "better", "transitive.reduction",
                  "method", "scoreAdj", "weights", "transitive.closure",
-                 "llrScore", "transitive.reduction")
+                 "llrScore", "get.deletions", "get.insertions",
+                 "get.reversions", "discScore")
     }
 
     if (search %in% "greedy") {
