@@ -2,6 +2,7 @@
 
 S3method(plot,bootmnem)
 S3method(plot,mnem)
+S3method(plot,mnemsim)
 export(bootstrap)
 export(clustNEM)
 export(getAffinity)

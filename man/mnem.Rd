@@ -9,13 +9,13 @@ perturbation data (e.g. log odds of fold change) with a mutli-trait
 readout. E.g. Pooled CRISPR scRNA-Seq data (Perturb-Seq. Dixit et al., 2016,
 Crop-Seq. Datlinger et al., 2017).}
 \usage{
-mnem(D, inference = "em", search = "modules", start = NULL,
+mnem(D, inference = "em", search = "greedy", start = NULL,
   method = "llr", parallel = NULL, reduce = FALSE, runs = 1,
   starts = 3, type = "random", p = NULL, k = NULL, kmax = 10,
   verbose = FALSE, max_iter = 100, parallel2 = NULL, converged = 10^-1,
   redSpace = NULL, affinity = 0, evolution = FALSE, subtopoX = NULL,
   ratio = TRUE, logtype = 2, initnets = FALSE, domean = TRUE,
-  modulesize = 5, compress = FALSE, increase = TRUE)
+  modulesize = 5, compress = FALSE, increase = TRUE, fpfn = c(0.1, 0.1))
 }
 \arguments{
 \item{D}{data with cells indexing the columns and features (E-genes)
@@ -85,6 +85,9 @@ likelihood not interpretable)}
 
 \item{increase}{if set to FALSE, the algorithm will not stop if the
 likelihood decreases}
+
+\item{fpfn}{numeric vector of length two with false positive and false
+negative rates for discrete data}
 }
 \value{
 object of class mnem with the log expected of the hidden data

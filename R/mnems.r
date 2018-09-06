@@ -237,6 +237,8 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
 #' likelihood not interpretable)
 #' @param increase if set to FALSE, the algorithm will not stop if the
 #' likelihood decreases
+#' @param fpfn numeric vector of length two with false positive and false
+#' negative rates for discrete data
 #' @author Martin Pirkl
 #' @return object of class mnem with the log expected of the hidden data
 #' and phi and theta for all components k
@@ -258,8 +260,7 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 2)
 #' plot(result)
-mnem <- function(D, inference = "em", search = "modules", start = NULL,
-                 ## imports deleted: modeltools, grid
+mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                  method = "llr",
                  parallel = NULL, reduce = FALSE, runs = 1, starts = 3,
                  type = "random",
@@ -268,7 +269,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                  redSpace = NULL, affinity = 0, evolution = FALSE,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
                  domean = TRUE, modulesize = 5, compress = FALSE,
-                 increase = TRUE) {
+                 increase = TRUE, fpfn = c(0.1, 0.1)) {
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
         redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)],
                           search = "exhaustive", reduce = TRUE,
@@ -350,7 +351,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
         probs0$probs <- matrix(-Inf, k, ncol(data))
         probs <- matrix(0, k, ncol(data))
         probs <- getProbs(probs, k, data, res, method, n, affinity,
-                          converged, subtopoX, ratio, mw = mw)
+                          converged, subtopoX, ratio, mw = mw, fpfn = fpfn)
         if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) >
             getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
             probs0 <- probs
@@ -399,7 +400,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                         probs <- matrix(0, k, ncol(data))
                         probs <- getProbs(probs, k, data, res1, method, n,
                                           affinity, converged, subtopoX,
-                                          ratio, mw = mw)
+                                          ratio, mw = mw, fpfn = fpfn)
                         if (getLL(probs$probs, logtype = logtype, mw = mw,
                                   data = data) > getLL(probs0$probs,
                                                        logtype = logtype,
@@ -558,7 +559,7 @@ mnem <- function(D, inference = "em", search = "modules", start = NULL,
                                                n,
                                                affinity, converged,
                                                subtopoX, ratio,
-                                               mw = mw)
+                                               mw = mw, fpfn = fpfn)
                              if (getLL(probs$probs, logtype = logtype,
                                        mw = mw,
                                        data = data) > getLL(probs0$probs,
@@ -1248,7 +1249,7 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' @param Nems number of components
 #' @param reps number of replicates, if set (not realistic for cells)
 #' @param mw mixture weights (has to be vector of length Nems)
-#' @param evolution evovling and not purely random network, if set to TRUE
+#' @param evolution evolving and not purely random network, if set to TRUE
 #' @param nCells number of cells
 #' @param uninform number of uninformative Egenes
 #' @param unitheta uniform theta, if TRUE
@@ -1329,6 +1330,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                               ceiling(mw[i]*ncol(data_tmp)))
             data_tmp <- data_tmp[, tmpsamp, drop = FALSE]
         } else {
+            mw <- rep(1/Nems, Nems)
             if (is.null(reps)) {
                 data_tmp <- data_tmp[, seq_len(ceiling(nCells/Nems))]
             }
@@ -1353,9 +1355,27 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                                           ncol(data)*uninform, replace = TRUE),
                                    uninform, ncol(data)))
     }
-    sim <- list(Nem = Nem, theta = theta, data = data, index = index)
+    sim <- list(Nem = Nem, theta = theta, data = data, index = index, mw = mw)
     class(sim) <- "mnemsim"
     return(sim)
+}
+#' Plot simulated mixture.
+#' @param x mnemsim object
+#' @param ... additional parameters for the plotting function plotDNF
+#' @author Martin Pirkl
+#' @return visualization of simulated mixture with Rgraphviz
+#' @export
+#' @method plot mnemsim
+#' @examples
+#' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+#' plot(sim)
+plot.mnemsim <- function(x, ...) {
+    par(mfrow=c(1,length(x$mw)))
+    for (i in 1:length(x$mw)) {
+        plotDnf(x$Nem[[i]], bordercol = i+1, main = paste0("Mixture weight: ",
+                                                         round(x$mw[i]*100),
+                                                         "%"), ...)
+    }
 }
 #' Accuracy for two phis.
 #' This function uses the hamming distance to calculate
@@ -1377,10 +1397,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
 #' tsne
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
-#' data <- (sim$data - 0.5)/0.5
-#' data <- data + rnorm(length(data), 0, 1)
-#' result <- mnem(data, k = 2, starts = 2)
-#' plot(result)
+#' similarity <- hamSim(sim$Nem[[1]], sim$Nem[[2]])
 hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
     Sgenes <- unique(colnames(a))
     ham <- numeric(ncol(b))

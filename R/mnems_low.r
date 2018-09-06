@@ -285,7 +285,7 @@ estimateSubtopo <- function(data) {
 #' @noRd
 getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                      converged = 10^-2, subtopoX = NULL, ratio = TRUE,
-                     logtype = 2, mw = NULL) {
+                     logtype = 2, mw = NULL, fpfn = fpfn) {
     if (is.null(subtopoX)) {
         subtopoX <- estimateSubtopo(data)
     }
@@ -323,7 +323,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
             }
             align[[i]] <- scoreAdj(dataR, res[[i]]$adj,
                                    method = method, ratio = ratio,
-                                   weights = postprobsoldR)
+                                   weights = postprobsoldR, fpfn = fpfn)
             subtopo0[i, ] <- align[[i]]$subtopo
             subweights0 <- subweights0 + align[[i]]$subweights
         }
@@ -349,7 +349,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                     tmp <- llrScore(t(data), t(adj2), ratio = ratio)
                 }
                 if (method %in% "disc") {
-                    tmp <- discScore(t(data), t(adj2))
+                    tmp <- discScore(t(data), t(adj2), fpfn = fpfn)
                 }
                 probs0[[do]][i, ] <-
                     tmp[cbind(seq_len(nrow(tmp)), as.numeric(rownames(tmp)))]
@@ -389,9 +389,10 @@ annotAdj <- function(adj, data) {
 nemEst <- function(data, maxiter = 100, start = "null",
                    sumf = mean, alpha = 1, cut = 0,
                    kernel = "cosim", monoton = FALSE,
-                   useCut = TRUE, useF = FALSE, method = "llr",
-                   weights = rep(1, ncol(data)), ...) {
-    if (sum(duplicated(colnames(data)) == TRUE) > 0) {
+                   useF = FALSE, method = "llr",
+                   weights = NULL, fpfn = c(0.1, 0.1), ...) {
+    if (sum(duplicated(colnames(data)) == TRUE) > 0 & is.null(weights) &
+        method %in% "llr") {
         data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
         for (j in unique(colnames(data))) {
             data2[, j] <- apply(data[, which(colnames(data) %in% j),
@@ -400,6 +401,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     } else {
         data2 <- data
     }
+    if (is.null(weights)) { weights <- rep(1, ncol(data2)) }
     R <- data2[, naturalsort(colnames(data2))] 
     n <- ncol(R)
     if (kernel %in% "cosim") {
@@ -461,18 +463,10 @@ nemEst <- function(data, maxiter = 100, start = "null",
     while(!stop & iter < maxiter) {
         iter <- iter + 1
         if (method %in% "llr") {
-            P <- t(t(R)*weights)%*%cbind(phi, 0)
+            P <- t(llrScore(t(cbind(phi, 0)), t(R), weights = weights))
         }
         if (method %in% "disc") {
-            lltype <- "max"
-            if (lltype %in% "max") { llfun <- max }
-            if (lltype %in% "marg") { llfun <- sum }
-            fp <- fn <- 0.1
-            P <- ((1-fn)^(t(t(R)*weights)%*%phi))*
-                (fn^((1-t(t(R)*weights))%*%phi))*
-                (fp^(t(t(R)*weights)%*%(1-phi)))*
-                ((1-fp)^((1-t(t(R)*weights))%*%(1-phi)))
-            P <- cbind(P, 0.5^nrow(R))
+            P <- discScore(R, t(phi), weights = weights, fpfn = fpfn)
         }
         P[, grep("_", colnames(phi))] <- min(P)
         subtopo <- as.numeric(gsub(
@@ -481,11 +475,14 @@ nemEst <- function(data, maxiter = 100, start = "null",
         theta[cbind(subtopo, seq_len(ncol(theta)))] <- 1
         Oold <- O
         if (method %in% "llr") {
-            ll <- theta%*%P
+            ll <- llrScore(theta, P)
             ll <- sum(diag(ll))
         }
         if (method %in% "disc") {
-            ll <- sum(log(apply(P, 1, llfun)))
+            phidisc <- phi%*%theta
+            phidisc <- phidisc[colnames(R), ]
+            ll <- discScore(R, phidisc, weights = weights, fpfn = fpfn)
+            ll <- sum(apply(ll, 1, max))
         }
         if (ll %in% lls | all(phi == phibest)) {
             stop <- TRUE
@@ -512,38 +509,21 @@ nemEst <- function(data, maxiter = 100, start = "null",
             } else {
                 O <- (t(R)*weights)%*%t(theta)
             }
+            cutoff <- cut*max(abs(O))
+            phi[which(O > cutoff & E == 1)] <- 1
+            phi[which(O <= cutoff | E == 0)] <- 0
         }
         if (method %in% "disc") {
             if (useF) {
-                O <- (log(1-fn)*((t(R)*weights)%*%t(phi%*%theta)))+
-                    (log(fn)*((1-(t(R)*weights))%*%t(phi%*%theta)))+
-                    (log(fp)*((t(R)*weights)%*%t(1-phi%*%theta)))+
-                    (log(1-fp)*((1-(t(R)*weights))%*%t(1-phi%*%theta)))
+                O <- discScore(t(R), t(phi%*%theta), weights = weights,
+                               fpfn = fpfn)
             } else {
-                O <- (log(1-fn)*((t(R)*weights)%*%t(theta)))+
-                    (log(fn)*((1-(t(R)*weights))%*%t(theta)))+
-                    (log(fp)*((t(R)*weights)%*%t(1-theta)))+
-                    (log(1-fp)*((1-(t(R)*weights))%*%t(1-theta)))
+                O <- discScore(t(R), t(theta), weights = weights, fpfn = fpfn)
             }
-        }
-        if (useCut) {
-            if (method %in% "llr") {
-                cutoff <- cut*max(abs(O))
-                phi[which(O > cutoff & E == 1)] <- 1
-                phi[which(O <= cutoff | E == 0)] <- 0
-            }
-            if (method %in% "disc") {
-                cutoff <- mean(O[which(E == 1)]) # cut*max(abs(O))
-                phi[which(O > cutoff & E == 1)] <- 1
-                phi[which(O <= cutoff | E == 0)] <- 0
-            }
-        } else {
-            O <- O*E
-            supertopo <- as.numeric(gsub(
-                ncol(phi)+1, 0,apply(O, 1,
-                                     function(x) return(which(x == max(x))))))
-            phi <- phi*0
-            phi[cbind(supertopo, seq_len(ncol(phi)))] <- 1
+            O <- O[, -ncol(O)]
+            cutoff <- log2(min(fpfn))*nrow(R)
+            phi[which(O > cutoff & E == 1)] <- 1
+            phi[which(O <= cutoff | E == 0)] <- 0
         }
     }
     phibest <- transitive.closure(phibest, mat = TRUE)
@@ -551,11 +531,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         P <- t(t(R)*weights)%*%cbind(phibest, 0)
     }
     if (method %in% "disc") {
-        P <- ((1-fn)^(t(t(R)*weights)%*%phibest))*
-            (fn^((1-t(t(R)*weights))%*%phibest))*
-            (fp^(t(t(R)*weights)%*%(1-phibest)))*
-            ((1-fp)^((1-t(t(R)*weights))%*%(1-phibest)))
-        P <- cbind(P, 0.5^ncol(R))
+        P <- discScore(R, t(phibest), weights = weights, fpfn = fpfn)
     }
     P[, grep("_", colnames(phibest))] <- min(P)
     subtopo <- as.numeric(gsub(
@@ -567,7 +543,10 @@ nemEst <- function(data, maxiter = 100, start = "null",
         llbest <- sum(diag(llbest))
     }
     if (method %in% "disc") {
-        llbest <- sum(log(apply(P, 1, llfun)))
+        phidisc <- phibest%*%thetabest
+        phidisc <- phidisc[colnames(R), ]
+        llbest <- discScore(R, phidisc, weights = weights, fpfn = fpfn)
+        llbest <- sum(apply(llbest, 1, max))
     }
     nem <- list(phi = phibest, theta = thetabest, iter = iter,
                 ll = llbest, lls = lls, num = numbest, C = Cz,
@@ -580,7 +559,7 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
                     start = NULL,
                     verbose = FALSE, trans.close = TRUE, redSpace = NULL,
                     subtopo = NULL, ratio = TRUE, parallel = NULL,
-                    prior = NULL,
+                    prior = NULL, fpfn = c(0.1, 0.1),
                     modulesize = 4, search = "exhaustive", domean = TRUE) {
     D <- data <- modData(D)
     n <- getSgeneN(D)
@@ -645,7 +624,7 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
                          verbose = verbose,
                          redSpace = redSpace, trans.close = trans.close,
                          subtopo = subtopo, prior = prior, ratio = ratio,
-                         domean = FALSE)
+                         domean = FALSE, fpfn = fpfn)
             if (is.null(fullnet)) {
                 fullnet <- tmp$adj
             } else {
@@ -691,7 +670,8 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
                   verbose = FALSE, redSpace = NULL,
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
-                  ratio = TRUE, domean = TRUE, modulesize = 5, ...) {
+                  ratio = TRUE, domean = TRUE, modulesize = 5,
+                  fpfn = c(0.1, 0.1), ...) {
     get.deletions <- getFromNamespace("get.deletions", "nem")
     get.insertions <- getFromNamespace("get.insertions", "nem")
     get.reversions <- getFromNamespace("get.reversions", "nem")
@@ -706,7 +686,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
             start <- modules(D, method = method, weights = weights,
                              reduce = reduce, verbose = verbose, start = start,
                              trans.close = trans.close, redSpace = redSpace,
-                             subtopo = subtopo,
+                             subtopo = subtopo, fpfn = fpfn,
                              ratio = ratio, parallel = parallel, prior = prior,
                              modulesize = modulesize, search = search,
                              domean = domean)
@@ -748,7 +728,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         colnames(start) <- rownames(start) <- Sgenes
     score <- scoreAdj(D, better, method = method, weights = weights,
                       subtopo = subtopo,
-                      prior = prior, ratio = ratio)
+                      prior = prior, ratio = ratio, fpfn = fpfn)
     score <- score$score
     oldscore <- score
     allscores <- score
@@ -783,7 +763,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 score <- scoreAdj(D, better, method = method,
                                   weights = weights,
                                   subtopo = subtopo, prior = prior,
-                                  ratio = ratio)
+                                  ratio = ratio, fpfn = fpfn)
                 subtopo <- score$subtopo
                 score <- score$score
                 oldscore <- score
@@ -796,7 +776,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                     score <- scoreAdj(D, new, method = method,
                                       weights = weights,
                                       subtopo = subtopo, prior = prior,
-                                      ratio = ratio)
+                                      ratio = ratio, fpfn = fpfn)
                     subtopo <- score$subtopo
                     score <- score$score
                     return(score)
@@ -850,7 +830,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
             adj <- models[[i]]
             score <- scoreAdj(D, adj, method = method, weights = weights,
                               subtopo = subtopo, prior = prior,
-                              ratio = ratio)
+                              ratio = ratio, fpfn = fpfn)
             subtopo <- score$subtopo
             score <- score$score
             return(score)
@@ -871,7 +851,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         } else {
             Dw <- D
         }
-        tmp <- nemEst(Dw, start = start2, method = method, ...)
+        tmp <- nemEst(Dw, start = start2, method = method, fpfn = fpfn, ...)
         better <- tmp$phi
         oldscore <- tmp$ll
         allscores <- tmp$lls
@@ -885,7 +865,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     
     subtopo <- scoreAdj(D, better, method = method, weights = weights,
                         subtopo = subtopo, prior = prior,
-                        ratio = ratio)
+                        ratio = ratio, fpfn = fpfn)
     subweights <- subtopo$subweights
     subtopo <- subtopo$subtopo
     
@@ -968,10 +948,28 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     return(score)
 }
 #' @noRd
-discScore <- function(data, adj, weights = NULL) {
+discScore <- function(data, adj, weights = NULL, fpfn = c(0.1, 0.1)) {
     if (is.null(weights)) { weights <- rep(1, ncol(data)) }
-    fp <- fn <- 0.1
-    tp <- tn <- 0.9
+    if (fpfn[1] %in% "learn") {
+        fpfn <- c(0,0)
+        ll <- -Inf
+        range <- c(0.01, seq(0.05, 0.45, length.out = 9))
+        for (i in range) {
+            for (j in range) {
+                llnew <- sum(apply(discScore(data,
+                                             adj, weights,
+                                             fpfn = c(i, j)), 1, max))
+                if (llnew > ll) {
+                    fpfn <- c(i, j)
+                    ll <- llnew
+                }
+            }
+        }
+    }
+    fp <- fpfn[1]
+    fn <- fpfn[2]
+    tp <- 1 - fn
+    tn <- 1 - fp
     tp <- t(matrix(tp*weights + (1-weights)*0.5, ncol(data), nrow(data)))
     fn <- t(matrix(fn*weights + (1-weights)*0.5, ncol(data), nrow(data)))
     fp <- t(matrix(fp*weights + (1-weights)*0.5, ncol(data), nrow(data)))
@@ -994,7 +992,7 @@ discScore <- function(data, adj, weights = NULL) {
 #' @noRd
 scoreAdj <- function(D, adj, method = "llr", weights = NULL,
                      trans.close = TRUE, subtopo = NULL,
-                     prior = NULL, ratio = TRUE) {
+                     prior = NULL, ratio = TRUE, fpfn = c(0.1, 0.1)) {
     adj <- transitive.closure(adj, mat = TRUE)
     adj1 <- cbind(adj[colnames(D), ], "0" = 0)
     if (method %in% "llr") {
@@ -1003,7 +1001,8 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     }
     if (method %in% "disc") {
         ll <- "max"
-        score <- discScore(D, adj1[, -ncol(adj1)], weights = weights)
+        score <- discScore(D, adj1[, -ncol(adj1)], weights = weights,
+                           fpfn = fpfn)
     }
     if (is.null(subtopo)) {
         subtopo <- apply(score, 1, which.max)

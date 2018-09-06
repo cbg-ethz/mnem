@@ -23,7 +23,7 @@ used.}
 
 \item{mw}{mixture weights (has to be vector of length Nems)}
 
-\item{evolution}{evovling and not purely random network, if set to TRUE}
+\item{evolution}{evolving and not purely random network, if set to TRUE}
 
 \item{nCells}{number of cells}
 

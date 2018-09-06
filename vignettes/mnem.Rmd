@@ -12,7 +12,7 @@ vignette: >
     %\VignetteEncoding{UTF-8}
 ---
 
-# Mixture Nested Effects Models (M\&NEM)
+# Introduction
 
 Single cell RNA-seq data sets from pooled CrispR screens provide the possibility
 to analyze heterogeneous cell populations. We extended the original
@@ -30,7 +30,7 @@ is calculated. Based on the responsibilities M\&NEM weights the data for
 each component and the standard NEM approach is used to optimize the
 causal network for each weighted data set.
 
-## Installation and loading
+# Installation and loading
 ```{r global_options, include=FALSE}
 knitr::opts_chunk$set(message=FALSE, out.width="125%", fig.align="center",
                       strip.white=TRUE, warning=FALSE, tidy=TRUE,
@@ -52,6 +52,7 @@ components (left, blue) and penalized log likelihood (right, red)."
 fig.cap04 <- "Responsibility distributions. Histograms of the responsibilities
 for the best fitting two component model (left) and the overfitting three
 component model( right)."
+fig.cap05 <- "Binary data. Mixture NEM result for a binary data set."
 fig.cap1 <- "Accuracy of the inferred networks. The rows denote the number
 of components of the ground truth (1 to 5). The accuracy of mixture NEMs is
 shown in red, for a naive clustering approach in blue and for standard NEM
@@ -122,7 +123,7 @@ Load the package with the library function.
 library(mnem)
 ```
 
-## Mini example
+# Mini example
 
 The input data is an m times n matrix of log odds (e.g. for fold changes as in
     the R package "limma"). The *i*th row of the *j*th column are the log odds
@@ -131,6 +132,8 @@ The input data is an m times n matrix of log odds (e.g. for fold changes as in
     NEM only one column complies to each perturbed signaling gene (S-gene),
     M\&NEM is designed for single cell data and therefore can handle and
     draws its power from multiple cells for each perturbed S-gene.
+
+## Data simulation
 
 The M\&NEM package includes a functions for the simulation of typical single
     cell log odds. We use this function to create data for three S-genes and
@@ -160,6 +163,8 @@ epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
                   bordercol = "transparent", xrot = 0, dendrogram = "both")
 ```
 
+## Network inference w.r.t. complexity
+
 We forget the solution stored in 'sim$Nem' and use the 'mnem' function to infer
    the network. We choose our a greedy search for the M-step and $10$
    independent starts. Since the number of components $k$ is a priori
@@ -181,11 +186,7 @@ for (k in 1:3) {
 plot(mlist[[which.min(mpen)]])
 ```
 ```{r, fig.cap=fig.cap02, out.width="75%"}
-par(mfrow=c(1,2))
-plotDnf(simmini$Nem[[1]], nodelabels=list(A="1", B="2", C="3"),
-        bordercol="red", main = "Mixture weight: 20%")
-plotDnf(simmini$Nem[[2]], nodelabels=list(A="1", B="2", C="3"),
-        bordercol="blue", main = "Mixture weight: 80%")
+plot(simmini)
 ```
 
 ```{r, fig.cap=fig.cap03}
@@ -203,6 +204,8 @@ the two component model gives us the best score (minimal). Even the one
 component model beats the three component model due to complexity or lack
 thereof, respectively.
 
+## Cell responsibilities
+
 Last but not least, we look at the actual rsponsibilities of the two and
 three component models. While the two component model has very stable and
 high responsibilities between $80$ and $100\%$, the three
@@ -217,7 +220,31 @@ postprobs <- getAffinity(mlist[[3]]$probs, mw = mlist[[3]]$mw)
 hist(postprobs, xlab = "responsibilities", main = "")
 ```
 
-## Simulations
+## Discrete data
+
+For certain data sets calculating binary data (1 for effect and 0 for no effect)
+might be more straightforward (e.g. Markowetz et al., 2005)
+than log odds. Thus mixture NEM also supports discrete data as input for the EM
+algorithm. To do inference on discrete data, we just have to set the method
+parameter to "disc". However, for likelihood calculations we need to set
+false positive and false negative rates. I.e. how many effects we assume are
+coming from noise and how many effects have been turned to zeros. These are
+typically not known, but sometimes can be estimated. Although, Markowetz et al.,
+2007 have shown, that the causal network is stable across a variety of
+different rates and only breaks down for very unreasonable (i.e. high)
+values.
+
+```{r, fig.cap=fig.cap05, fig.height=6, fig.width=14}
+datadisc <- simmini$data
+fp <- sample(which(datadisc == 0), floor(0.1*sum(datadisc == 0)))
+fn <- sample(which(datadisc == 1), floor(0.1*sum(datadisc == 1)))
+datadisc[c(fp,fn)] <- 1 - datadisc[c(fp,fn)]
+result_discrete <- mnem(datadisc, k = 2, search = "greedy", runs = 10,
+                        method = "disc", fpfn = c(0.05,0.1))
+plot(result_discrete)
+```
+ 
+# Simulations
 
 We simulate cells based on a ground truth mixture of networks. We use M\&NEM to
 infer an optimal network from the data and compare the result to the ground
@@ -425,7 +452,7 @@ Figures 4-7 show that M\&NEM performs better as a random and the naive
 clustering approach when it comes to overall accuracy of the
 causal networks, number of components and mixture weights.
 
-## Application to pooled CRISPR screens from CROPSeq and PERTURBSeq
+# Application to pooled CRISPR screens from CROPSeq and PERTURBSeq
 
 We apply M\&NEM to three different data sets from two different pooled CRISPR
 screens, CROPSeq (Datlinger *et al.*, 2017) and
@@ -615,7 +642,7 @@ plot(res[[i2]])
 sessionInfo()
 ```
 
-## References:
+# References:
 
 Martin Pirkl, Niko Beerenwinkel (2018).  
 Single cell network analysis with a mixture of Nested Effects Models  
