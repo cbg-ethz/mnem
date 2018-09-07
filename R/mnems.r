@@ -1371,7 +1371,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
 #' plot(sim)
 plot.mnemsim <- function(x, ...) {
     par(mfrow=c(1,length(x$mw)))
-    for (i in 1:length(x$mw)) {
+    for (i in seq(length(x$mw))) {
         plotDnf(x$Nem[[i]], bordercol = i+1, main = paste0("Mixture weight: ",
                                                          round(x$mw[i]*100),
                                                          "%"), ...)
