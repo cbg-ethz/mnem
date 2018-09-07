@@ -1,7 +1,11 @@
 #' Simulation results
 #' Example data: simulation results
-#' Contains simulation results.
-#' For details see the vignette.
+#' Contains four lists with results of mixtures with 3, 5, 10 and 20 S-genes.
+#' Each list consists of an array including 100 runs for three different
+#' noise levels, five different numbers of components (1,2,3,4,5) and three
+#' different methods, which results in overall 2400 runs. For each run the
+#' array includes values for time, over-fit, component accuracy (accuracy) and
+#' mixing weight accuracy (mixing).
 #' @name sim
 #' @docType data
 #' @usage sim
@@ -18,13 +22,13 @@ NA
 #' @references Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T.,
 #' Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D.,
 #' and Bock, C. (2017). Pooled crispr screening with single-cell transcriptome
-#' readout. Nature Methods, 14, 297 EP ???.
+#' readout. Nature Methods, 14, 297-301.
 #' @references Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P.,
 #' Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R.,
 #' Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and
 #' Regev, A. (2016). Perturb-seq: Dissecting molecular circuits with scalable
 #' single-cell rna profiling of pooled genetic screens. Cell, 167(7),
-#' 1853???1866.e17.
+#' 1853-1866.e17.
 #' @examples
 #' data(app)
 NA

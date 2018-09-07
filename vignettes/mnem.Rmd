@@ -51,7 +51,7 @@ fig.cap03 <- "Model selection. Raw log likelihood of the models with different
 components (left, blue) and penalized log likelihood (right, red)."
 fig.cap04 <- "Responsibility distributions. Histograms of the responsibilities
 for the best fitting two component model (left) and the overfitting three
-component model( right)."
+component model (right)."
 fig.cap05 <- "Heatmap of the simulated binary data. Effects are blue and no
 effects
 are white. Rows denote the observed E-genes and columns the S-genes. Each S-gene
@@ -60,11 +60,9 @@ attached in the groudn truth. E.g. E-genes named '1' are attached to S-gene
 '1' in the ground truth."
 fig.cap06 <- "Binary data. Mixture NEM result for a binary data set."
 fig.cap5 <- "Penalized and raw log likelihood ratios. Blue denotes the raw
-log likelihood and red the negative penalized for complexity for the CROPSeq
-(A) and the two PERTURBSeq datasets (B,C)."
+log likelihood and red the negative penalized for complexity."
 fig.cap6 <- "Histograms of the responsibilities. The responsibilities for the
-highest scoring according to the penalized log likelihood for the CROPSeq (A)
-the two PERTURBSeq datasets (B,C)."
+highest scoring mixture according to the penalized log likelihood."
 fig.cap7 <- "Highest scoring mixture for the PERTURBSeq dataset of cell
 cycle regulators. On top we show
 the cell assignments for hard clustering and the mixture weights. The large
