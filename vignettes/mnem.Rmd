@@ -52,58 +52,27 @@ components (left, blue) and penalized log likelihood (right, red)."
 fig.cap04 <- "Responsibility distributions. Histograms of the responsibilities
 for the best fitting two component model (left) and the overfitting three
 component model( right)."
-fig.cap05 <- "Binary data. Mixture NEM result for a binary data set."
-fig.cap1 <- "Accuracy of the inferred networks. The rows denote the number
-of components of the ground truth (1 to 5). The accuracy of mixture NEMs is
-shown in red, for a naive clustering approach in blue and for standard NEM
-with one component in grey."
-fig.cap2 <- "Accuracy of the inferred number of components. The rows denote
-the number
-of components of the ground truth (1 to 5). The accuracy of mixture NEMs is
-shown in red, for a naive clustering approach in blue and for standard NEM
-with one component in grey."
-fig.cap3 <- "Accuracy of the mixture weights. The rows denote the number
-of components of the ground truth (1 to 5). The accuracy of mixture NEMs is
-shown in red, for a naive clustering approach in blue and for standard NEM
-with one component in grey."
-fig.cap4 <- "As a comparison to the inferred mixture weight we simulated
-random mixture weights for different components."
+fig.cap05 <- "Heatmap of the simulated binary data. Effects are blue and no
+effects
+are white. Rows denote the observed E-genes and columns the S-genes. Each S-gene
+has been perturbed in many cells. The E-genes are annotated as how they are
+attached in the groudn truth. E.g. E-genes named '1' are attached to S-gene
+'1' in the ground truth."
+fig.cap06 <- "Binary data. Mixture NEM result for a binary data set."
 fig.cap5 <- "Penalized and raw log likelihood ratios. Blue denotes the raw
 log likelihood and red the negative penalized for complexity for the CROPSeq
 (A) and the two PERTURBSeq datasets (B,C)."
 fig.cap6 <- "Histograms of the responsibilities. The responsibilities for the
 highest scoring according to the penalized log likelihood for the CROPSeq (A)
 the two PERTURBSeq datasets (B,C)."
-fig.cap7 <- "Highest scoring mixture for the CROPSeq dataset. On top we show
-the cell assignments for hard clustering and the mixture weights. The large
-circular vertices depict the S-genes, the small ones the responsibility for
-the best fitting cell, the diamonds the number of assigned cells and the boxes
-the number of assigned E-genes."
-fig.cap8 <- "Second highest scoring mixture for the CROPSeq dataset. On top we
-show the cell assignments for hard clustering and the mixture weights. The large
-circular vertices depict the S-genes, the small ones the responsibility for
-the best fitting cell, the diamonds the number of assigned cells and the boxes
-the number of assigned E-genes."
-fig.cap9 <- "Highest scoring mixture for the PERTURBSeq dataset of cell
+fig.cap7 <- "Highest scoring mixture for the PERTURBSeq dataset of cell
 cycle regulators. On top we show
 the cell assignments for hard clustering and the mixture weights. The large
 circular vertices depict the S-genes, the small ones the responsibility for
 the best fitting cell, the diamonds the number of assigned cells and the boxes
 the number of assigned E-genes."
-fig.cap10 <- "Second highest scoring mixture for the PERTURBSeq dataset of cell
+fig.cap8 <- "Second highest scoring mixture for the PERTURBSeq dataset of cell
 cycle regulators. On top we show
-the cell assignments for hard clustering and the mixture weights. The large
-circular vertices depict the S-genes, the small ones the responsibility for
-the best fitting cell, the diamonds the number of assigned cells and the boxes
-the number of assigned E-genes."
-fig.cap11 <- "Highest scoring mixture for the PERTURBSeq dataset of
-transcription factors. On top we show
-the cell assignments for hard clustering and the mixture weights. The large
-circular vertices depict the S-genes, the small ones the responsibility for
-the best fitting cell, the diamonds the number of assigned cells and the boxes
-the number of assigned E-genes."
-fig.cap12 <- "Second highest scoring mixture for the PERTURBSeq dataset of
-transcription factors. On top we show
 the cell assignments for hard clustering and the mixture weights. The large
 circular vertices depict the S-genes, the small ones the responsibility for
 the best fitting cell, the diamonds the number of assigned cells and the boxes
@@ -123,7 +92,7 @@ Load the package with the library function.
 library(mnem)
 ```
 
-# Mini example
+# Small example
 
 The input data is an m times n matrix of log odds (e.g. for fold changes as in
     the R package "limma"). The *i*th row of the *j*th column are the log odds
@@ -228,235 +197,39 @@ than log odds. Thus mixture NEM also supports discrete data as input for the EM
 algorithm. To do inference on discrete data, we just have to set the method
 parameter to "disc". However, for likelihood calculations we need to set
 false positive and false negative rates. I.e. how many effects we assume are
-coming from noise and how many effects have been turned to zeros. These are
+coming from noise and how many real effects have been turned to zeros. These are
 typically not known, but sometimes can be estimated. Although, Markowetz et al.,
 2007 have shown, that the causal network is stable across a variety of
 different rates and only breaks down for very unreasonable (i.e. high)
 values.
+
+We choose a false positive and false negative rates of $10\%$ each and apply
+   them to our simulated data set.
 
 ```{r, fig.cap=fig.cap05, fig.height=6, fig.width=14}
 datadisc <- simmini$data
 fp <- sample(which(datadisc == 0), floor(0.1*sum(datadisc == 0)))
 fn <- sample(which(datadisc == 1), floor(0.1*sum(datadisc == 1)))
 datadisc[c(fp,fn)] <- 1 - datadisc[c(fp,fn)]
+epiNEM::HeatmapOP(datadisc, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
+                  bordercol = "transparent", xrot = 0, dendrogram = "both")
+```
+Similar to the log odds matrix, the structure of the simualted mixture of
+causal networks is still recognizable even with the addition of our (mild)
+noise.
+```{r, fig.cap=fig.cap06, fig.height=6, fig.width=14}
 result_discrete <- mnem(datadisc, k = 2, search = "greedy", runs = 10,
                         method = "disc", fpfn = c(0.05,0.1))
 plot(result_discrete)
 ```
- 
-# Simulations
+Again, mixture NEMs are able to recover the ground truth and approximate
+the correct mixture weights.
 
-We simulate cells based on a ground truth mixture of networks. We use M\&NEM to
-infer an optimal network from the data and compare the result to the ground
-truth. We also look at the accuracy of the mixture weights and the the number
-of networks $k$. See also section 'Data generation' at the end of the vignette.
-Simulation results are evaluated by accuracy of the networks, mixture
-weights and number of components.
-
-The data object 'sim' contains four lists with results of mixtures with
-$3$, $5$, $10$ and $20$ S-genes. Each list consists of an array including $100$
-runs for three different noise levels, five different numbers of
-components $(1,2,3,4,5)$ and three different methods, which results in overall
-$2400$ runs. For each run the array includes values for time,
-over-fit, component accuracy (accuracy) and mixing weight accuracy
-(mixing).
-
-The different methods we compared are besides M\&NEM, the standard NEM approach
-and a naive cluster approach (cNEM). For cNEM we first
-cluster (k-means) all cells based on a correlation distance and then use the
-standard NEM approach on each cluster.
-
-We show the accuracy plots for for the components, number of components
-and mixture weights.
-```{r, fig.height=8, fig.width=10, fig.cap=fig.cap1}
-data(sim)
-noises <- c(1,2.5,5)
-nems <- 1:5
-simres3 <- sim[[1]]
-simres5 <- sim[[2]]
-simres10 <- sim[[3]]
-simres20 <- sim[[4]]
-meancol2 <- rgb(1,0,0)
-meancol <- rgb(0,0,1)
-redcol <- rgb(1,0,0)
-bluecol <- rgb(0,0,1)
-mar <- 1.5
-par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
-for (i in 1:5) {
-    for (j in c(3,5,10,20)) {
-        tmp <- get(paste0("simres", j))
-        tmp2 <- NULL
-        for (l in 1:3) {
-            for (k in c(1,3,2)) {
-                tmp3 <- tmp[,l,i,k,3]
-                tmp2 <- cbind(tmp2, tmp3)
-            }
-        }
-        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n",
-                ylim = c(0.5,1))
-        abline(h=(5:10)/10, col = "grey", lty = 3)
-        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
-        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2,
-              pch = "*")
-        axis(1, 1:(length(noises)*3), c(rep(1,3), rep(2.5,3),rep(5,3)))
-        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3,
-               col = "black", lwd = 2)
-    }
-}
-for (i in 1:5) {
-    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE,
-          cex = 1, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*4)
-}
-Sgenes <- c(3,5,10,20)
-for (i in 1:4) {
-    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1,
-          adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
-}
-for (i in 1:4) {
-    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1,
-          adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
-}
-```
-For the code of the latter two (only different array indices) see the R code
-    of this vignette.
-```{r, fig.height=8, fig.width=10, fig.cap=fig.cap2, echo=FALSE}
-noises <- c(1,2.5,5)
-nems <- 1:5
-simres3 <- sim[[1]]
-simres5 <- sim[[2]]
-simres10 <- sim[[3]]
-simres20 <- sim[[4]]
-meancol2 <- rgb(1,0,0)
-meancol <- rgb(0,0,1)
-redcol <- rgb(1,0,0)
-bluecol <- rgb(0,0,1)
-mar <- 1.5
-par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
-for (i in 1:5) {
-    for (j in c(3,5,10,20)) {
-        tmp <- get(paste0("simres", j))
-        tmp2 <- NULL
-        for (l in 1:3) {
-            for (k in c(1,3,2)) {
-                tmp3 <- tmp[,l,i,k,2]
-                tmp2 <- cbind(tmp2, tmp3)
-            }
-        }
-        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n")
-        abline(h=seq(min(tmp2),max(tmp2),length.out=11), col = "grey", lty = 3)
-        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
-        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2,
-              pch = "*")
-        axis(1, 1:(length(noises)*3), c(rep(1,3), rep(2.5,3),rep(5,3)))
-        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3,
-               col = "black", lwd = 2)
-    }
-}
-for (i in 1:5) {
-    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE,
-          cex = 1, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*4)
-}
-Sgenes <- c(3,5,10,20)
-for (i in 1:4) {
-    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1,
-          adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
-}
-for (i in 1:4) {
-    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1,
-          adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
-}
-```
-```{r, fig.height=8, fig.width=10, fig.cap=fig.cap3, echo=FALSE}
-noises <- c(1,2.5,5)
-nems <- 1:5
-simres3 <- sim[[1]]
-simres5 <- sim[[2]]
-simres10 <- sim[[3]]
-simres20 <- sim[[4]]
-meancol2 <- rgb(1,0,0)
-meancol <- rgb(0,0,1)
-redcol <- rgb(1,0,0)
-bluecol <- rgb(0,0,1)
-mar <- 1.5
-par(mfrow=c(5,4),mar=rep(mar, 4),oma=c(3,5,3,0))
-for (i in 1:5) {
-    for (j in c(3,5,10,20)) {
-        tmp <- get(paste0("simres", j))
-        tmp2 <- NULL
-        for (l in 1:3) {
-            for (k in c(1,3,2)) {
-                tmp3 <- tmp[,l,i,k,6]
-                tmp2 <- cbind(tmp2, tmp3)
-            }
-        }
-        boxplot(tmp2, col = rep(c(redcol, bluecol, "grey"), 3), xaxt = "n",
-                ylim = c(0,1))
-        abline(h=seq(0,1,length.out=11), col = "grey", lty = 3)
-        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol)
-        lines(1:ncol(tmp2), apply(tmp2, 2, mean), type = "p", col = meancol2,
-              pch = "*")
-        axis(1, 1:(length(noises)*3), c(rep(1,3), rep(2.5,3),rep(5,3)))
-        abline(v=c(length(noises)+c(0.5,length(noises)+0.5)), lty = 3,
-               col = "black", lwd = 2)
-    }
-}
-for (i in 1:5) {
-    mtext(paste0("K=", i), side = 3, line = (40 - (i-1)*11.1), outer = FALSE,
-          cex = 1, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*4)
-}
-Sgenes <- c(3,5,10,20)
-for (i in 1:4) {
-    mtext(paste0("n=", Sgenes[i]), side = 3, line = 46, outer = FALSE, cex = 1,
-          adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.2 - (i-1)*1.2))
-}
-for (i in 1:4) {
-    mtext(expression(sigma), side = 3, line = -12, outer = FALSE, cex = 1,
-          adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*(3.1 - (i-1)*1.2))
-}
-```
-
-We randomly draw mixture weights and components as a comparison to our inferred
-weights.
-```{r, fig.width = 4, fig.height = 4, fig.cap = fig.cap4, out.width="60%"}
-runs <- 100
-maxk <- 5
-mixrand <- matrix(0, runs, maxk)
-for (j in 1:5) {
-    nem <- j
-    tmp <- numeric(runs)
-    for (i in seq_len(runs)) {
-        mw <- runif(nem, 0.1, 1)
-        mw <- sort(mw/sum(mw))
-        mw <- c(rep(0, 5 - length(mw)), mw)
-        nem2 <- sample(1:5, 1)
-        mw2 <- runif(nem2, 0.1, 1)
-        mw2 <- sort(mw2/sum(mw2))
-        mw2 <- c(rep(0, 5 - length(mw2)), mw2)
-        tmp[i] <- dist(rbind(mw, mw2))
-    }
-    mixrand[, j] <- tmp
-}
-boxplot(mixrand, col = "grey", main = "random", xlab = "components K")
-```
-
-Figures 4-7 show that M\&NEM performs better as a random and the naive
-clustering approach when it comes to overall accuracy of the
-causal networks, number of components and mixture weights.
-
-# Application to pooled CRISPR screens from CROPSeq and PERTURBSeq
+# Application to pooled CRISPR screens
 
 We apply M\&NEM to three different data sets from two different pooled CRISPR
-screens, CROPSeq (Datlinger *et al.*, 2017) and
-PERTURBSeq (Dixit *et al.*, 2016). Those screens consists of single cell RNAseq
+screens, Crop-seq (Datlinger *et al.*, 2017) and
+Perturb-seq (Dixit *et al.*, 2016). Those screens consists of single cell RNAseq
 data. Each cell has been perturbed by a knock-down of a gene
 (S-gene) and each cell is observed by its gene expression profile
 (E-genes).
@@ -466,105 +239,56 @@ penalized likelihood to find the optimal number of components without
 over-fitting.
 
 The data object 'app' consists of three lists containing the results
-for CROPSeq, PERTURBSeq (transcription factors) and PERTURBSeq
+for Crop-seq, Perturb-seq (transcription factors) and Perturb-seq
 (cell cycle regulators). Each list contains the results for
 $k=1,2,3,4,5$ (number of components). See section 'Data generation'
 for details.
 
-For each of the three data sets we show the raw log likelihood
+## Cell cycle regulators (Perturb-seq)
+
+As an example we show the results for the cell cycle regulators of the
+Perturb-seq data set.
+We show the raw log likelihood
 together with the penalized likelihood. We choose the optimal $k$ at
 the minimum of the penalized log likelihood.
-```{r, fig.height = 3, fig.width = 11, fig.cap = fig.cap5}
+```{r, fig.height = 3, fig.width = 4, fig.cap = fig.cap5}
 data(app)
 res2 <- app
 maxk <- 5
-par(mfrow=c(1,3), oma = c(0,0,1,0), mar = rep(0,4))
-for (j in 1:3) {
-    res <- res2[[j]]
-    for (i in 2:5) {
-        res[[i]]$data <- res[[1]]$data
-    }
-    bics <- rep(0, maxk)
-    ll <- rep(0, maxk)
-    for (i in seq_len(maxk)) {
-        bics[i] <- getIC(res[[i]])
-        ll[i] <- max(res[[i]]$ll)
-    }
-    ll2 <- ll
-    ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
-    ll <- ll - min(ll) + min(bics)
-    ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
-    par(mar=c(5,5,2,5))
-    plot(bics, type = "b", ylab = "", col = "red", xlab = "", yaxt = "n",
-         ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
-    lines(ll, type = "b", col = "blue")
-    axis(4, ll3, round(seq(min(ll2), max(ll2), length.out = 5)), cex.axis = 1.7)
-    axis(2, ll3, round(ll3), cex.axis = 1.7)
-    axis(1, 1:maxk, 1:maxk)
-    mtext("penalized", side=2, line=3, cex = 1.2)
-    mtext("raw", side=4, line=3, cex = 1.2)
-    mtext(LETTERS[j], side = 3, line = -1, outer = FALSE, cex = 2.5, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*0.27)
-
+j <- 2
+res <- res2[[j]]
+for (i in 2:5) {
+    res[[i]]$data <- res[[1]]$data
 }
+bics <- rep(0, maxk)
+ll <- rep(0, maxk)
+for (i in seq_len(maxk)) {
+    bics[i] <- getIC(res[[i]])
+    ll[i] <- max(res[[i]]$ll)
+}
+ll2 <- ll
+ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
+ll <- ll - min(ll) + min(bics)
+ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
+par(mar=c(5,5,2,5))
+plot(bics, type = "b", ylab = "", col = "red", xlab = "", yaxt = "n",
+     ylim = c(min(min(bics,ll)), max(max(bics,ll))), xaxt = "n")
+lines(ll, type = "b", col = "blue")
+axis(4, ll3, round(seq(min(ll2), max(ll2), length.out = 5)), cex.axis = 0.5)
+axis(2, ll3, round(ll3), cex.axis = 0.5)
+axis(1, 1:maxk, 1:maxk)
+mtext("penalized", side=2, line=3, cex = 1.2)
+mtext("raw", side=4, line=3, cex = 1.2)
 ```
-Figure 10 shows that for each data set, the optimal mixture is $k=2$ according
+Figure 10 shows that the optimal mixture is $k=2$ according
 to
-our penalized log likelihood. However, while for the first and second
-data set even $k=3$ beats just a single network, for the third data set
-there is only weak evidence for a mixture of $k>1$.
+our penalized log likelihood. Even $k=3$ beats just a single network.
 
 Each cell has a certain probability (responsibility) to have been
 generated by a components. The histograms show the distribution of
-the responsibilities for all cells for the three data sets.
-```{r, fig.height = 3, fig.width = 11, fig.cap = fig.cap6}
-par(mfrow=c(1,3), oma = c(0,0,1,0), mar = rep(0,4))
-for (j in 1:3) {
-    res <- res2[[j]]
-    for (i in 2:5) {
-        res[[i]]$data <- res[[1]]$data
-    }
-    bics <- rep(0, maxk)
-    ll <- rep(0, maxk)
-    for (i in seq_len(maxk)) {
-        bics[i] <- getIC(res[[i]])
-        ll[i] <- max(res[[i]]$ll)
-    }
-    ll2 <- ll
-    ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
-    ll <- ll - min(ll) + min(bics)
-    ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
-    i <- which.min(bics)
-    gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
-    par(mar=c(5,5,2,5))
-    hist(gamma, main = "Histogram of responsibilities",
-         xlab = "responsibilities")
-    mtext(LETTERS[j], side = 3, line = -2.3, outer = FALSE, cex = 2.5, adj = 0,
-          at = par("usr")[1] - (par("usr")[2]-par("usr")[1])*0.27)
-}
-```
-Figure 11 shows the distribution of responsibilities for all three data sets.
-The responsibilities for the first data set are almost binary, i.e.
-almost each cell belongs to $100\%$ to one mixture component. For the
-other two data sets there is a much more smooth transition. While
-there are still many cells with a responsibility of $100\%$, many cells
-have one around $50\%$. For the third data set even more cells have
-responsibilities between $40\%$ and $50\%$. This is in accordance to the
-penalized log likelihood and is evidence, that the two mixture
-components are very similar and most of the causal network is stable
-across cells.
-
-We show the highest and second highest scoring networks for each data set. On
-top is the percentage of cells assigned to each network by hard clustering
-and the mixture weights. The connected large circles depict the causal
-network of S-genes. The small circles show the responsibility of the best
-fitting cell. The boxes show the number E-genes assigned to each S-gene and
-the diamonds show the numbers of cells assigned to each S-gene. The NULL
-node is assigned E-genes, which fit best to an S-gene (NULL) with no effects
-at all. For the R code of the second and third data sets see the accompanyning
-R file (only the "j <- 1" needs to be changed to 2 or 3).
-```{r, fig.height = 8, fig.width = 16, fig.cap = fig.cap7}
-j <- 1
+the responsibilities for all cells.
+```{r, fig.height = 3, fig.width = 4, fig.cap = fig.cap6}
+j <- 2
 res <- res2[[j]]
 for (i in 2:5) {
     res[[i]]$data <- res[[1]]$data
@@ -580,13 +304,24 @@ ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
 ll <- ll - min(ll) + min(bics)
 ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
 i <- which.min(bics)
-bics[i] <- bics[which.max(bics)]
-i2 <- which.min(bics)
-plot(res[[i]])
+gamma <- getAffinity(res[[i]]$probs, mw = res[[i]]$mw)
+par(mar=c(5,5,2,5))
+hist(gamma, main = "Histogram of responsibilities",
+     xlab = "responsibilities")
 ```
-```{r, fig.height = 8, fig.width = 20, fig.cap = fig.cap7}
-plot(res[[i2]])
-```
+Figure 11 shows the distribution of responsibilities.
+There are  many cells with a responsibility of $100\%$, but many cells
+have one around $50\%$ and are therefore ambiguous to which component they
+belong.
+
+We show the highest and second highest scoring mixtures. On
+top is the percentage of cells assigned to each network by hard clustering
+and the mixture weights. The connected large circles depict the causal
+network of S-genes. The small circles show the responsibility of the best
+fitting cell. The boxes show the number E-genes assigned to each S-gene and
+the diamonds show the numbers of cells assigned to each S-gene. The NULL
+node is assigned E-genes, which fit best to an S-gene (NULL) with no effects
+at all.
 ```{r, fig.height = 10, fig.width = 20, fig.cap = fig.cap7, echo = FALSE}
 j <- 2
 res <- res2[[j]]
@@ -608,33 +343,11 @@ bics[i] <- bics[which.max(bics)]
 i2 <- which.min(bics)
 plot(res[[i]])
 ```
-```{r, fig.height = 10, fig.width = 25, fig.cap = fig.cap7, echo = FALSE}
+```{r, fig.height = 10, fig.width = 25, fig.cap = fig.cap8, echo = FALSE}
 plot(res[[i2]])
 ```
-```{r, fig.height = 8, fig.width = 16, fig.cap = fig.cap7, echo = FALSE}
-j <- 3
-res <- res2[[j]]
-for (i in 2:5) {
-    res[[i]]$data <- res[[1]]$data
-}
-bics <- rep(0, maxk)
-ll <- rep(0, maxk)
-for (i in seq_len(maxk)) {
-    bics[i] <- getIC(res[[i]])
-    ll[i] <- max(res[[i]]$ll)
-}
-ll2 <- ll
-ll <- (ll/(max(ll)-min(ll)))*(max(bics)-min(bics))
-ll <- ll - min(ll) + min(bics)
-ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
-i <- which.min(bics)
-bics[i] <- bics[which.max(bics)]
-i2 <- which.min(bics)
-plot(res[[i]])
-```
-```{r, fig.height = 8, fig.width = 8, fig.cap = fig.cap7, echo = FALSE}
-plot(res[[i2]])
-```
+The full methodology this package is based on, a simulation study and the
+rest of our application are shown in Pirkl & Beerenwinkel (2016).
 
 # Session information
 
@@ -644,22 +357,23 @@ sessionInfo()
 
 # References:
 
-Martin Pirkl, Niko Beerenwinkel (2018).  
-Single cell network analysis with a mixture of Nested Effects Models  
-bioRxiv 258202; doi: https://doi.org/10.1101/258202  
+Martin Pirkl, Niko Beerenwinkel (2018).
+Single cell network analysis with a mixture of Nested Effects Models
+bioRxiv 258202; doi: https://doi.org/10.1101/258202
+Accepted at ECCB 2018.
 
 Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P.,
 Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and
 Bock, C. (2017).
-Pooled crispr screening with single-cell transcriptome readout.  
+Pooled crispr screening with single-cell transcriptome readout.
 Nature Methods, 14, 297-301.
 
 Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P., Jerby-Arnon, L.,
 Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R., Adamson,
 B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and
-Regev, A. (2016).  
+Regev, A. (2016).
 Perturb-seq: Dissecting molecular circuits with scalable single-cell rna
-profiling of pooled genetic screens.  
+profiling of pooled genetic screens.
 Cell, 167(7), 1853-1866.e17.
 
 # Data Generation
