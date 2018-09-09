@@ -39,7 +39,7 @@ knitr::opts_chunk$set(message=FALSE, out.width="125%", fig.align="center",
 fig.cap0 <- "Heatmap of the simulated log odds. Effects are blue and no effects
 are red. Rows denote the observed E-genes and columns the S-genes. Each S-gene
 has been perturbed in many cells. The E-genes are annotated as how they are
-attached in the groudn truth. E.g. E-genes named '1' are attached to S-gene
+attached in the ground truth. E.g. E-genes named '1' are attached to S-gene
 '1' in the ground truth."
 fig.cap01 <- "Mixture NEM result for the simulated data. On top we show
 the cell assignment percentages for hard clustering and the mixture weights.
@@ -107,8 +107,8 @@ The M\&NEM package includes a functions for the simulation of typical single
     eight E-genes. Two E-genes for each S-gene and two uninformative E-genes.
     Additionally we generate the data from a mixture of two components
     and sample $100$ cells, $20$ for one and $80$ for the other component
-    (approx. mixture weights: mw). The function simulates discreet data ($1$
-    for effect and $0$ for no effect). We transform the discreet data to log
+    (approx. mixture weights: mw). The function simulates discrete data ($1$
+    for effect and $0$ for no effect). We transform the discrete data to log
     odds by adding Gaussian noise with mean $1$ to all $1$s and with mean $-1$
     to all $0$s. Figure 1 shows a heatmap of our generated data. Since we used
     only little noise, effects and no effects are still clearly distinguished
@@ -132,9 +132,11 @@ epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
 
 ## Network inference w.r.t. complexity
 
-We forget the solution stored in 'sim$Nem' and use the 'mnem' function to infer
+We forget the solution stored in 'simmini$Nem' and use the 'mnem' function to
+   infer
    the network. We choose our a greedy search for the M-step and $10$
-   independent starts. Since the number of components $k$ is a priori
+   independent starts for the EM algorithm. Since the number of components $k$
+   is a priori
    not known, we perform optimization for $k=1,2,3$ and use our penalized
    log likelihood to choose the best $k$. Figure 2 shows the best mixture of
    our causal networks with $k=2$. We indeed have found the same causal
@@ -164,9 +166,10 @@ plot(mpen, col = "red", main = "penalized log likelihood", type = "b",
      xlab = "number of components", ylab = "score")
 ```
 
-We look at the actual log likelihood (left, blue) compared to the penalized
-(right, red), we see that the raw log likelihood is at least equally good
-for the two and three component models. However, if we penalized complexity
+We look at the actual log likelihood shown in figure 4 (left, blue) compared
+to the penalized
+(right, red), we see that the raw log likelihood of $k=3$ is at least equally
+as high as the $k=2$ component model. However, if we penalized complexity
 the two component model gives us the best score (minimal). Even the one
 component model beats the three component model due to complexity or lack
 thereof, respectively.
@@ -174,7 +177,8 @@ thereof, respectively.
 ## Cell responsibilities
 
 Last but not least, we look at the actual rsponsibilities of the two and
-three component models. While the two component model has very stable and
+three component models shown in figure 5. While the two component model has
+very stable and
 high responsibilities between $80$ and $100\%$, the three
 component model's responsibilities are wildly distributed. and many cells
 have ambiguous responsibilities around $50\%$. Due to its nature the two
@@ -201,7 +205,7 @@ typically not known, but sometimes can be estimated. Although, Markowetz et al.,
 different rates and only breaks down for very unreasonable (i.e. high)
 values.
 
-We choose a false positive and false negative rates of $10\%$ each and apply
+We choose false positive and false negative rates of $10\%$ each and apply
    them to our simulated data set.
 
 ```{r, fig.cap=fig.cap05, fig.height=6, fig.width=14}
@@ -345,7 +349,7 @@ plot(res[[i]])
 plot(res[[i2]])
 ```
 The full methodology this package is based on, a simulation study and the
-rest of our application are shown in Pirkl & Beerenwinkel (2016).
+rest of our application are shown in Pirkl & Beerenwinkel (2018).
 
 # Session information
 
@@ -354,11 +358,6 @@ sessionInfo()
 ```
 
 # References:
-
-Martin Pirkl, Niko Beerenwinkel (2018).
-Single cell network analysis with a mixture of Nested Effects Models
-bioRxiv 258202; doi: https://doi.org/10.1101/258202
-Accepted at ECCB 2018.
 
 Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P.,
 Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D., and
@@ -373,6 +372,19 @@ Regev, A. (2016).
 Perturb-seq: Dissecting molecular circuits with scalable single-cell rna
 profiling of pooled genetic screens.
 Cell, 167(7), 1853-1866.e17.
+
+Markowetz, F., Bloch, J., and Spang, R. (2005). Non-transcriptional
+pathway features reconstructed from secondary effects
+of rna interference. Bioinformatics, 21(21), 4026–4032.
+
+Markowetz, F., Kostka, D., Troyanskaya, O. G., and Spang, R. (2007).
+Nested effects models for high-dimensional phenotyping
+screens. Bioinformatics, 23(13), i305–i312.
+
+Pirkl, M. & Beerenwinkel, N. (2018).
+Single cell network analysis with a mixture of Nested Effects Models
+bioRxiv 258202; doi: https://doi.org/10.1101/258202
+Accepted at ECCB 2018.
 
 # Data Generation
 
