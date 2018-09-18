@@ -23,12 +23,12 @@ data(app)
 Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T.,
 Traxler, P., Klughammer, J., Schuster, L. C., Kuchler, A., Alpar, D.,
 and Bock, C. (2017). Pooled crispr screening with single-cell transcriptome
-readout. Nature Methods, 14, 297 EP ???.
+readout. Nature Methods, 14, 297-301.
 
 Dixit, A., Parnas, O., Li, B., Chen, J., Fulco, C. P.,
 Jerby-Arnon, L., Marjanovic, N. D., Dionne, D., Burks, T., Raychowdhury, R.,
 Adamson, B., Norman, T. M., Lander, E. S., Weissman, J. S., Friedman, N., and
 Regev, A. (2016). Perturb-seq: Dissecting molecular circuits with scalable
 single-cell rna profiling of pooled genetic screens. Cell, 167(7),
-1853???1866.e17.
+1853-1866.e17.
 }

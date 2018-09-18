@@ -4,10 +4,12 @@
 \alias{plot.mnemsim}
 \title{Plot simulated mixture.}
 \usage{
-\method{plot}{mnemsim}(x, ...)
+\method{plot}{mnemsim}(x, data = NULL, ...)
 }
 \arguments{
 \item{x}{mnemsim object}
+
+\item{data}{noisy data matrix (optional)}
 
 \item{...}{additional parameters for the plotting function plotDNF}
 }

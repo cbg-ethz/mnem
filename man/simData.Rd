@@ -7,7 +7,7 @@ mixture of networks.}
 \usage{
 simData(Sgenes = 5, Egenes = 1, subsample = 1, Nems = 2, reps = NULL,
   mw = NULL, evolution = FALSE, nCells = 1000, uninform = 0,
-  unitheta = FALSE, edgeprob = 0.5)
+  unitheta = FALSE, edgeprob = 0.5, multi = NULL)
 }
 \arguments{
 \item{Sgenes}{number of Sgenes}
@@ -33,6 +33,10 @@ used.}
 
 \item{edgeprob}{edge probability, value between 0 and 1 for sparse or
 dense networks}
+
+\item{multi}{a vector with the percentages of cell with multiple
+perturbations, e.g. c(0.2,0.1,0) for 20% double and 10% triple and
+no quadruple knock-downs}
 }
 \value{
 simulation object with meta information and data

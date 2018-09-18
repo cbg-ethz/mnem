@@ -243,6 +243,8 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
 #' likelihood decreases
 #' @param fpfn numeric vector of length two with false positive and false
 #' negative rates for discrete data
+#' @param multi set to TRUE if the data contains multiple perturbation
+#' per sample; make sure the samples are reasonably named, e.g. "IRF1_CTNNB1"
 #' @author Martin Pirkl
 #' @return object of class mnem with the log expected of the hidden data
 #' and phi and theta for all components k
@@ -273,13 +275,18 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                  redSpace = NULL, affinity = 0, evolution = FALSE,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
                  domean = TRUE, modulesize = 5, compress = FALSE,
-                 increase = TRUE, fpfn = c(0.1, 0.1)) {
+                 increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE) {
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
         redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)],
                           search = "exhaustive", reduce = TRUE,
                           verbose = verbose, parallel = c(parallel, parallel2),
                           subtopo = subtopoX, ratio = ratio, domean = FALSE,
                           modulesize = modulesize)$redSpace
+    }
+    if (multi) {
+        Rho <- getRho(D)
+    } else {
+        Rho <- NULL
     }
     if (!is.null(parallel)) { if (parallel == 1) { parallel <- NULL } }
     D.backup <- D
@@ -334,7 +341,9 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
             start <- start[[1]][[1]]
         }
         if (!is.null(parallel) & is.null(parallel2)) { parallel2 <- parallel }
-        print("no evidence for sub populations or k set to 1")
+        if (verbose) {
+            print("no evidence for sub populations or k set to 1")
+        }
         limits <- list()
         limits[[1]] <- list()
         limits[[1]]$res <- list()
@@ -1259,6 +1268,9 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' @param unitheta uniform theta, if TRUE
 #' @param edgeprob edge probability, value between 0 and 1 for sparse or
 #' dense networks
+#' @param multi a vector with the percentages of cell with multiple
+#' perturbations, e.g. c(0.2,0.1,0) for 20% double and 10% triple and
+#' no quadruple knock-downs
 #' @author Martin Pirkl
 #' @return simulation object with meta information and data
 #' @export
@@ -1269,6 +1281,7 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' graph
 #' Rgraphviz
 #' tsne
+#' @importFrom utils combn
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
@@ -1278,7 +1291,11 @@ clustNEM <- function(data, k = 2:5, ...) {
 simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,
-                    edgeprob = 0.5) {
+                    edgeprob = 0.5, multi = NULL) {
+    if (is.null(multi)) { multi <- rep(0, Sgenes-1) }
+    if (length(multi) < Sgenes-1) {
+        multi <- c(multi, rep(0, Sgenes - length(multi) - 1))
+    }
     Nem <- list()
     data <- NULL
     index <- NULL
@@ -1339,6 +1356,24 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                 data_tmp <- data_tmp[, seq_len(ceiling(nCells/Nems))]
             }
         }
+        for (j in which(multi != 0)) {
+            data_fake <- matrix(0, 1, choose(Sgenes, j+1))
+            colnames(data_fake) <- apply(combn(1:Sgenes, j+1), 2,
+                                         paste, collapse = "_")
+            Rho <- getRho(data_fake)
+            adj1 <- t(adj)%*%Rho
+            adj1[which(adj1 > 1)] <- 1
+            colnames(adj1) <- colnames(data_fake)
+            cells <-sample(which(!(1:ncol(data_tmp) %in%
+                                   grep("_", colnames(data_tmp)))),
+                            ceiling(multi[j]*ncol(data_tmp)),
+                            replace = TRUE)
+            knockdowns <- sample(1:ncol(adj1),
+                                 ceiling(multi[j]*ncol(data_tmp)),
+                                 replace = TRUE)
+            data_tmp[, cells] <- adj1[, knockdowns]
+            colnames(data_tmp)[cells] <- colnames(adj1)[knockdowns]
+        }
         index <- c(index, rep(i, ncol(data_tmp)))
         data_tmp <- data_tmp[rep(seq_len(Sgenes), each = Egenes), ,
                              drop = FALSE]
@@ -1365,6 +1400,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
 }
 #' Plot simulated mixture.
 #' @param x mnemsim object
+#' @param data noisy data matrix (optional)
 #' @param ... additional parameters for the plotting function plotDNF
 #' @author Martin Pirkl
 #' @return visualization of simulated mixture with Rgraphviz
@@ -1373,12 +1409,47 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' plot(sim)
-plot.mnemsim <- function(x, ...) {
+plot.mnemsim <- function(x, data = NULL, ...) {
+    noisymix <- TRUE
+    if (is.null(data)) {
+        data <- x$data
+        data[which(data == 0)] <- -1
+        noisymix2 <- ""
+        noisymix <- FALSE
+    }
     par(mfrow=c(1,length(x$mw)))
+    probs <- matrix(0, length(x$mw), ncol(x$data))
+    res <- list()
     for (i in seq(length(x$mw))) {
-        plotDnf(x$Nem[[i]], bordercol = i+1, main = paste0("Mixture weight: ",
-                                                         round(x$mw[i]*100),
-                                                         "%"), ...)
+        res[[i]] <- list()
+        res[[i]]$adj <- x$Nem[[i]]
+        res[[i]]$subtopo <- x$theta[[i]]
+        probs[i, which(x$index == i)] <- 1
+    }
+    probs <- log2(probs)
+    probs <- getProbs(probs, k = length(x$mw), data = data, res = res,
+                      n = ncol(res[[1]]$adj), logtype = 2, mw = x$mw, ...)$probs
+    mw <- getAffinity(probs, mw = x$mw, logtype = 2)
+    mw2 <- mw*0
+    mw2[cbind(apply(mw, 2, function(x) { return(which(x == max(x))) }),
+              1:ncol(mw))] <- 1
+    mw2 <- apply(mw2, 1, sum)/sum(mw2)
+    mw3 <- mw*0
+    mw3[cbind(apply(mw, 2, which.max), 1:ncol(mw))] <- 1
+    mw3 <- apply(mw3, 1, sum)/sum(mw3)
+    mw <- apply(mw, 1, sum)/sum(mw)
+    for (i in seq(length(x$mw))) {
+        if (noisymix) {
+            noisymix2 <- paste0("\n\nNoisy Mixture weight: ",
+                               round(mw[i]*100, 2), "%")
+        }
+        plotDnf(x$Nem[[i]], bordercol = i+1,
+                main = paste0("Cells: ",
+                              round(mw2[i]*100),
+                              "% (unique ", round(mw3[i]*100), "%)",
+                              "\n\nInput Mixture weight: ",
+                              round(x$mw[i]*100), "%",
+                              noisymix2), ...)
     }
 }
 #' Accuracy for two phis.

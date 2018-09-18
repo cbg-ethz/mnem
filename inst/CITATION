@@ -3,13 +3,13 @@ citHeader("To cite mnem in publications use:")
 citEntry(entry = "Article",
   title        = "Single cell network analysis with a mixture of Nested Effects Models.",
   author       = "Martin Pirkl, Niko Beerenwinkel",
-  journal      = "bioRxiv",
+  journal      = "Bioinformatics",
   year         = "2018",
   number       = "258202",
-  url          = "https://doi.org/10.1101/258202",
-
+  url          = "https://doi.org/10.1093/bioinformatics/bty602"",
+  volume       = "34",
+  issue        = "17",
+  date         = "1 September",
   textVersion  =
-  paste("Martin Pirkl, Niko Beerenwinkel
-Single cell network analysis with a mixture of Nested Effects Models
-bioRxiv 258202; doi: https://doi.org/10.1101/258202")
+  paste("Martin Pirkl, Niko Beerenwinkel; Single cell network analysis with a mixture of Nested Effects Models, Bioinformatics, Volume 34, Issue 17, 1 September 2018, Pages i964–i971, https://doi.org/10.1093/bioinformatics/bty602")
 )

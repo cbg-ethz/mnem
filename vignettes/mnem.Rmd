@@ -1,7 +1,7 @@
 ---
 title: "Mixture Nested Effects Models  \n
 Simultaneous inference of causal networks and corresponding subpopulations
-from single cells perturbation data."
+from single cell perturbation data."
 author: "Martin Pirkl, Niko Beerenwinkel"
 date: "`r Sys.Date()`"
 graphics: yes
@@ -28,7 +28,7 @@ infer an optimum for $k$ components. In the E-step the expectation of
 the hidden data (assignment of a cell to a component aka responsibilities)
 is calculated. Based on the responsibilities M\&NEM weights the data for
 each component and the standard NEM approach is used to optimize the
-causal network for each weighted data set.
+causal network for each weighted data set (M-step).
 
 # Installation and loading
 ```{r global_options, include=FALSE}
@@ -50,26 +50,25 @@ fig.cap02 <- "Ground truth causal networks of our simulated mixture of cells"
 fig.cap03 <- "Model selection. Raw log likelihood of the models with different
 components (left, blue) and penalized log likelihood (right, red)."
 fig.cap04 <- "Responsibility distributions. Histograms of the responsibilities
-for the best fitting two component model (left) and the overfitting three
-component model (right)."
+for the best fitting model."
 fig.cap05 <- "Heatmap of the simulated binary data. Effects are blue and no
 effects
 are white. Rows denote the observed E-genes and columns the S-genes. Each S-gene
 has been perturbed in many cells. The E-genes are annotated as how they are
-attached in the groudn truth. E.g. E-genes named '1' are attached to S-gene
+attached in the ground truth. E.g. E-genes named '1' are attached to S-gene
 '1' in the ground truth."
 fig.cap06 <- "Binary data. Mixture NEM result for a binary data set."
 fig.cap5 <- "Penalized and raw log likelihood ratios. Blue denotes the raw
 log likelihood and red the negative penalized for complexity."
 fig.cap6 <- "Histograms of the responsibilities. The responsibilities for the
 highest scoring mixture according to the penalized log likelihood."
-fig.cap7 <- "Highest scoring mixture for the PERTURBSeq dataset of cell
+fig.cap7 <- "Highest scoring mixture for the Perturb-Seq dataset of cell
 cycle regulators. On top we show
 the cell assignments for hard clustering and the mixture weights. The large
 circular vertices depict the S-genes, the small ones the responsibility for
 the best fitting cell, the diamonds the number of assigned cells and the boxes
 the number of assigned E-genes."
-fig.cap8 <- "Second highest scoring mixture for the PERTURBSeq dataset of cell
+fig.cap8 <- "Second highest scoring mixture for the Perturb-Seq dataset of cell
 cycle regulators. On top we show
 the cell assignments for hard clustering and the mixture weights. The large
 circular vertices depict the S-genes, the small ones the responsibility for
@@ -117,15 +116,16 @@ The M\&NEM package includes a functions for the simulation of typical single
     $1$ all behave similarly. However, cells perturbed by S-genes $2$ and $3$
     fall into two clusters each hinting at differential causal regulation
     within the cell population.
+
 ```{r, fig.height=6, fig.width=10, fig.cap=fig.cap0}
 set.seed(9247)    
-simmini <- simData(Sgenes = 3, Egenes = 10,
-                  Nems = 2, mw = c(0.2, 0.8), nCells = 100, uninform = 2)
+simmini <- simData(Sgenes = 4, Egenes = 10,
+                  Nems = 3, mw = c(0.3, 0.3, 0.4), nCells = 100, uninform = 2)
 data <- simmini$data
 ones <- which(data == 1)
 zeros <- which(data == 0)
-data[ones] <- rnorm(length(ones), 1, 0.1)
-data[zeros] <- rnorm(length(zeros), -1, 0.1)
+data[ones] <- rnorm(length(ones), 1, 0.5)
+data[zeros] <- rnorm(length(zeros), -1, 0.5)
 epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
                   bordercol = "transparent", xrot = 0, dendrogram = "both")
 ```
@@ -137,17 +137,19 @@ We forget the solution stored in 'simmini$Nem' and use the 'mnem' function to
    the network. We choose our a greedy search for the M-step and $10$
    independent starts for the EM algorithm. Since the number of components $k$
    is a priori
-   not known, we perform optimization for $k=1,2,3$ and use our penalized
+   not known, we perform optimization for $k=1,2,3,4,5$ and use our penalized
    log likelihood to choose the best $k$. Figure 2 shows the best mixture of
-   our causal networks with $k=2$. We indeed have found the same causal
-   networks we used to generate the data. Notice, that our input for the
+   our causal networks with $k=2$. We have almost found the same causal
+   networks we used to generate the data. We got only one false positive edge
+   ($2$ to $1$) in the red network. Notice, that our input for the
    mixture weights is only an approximation, since the real mixture of the
    data is dependent on the ground truth networks (e.g. how similar they are)
    and noise.
+
 ```{r, fig.height=6, fig.width=14, fig.cap=fig.cap01}
 mlist <- list()
-mpen <- mllh <- numeric(3)
-for (k in 1:3) {
+mpen <- mllh <- numeric(5)
+for (k in 1:5) {
     mlist[[k]] <- mnem(data, k = k, search = "greedy", runs = 10)
     mpen[k] <- getIC(mlist[[k]])
     mllh[k] <- mlist[[k]]$ll
@@ -155,7 +157,7 @@ for (k in 1:3) {
 plot(mlist[[which.min(mpen)]])
 ```
 ```{r, fig.cap=fig.cap02, out.width="75%"}
-plot(simmini)
+plot(simmini, data = data)
 ```
 
 ```{r, fig.cap=fig.cap03}
@@ -166,27 +168,27 @@ plot(mpen, col = "red", main = "penalized log likelihood", type = "b",
      xlab = "number of components", ylab = "score")
 ```
 
-We look at the actual log likelihood shown in figure 4 (left, blue) compared
-to the penalized
-(right, red), we see that the raw log likelihood of $k=3$ is at least equally
-as high as the $k=2$ component model. However, if we penalized complexity
-the two component model gives us the best score (minimal). Even the one
-component model beats the three component model due to complexity or lack
+We compare the actual log likelihood shown in figure 4 (left, blue)
+to the penalized log likelihood
+(right, red). Notice that the raw log likelihoods of $k=4$ and $k=5$ are higher
+than the $k=3$ component model. However, if we penalize complexity
+the three component model gives us the best score (minimum). The five component
+model is now also overtaken by the two component model due to complexity or lack
 thereof, respectively.
 
 ## Cell responsibilities
 
-Last but not least, we look at the actual rsponsibilities of the two and
-three component models shown in figure 5. While the two component model has
-very stable and
-high responsibilities between $80$ and $100\%$, the three
-component model's responsibilities are wildly distributed. and many cells
-have ambiguous responsibilities around $50\%$. Due to its nature the two
-component model's responsibilities also follow a symmetric distribution. 
-```{r, fig.cap=fig.cap04}
-par(mfrow=c(1,2))
-postprobs <- getAffinity(mlist[[2]]$probs, mw = mlist[[2]]$mw)
-hist(postprobs, xlab = "responsibilities", main = "")
+Figure 5 shows the actual responsibilities of the best scoring
+model. Many cells reach a responsibility of $100\%$. This
+is expected due to the relatively low level of noise. However, almost $20$ cells
+have responsibilities around $50\%$. This is not unexpected either. Both the
+red and blue networks put the knock-down of S-gene $2$ as a key regulator
+most upstream. Thus both networks predict the same profile for cells perturbed
+by a knock-down of S-gene $2$. The mixture weights are
+responsible for the slight shift of cell responsibilities from around $57$ and
+$43$ percent, respectively.
+
+```{r, fig.cap=fig.cap04, fig.height = 4, fig.width = 4}
 postprobs <- getAffinity(mlist[[3]]$probs, mw = mlist[[3]]$mw)
 hist(postprobs, xlab = "responsibilities", main = "")
 ```
@@ -216,16 +218,20 @@ datadisc[c(fp,fn)] <- 1 - datadisc[c(fp,fn)]
 epiNEM::HeatmapOP(datadisc, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
                   bordercol = "transparent", xrot = 0, dendrogram = "both")
 ```
-Similar to the log odds matrix, the structure of the simualted mixture of
+
+Similar to the log odds matrix, the structure of the simulated mixture of
 causal networks is still recognizable even with the addition of our (mild)
-noise.
+noise. As a shortcut, we directly set the number of components to $3$.
+
 ```{r, fig.cap=fig.cap06, fig.height=6, fig.width=14}
-result_discrete <- mnem(datadisc, k = 2, search = "greedy", runs = 10,
+result_disc <- mnem(datadisc, k = 3, search = "greedy", runs = 10,
                         method = "disc", fpfn = c(0.05,0.1))
-plot(result_discrete)
+plot(result_disc)
 ```
-Again, mixture NEMs are able to recover the ground truth and approximate
-the correct mixture weights.
+
+Apart from slightly different mixture weights we get the same signaling
+networks. However, notice also the difference in E-gene distribution; at
+least for the blue and brown networks.
 
 # Application to pooled CRISPR screens
 
@@ -253,6 +259,7 @@ Perturb-seq data set.
 We show the raw log likelihood
 together with the penalized likelihood. We choose the optimal $k$ at
 the minimum of the penalized log likelihood.
+
 ```{r, fig.height = 3, fig.width = 4, fig.cap = fig.cap5}
 data(app)
 res2 <- app
@@ -282,6 +289,7 @@ axis(1, 1:maxk, 1:maxk)
 mtext("penalized", side=2, line=3, cex = 1.2)
 mtext("raw", side=4, line=3, cex = 1.2)
 ```
+
 Figure 10 shows that the optimal mixture is $k=2$ according
 to
 our penalized log likelihood. Even $k=3$ beats just a single network.
@@ -289,6 +297,7 @@ our penalized log likelihood. Even $k=3$ beats just a single network.
 Each cell has a certain probability (responsibility) to have been
 generated by a components. The histograms show the distribution of
 the responsibilities for all cells.
+
 ```{r, fig.height = 3, fig.width = 4, fig.cap = fig.cap6}
 j <- 2
 res <- res2[[j]]
@@ -311,6 +320,7 @@ par(mar=c(5,5,2,5))
 hist(gamma, main = "Histogram of responsibilities",
      xlab = "responsibilities")
 ```
+
 Figure 11 shows the distribution of responsibilities.
 There are  many cells with a responsibility of $100\%$, but many cells
 have one around $50\%$ and are therefore ambiguous to which component they
@@ -324,6 +334,7 @@ fitting cell. The boxes show the number E-genes assigned to each S-gene and
 the diamonds show the numbers of cells assigned to each S-gene. The NULL
 node is assigned E-genes, which fit best to an S-gene (NULL) with no effects
 at all.
+
 ```{r, fig.height = 10, fig.width = 20, fig.cap = fig.cap7, echo = FALSE}
 j <- 2
 res <- res2[[j]]
@@ -348,6 +359,7 @@ plot(res[[i]])
 ```{r, fig.height = 10, fig.width = 25, fig.cap = fig.cap8, echo = FALSE}
 plot(res[[i2]])
 ```
+
 The full methodology this package is based on, a simulation study and the
 rest of our application are shown in Pirkl & Beerenwinkel (2018).
 
@@ -381,10 +393,9 @@ Markowetz, F., Kostka, D., Troyanskaya, O. G., and Spang, R. (2007).
 Nested effects models for high-dimensional phenotyping
 screens. Bioinformatics, 23(13), i305–i312.
 
-Pirkl, M. & Beerenwinkel, N. (2018).
-Single cell network analysis with a mixture of Nested Effects Models
-bioRxiv 258202; doi: https://doi.org/10.1101/258202
-Accepted at ECCB 2018.
+Pirkl, M., Beerenwinkel, N.; Single cell network analysis with a mixture
+of Nested Effects Models, Bioinformatics, Volume 34, Issue 17, 1 September 2018,
+Pages i964–i971, https://doi.org/10.1093/bioinformatics/bty602.
 
 # Data Generation
 
@@ -725,7 +736,7 @@ print(dobig)
 print(dosmall)
 print(dollr)
 
-if (dollr) {
+if (donorm) {
 
     load(paste0(dataset, "_data.rda"))
 
@@ -737,25 +748,35 @@ if (dollr) {
 
         data <- t(t(data)/(colSums(data)/10000))
 
-        data <- log2(data + 0.5)
+        data <- Linnorm(data)
+
+        ## data <- log2(data + 0.5)
     
     } else {
 
         data <- exp(data) - 1
 
         exprslvl <- apply(data, 1, median)
-        
+
         data <- data[which(exprslvl > 0), ]
 
-        if (length(grep("p7d|cc7d", dataset)) > 0) {
+        data <- Linnorm(data)
 
-            colnames(data)[grep("INTER", colnames(data))] <- ""
+        colnames(data)[grep("INTER", colnames(data))] <- ""
 
-        }
-
-        data <- log2(data + 0.5)
+        ## data <- log2(data + 0.5)
 
     }
+    
+    save(data, file = paste0(dataset, "_data_norm.rda"))
+
+    print("norm done")
+
+}
+
+if (dollr) {
+
+    load(paste0(dataset, "_data_norm.rda"))
 
     llr <- data*0
 
@@ -787,7 +808,7 @@ if (dollr) {
 
     colnames(llr) <- colnames(data)
 
-    llr <- llr[, which(!(colnames(data) %in% ""))]
+    llr <- llr[, which(!(colnames(data) %in% ""))] # !!!
 
     rownames(llr) <- rownames(data)
 
@@ -802,13 +823,6 @@ if (dosmall) {
     load(paste0(dataset, "_kegg.rda"))
     load(paste0(dataset, "_llr.rda"))
 
-    if (length(grep("perturbseq", dataset)) == 0) {
-
-        llr <- llr[, -grep("DHODH|MVD|TUBB", colnames(llr))]
-
-
-    }
-
     llr <- t(apply(llr, 1, function(x) {
         x[is.infinite(x)] <- max(x[!is.infinite(x)])
         return(x)
@@ -818,11 +832,15 @@ if (dosmall) {
 
     if (length(grep("perturbseq", dataset)) == 0) {
 
+        search <- "greedy"
+
         cropgenes <- c("LCK", "ZAP70", "PTPN6", "DOK2", "PTPN11", "EGR3", "LAT")
         
         lods <- llr[, which(colnames(llr) %in% cropgenes)]
         
     } else {
+
+        search <- "greedy"
         
         lods <- llr
         
@@ -839,6 +857,8 @@ if (dosmall) {
 
     lods <- lods[which(sdev > sd(lods)), ]
 
+    print(dim(lods))
+
     n <- length(unique(colnames(lods)))
 
     lods <- lods
@@ -847,21 +867,19 @@ if (dosmall) {
 
     res <- list()
     
-    for (k in seq_len(maxk)) {
+    for (k in 1:maxk) {
 
-        res[[k]] <- mnem(lods, starts = starts, type = "random",
-                         parallel = parallel, k = k, verbose = TRUE,
-                         converged = 10^-1, search = "modules")
+        res[[k]] <- mnem(lods, starts = starts, parallel = parallel,
+                         k = k, verbose = TRUE, converged = 10^-1,
+                         search = search)
         
         res[[k]]$data <- NULL
         
-        save(res, file = paste0(dataset, "_mnem_small", addendum,
-                                ".rda"))
+        save(res, file = paste0(dataset, "_mnem_small", addendum, ".rda"))
         
     }
     
-    save(res, file = paste0(dataset, "_mnem_small", addendum,
-                            ".rda"))
+    save(res, file = paste0(dataset, "_mnem_small", addendum, ".rda"))
 
     stop("small set done")
 

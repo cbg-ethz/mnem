@@ -15,7 +15,8 @@ mnem(D, inference = "em", search = "greedy", start = NULL,
   verbose = FALSE, max_iter = 100, parallel2 = NULL, converged = 10^-1,
   redSpace = NULL, affinity = 0, evolution = FALSE, subtopoX = NULL,
   ratio = TRUE, logtype = 2, initnets = FALSE, domean = TRUE,
-  modulesize = 5, compress = FALSE, increase = TRUE, fpfn = c(0.1, 0.1))
+  modulesize = 5, compress = FALSE, increase = TRUE, fpfn = c(0.1, 0.1),
+  multi = FALSE)
 }
 \arguments{
 \item{D}{data with cells indexing the columns and features (E-genes)
@@ -88,6 +89,9 @@ likelihood decreases}
 
 \item{fpfn}{numeric vector of length two with false positive and false
 negative rates for discrete data}
+
+\item{multi}{set to TRUE if the data contains multiple perturbation
+per sample; make sure the samples are reasonably named, e.g. "IRF1_CTNNB1"}
 }
 \value{
 object of class mnem with the log expected of the hidden data
