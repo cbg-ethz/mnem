@@ -1358,17 +1358,17 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
         }
         for (j in which(multi != 0)) {
             data_fake <- matrix(0, 1, choose(Sgenes, j+1))
-            colnames(data_fake) <- apply(combn(1:Sgenes, j+1), 2,
+            colnames(data_fake) <- apply(combn(seq_len(Sgenes), j+1), 2,
                                          paste, collapse = "_")
             Rho <- getRho(data_fake)
             adj1 <- t(adj)%*%Rho
             adj1[which(adj1 > 1)] <- 1
             colnames(adj1) <- colnames(data_fake)
-            cells <-sample(which(!(1:ncol(data_tmp) %in%
+            cells <-sample(which(!(seq_len(ncol(data_tmp)) %in%
                                    grep("_", colnames(data_tmp)))),
                             ceiling(multi[j]*ncol(data_tmp)),
                             replace = TRUE)
-            knockdowns <- sample(1:ncol(adj1),
+            knockdowns <- sample(seq_len(ncol(adj1)),
                                  ceiling(multi[j]*ncol(data_tmp)),
                                  replace = TRUE)
             data_tmp[, cells] <- adj1[, knockdowns]
@@ -1432,10 +1432,10 @@ plot.mnemsim <- function(x, data = NULL, ...) {
     mw <- getAffinity(probs, mw = x$mw, logtype = 2)
     mw2 <- mw*0
     mw2[cbind(apply(mw, 2, function(x) { return(which(x == max(x))) }),
-              1:ncol(mw))] <- 1
+              seq_len(ncol(mw)))] <- 1
     mw2 <- apply(mw2, 1, sum)/sum(mw2)
     mw3 <- mw*0
-    mw3[cbind(apply(mw, 2, which.max), 1:ncol(mw))] <- 1
+    mw3[cbind(apply(mw, 2, which.max), seq_len(ncol(mw)))] <- 1
     mw3 <- apply(mw3, 1, sum)/sum(mw3)
     mw <- apply(mw, 1, sum)/sum(mw)
     for (i in seq(length(x$mw))) {
