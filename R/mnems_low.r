@@ -749,7 +749,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         if (!is.null(Rho)) { Rho <- getRho(D) }
     }
     if (!is.null(Rho)) {
-        colnames(D) <- sample(1:length(unique(colnames(D))), ncol(D),
+        colnames(D) <- sample(seq_len(length(unique(colnames(D)))), ncol(D),
                               replace = TRUE)
     }
     Sgenes <- getSgenes(D)
