@@ -172,12 +172,16 @@ We forget the solution stored in 'simmini$Nem' and use the 'mnem' function to
    networks S-gene 1 is always at the bottom and this similarity leads
    to the fact, that neither network reaches a responsibility of
    $100$\% for any cell.
+   
+   We speed up the computation with the 'parallel = n' parameter with
+   $n=2$ threads.
 
 ```{r, fig.height=6, fig.width=14, fig.cap=fig.cap01}
 mlist <- list()
 mpen <- mllh <- numeric(5)
 for (k in 1:5) {
-    mlist[[k]] <- mnem(data, k = k, search = "greedy", starts = 10)
+    mlist[[k]] <- mnem(data, k = k, search = "greedy", starts = 10,
+                       parallel = 2)
     mpen[k] <- getIC(mlist[[k]])
     mllh[k] <- mlist[[k]]$ll
 }
@@ -247,7 +251,7 @@ noise. As a shortcut, we directly set the number of components to $3$.
 
 ```{r, fig.cap=fig.cap06, fig.height=6, fig.width=14}
 result_disc <- mnem(datadisc, k = 3, search = "greedy", starts = 10,
-                        method = "disc", fpfn = c(0.1,0.1))
+                        method = "disc", fpfn = c(0.1,0.1), parallel = 2)
 plot(result_disc)
 ```
 
@@ -287,13 +291,9 @@ data[zeros] <- rnorm(length(zeros), -1, noise)
 epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
                   bordercol = "transparent", dendrogram = "both")
 ```
-
-Parallel computation on the random restarts to speed up the inference
-is available with the parameter setting 'parallel = n' for $n$ threads.
-
 ```{r, fig.height=6, fig.width=10, fig.cap=fig.cap62}
 result <- mnem(data, k = 3, search = "greedy", multi = TRUE, starts = 10,
-               parallel = NULL)
+               parallel = 2)
 plot(result)
 ```
 
