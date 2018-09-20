@@ -100,7 +100,7 @@ calcEvopen <- function(res) {
 }
 #' @noRd
 modAdj <- function(adj, D) {
-    Sgenes <- naturalsort(unique(colnames(D)))
+    Sgenes <- getSgenes(D)
     SgeneN <- getSgeneN(D)
     for (i in seq_len(SgeneN)) {
         colnames(adj) <- rownames(adj) <- gsub(i, Sgenes[i], colnames(adj))
@@ -110,7 +110,7 @@ modAdj <- function(adj, D) {
 #' @noRd
 getRho <- function(data) {
     
-    Sgenes <- unique(unlist(strsplit(colnames(data), "_")))
+    Sgenes <- getSgenes(data)
     
     Rho <- matrix(0, length(Sgenes), ncol(data))
     
@@ -202,13 +202,13 @@ initps <- function(data, ks, k, starts = 3) {
 #' @noRd
 modData <- function(D) {
     if (length(grep("_", colnames(D))) > 0) {
-        D2 <- D[, grep("_", colnames(D))]
-        D <- D[, -grep("_", colnames(D))]
+        D2 <- D[, grep("_", colnames(D)), drop = FALSE]
+        D <- D[, -grep("_", colnames(D)), drop = FALSE]
     } else {
         D2 <- NULL
     }
     SgeneN <- getSgeneN(D)
-    Sgenes <- naturalsort(unique(colnames(D)))
+    Sgenes <- getSgenes(D)
     if (!all(is.numeric(Sgenes))) {
         colnamesD <- numeric(ncol(D))
         for (i in seq_len(SgeneN)) {
@@ -281,7 +281,8 @@ getLL <- function(x, logtype = 2, mw = NULL, data = NULL) {
 estimateSubtopo <- function(data) {
     effectsums <- effectsds <- matrix(0, nrow(data),
                                       length(unique(colnames(data))))
-    for (i in seq_len(length(unique(colnames(data))))) {
+    n <- getSgeneN(data)
+    for (i in seq_len(n)) {
         if (length(grep(i, colnames(data))) > 1) {
             effectsds[, i] <- apply(data[, grep(i, colnames(data))], 1, sd)
             effectsums[, i] <- apply(data[, grep(i, colnames(data))], 1, sum)
@@ -333,6 +334,9 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                 dataR <- dataF
                 postprobsoldR <- rep(0, n)
             }
+            if (!is.null(Rho)) {
+                Rho <- getRho(dataR)
+            }
             align[[i]] <- scoreAdj(dataR, res[[i]]$adj,
                                    method = method, ratio = ratio,
                                    weights = postprobsoldR, fpfn = fpfn,
@@ -346,6 +350,9 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
         subtopo0 <- rbind(subtopoMax, subtopo0, subtopoX, subtopoY)
         probs0 <- list()
         ll0 <- numeric(nrow(subtopo0)+1)
+        if (!is.null(Rho)) {
+            Rho <- getRho(data)
+        }
         for (do in seq_len(nrow(subtopo0)+1)) {
             probs0[[do]] <- probsold*0
             if (do > 1) {
@@ -356,10 +363,9 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                     subtopo <- align[[i]]$subtopo
                 }
                 adj1 <- transitive.closure(res[[i]]$adj, mat = TRUE)
-                if (!is.null(Rho)) {
-                    adj1 <- t(Rho)%*%adj1
-                    adj1[which(adj1 > 1)] <- 1
-                }
+                if (is.null(Rho)) { Rho <- getRho(data) }
+                adj1 <- t(Rho)%*%adj1
+                adj1[which(adj1 > 1)] <- 1
                 adj1 <- cbind(adj1, "0" = 0)
                 adj2 <- adj1[, subtopo]
                 if (method %in% "llr") {
@@ -369,7 +375,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                     tmp <- discScore(t(data), t(adj2), fpfn = fpfn)
                 }
                 probs0[[do]][i, ] <-
-                    tmp[cbind(seq_len(nrow(tmp)), as.numeric(rownames(tmp)))]
+                    tmp[cbind(seq_len(nrow(tmp)), seq_len(nrow(tmp)))]
             }
             ll0[do] <- getLL(probs0[[do]], logtype = logtype, mw = mw,
                              data = data)
@@ -398,7 +404,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
 }
 #' @noRd
 annotAdj <- function(adj, data) {
-    Sgenes <- sort(unique(colnames(data)))
+    Sgenes <- getSgenes(data)
     colnames(adj) <- rownames(adj) <- sort(Sgenes)
     return(adj)
 }
@@ -593,7 +599,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     return(nem)
 }
 #' @noRd
-domean <- function(D, weights = NULL, Rho = NULL) {
+doMean <- function(D, weights = NULL, Rho = NULL) {
     mD <- matrix(0, nrow(D), length(unique(colnames(D))))
     if (!is.null(weights)) {
         D <- t(t(D)*weights)
@@ -618,10 +624,9 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
     n <- getSgeneN(D)
     Sgenes <- getSgenes(D)
     if (domean) {
-        D <- domean(D, weights = weights, Rho = Rho)
+        D <- doMean(D, weights = weights, Rho = Rho)
         weights <- rep(1, ncol(D))
         sumdata <- data <- D
-        if (!is.null(Rho)) { Rho <- getRho(D) }
     } else {
         sumdata <- matrix(0, nrow(data), n)
         if (!is.null(weights)) {
@@ -662,6 +667,7 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
                 start2 <- start[which(rownames(start) %in% subset),
                                 which(colnames(start) %in% subset)]
             }
+            if (!is.null(Rho)) { Rho <- getRho(subdata) }
             tmp <- mynem(subdata, search = search, method = method,
                          start = start2,
                          parallel = parallel, reduce = reduce,
@@ -705,7 +711,7 @@ getSgeneN <- function(data) {
 }
 #' @noRd
 getSgenes <- function(data) {
-    Sgenes <- sort(as.numeric(unique(unlist(strsplit(colnames(data), "_")))))
+    Sgenes <- naturalsort(unique(unlist(strsplit(colnames(data), "_"))))
     return(Sgenes)
 }
 #' @noRd
@@ -743,14 +749,20 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     D.backup <- D
     D <- modData(D)
     colnames(D) <- gsub("\\..*", "", colnames(D))
+    if (!is.null(Rho)) { Rho <- getRho(D) }
     if (domean) {
-        D <- domean(D, weights = weights, Rho = Rho)
+        D <- doMean(D, weights = weights, Rho = Rho)
         weights <- rep(1, ncol(D))
         if (!is.null(Rho)) { Rho <- getRho(D) }
     }
     if (!is.null(Rho)) {
-        colnames(D) <- sample(seq_len(length(unique(colnames(D)))), ncol(D),
-                              replace = TRUE)
+        colnames(D) <-
+            c(unique(unlist(strsplit(colnames(D), "_"))),
+              sample(seq_len(length(unique(unlist(strsplit(colnames(D),
+                                                           "_"))))),
+                     ncol(D) -
+                     length(unique(unlist(strsplit(colnames(D), "_")))),
+                     replace = TRUE))
     }
     Sgenes <- getSgenes(D)
     if (is.null(start)) {
@@ -786,7 +798,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         sfExport("modules", "D", "start", "better", "transitive.reduction",
                  "method", "scoreAdj", "weights", "transitive.closure",
                  "llrScore", "get.deletions", "get.insertions",
-                 "get.reversions", "discScore")
+                 "get.reversions", "discScore", "getRho", "doMean")
     }
 
     if (search %in% "greedy") {
@@ -1040,11 +1052,13 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
                      prior = NULL, ratio = TRUE, fpfn = c(0.1, 0.1),
                      Rho = NULL) {
     adj <- transitive.closure(adj, mat = TRUE)
+    ## print(adj)
+    ## print(Rho)
+    ## print(colnames(D))
     if (is.null(Rho)) {
         adj1 <- adj[colnames(D), ]
     } else {
-        print(unique(colnames(D)))
-        adj1 <- cbind(t(Rho)%*%adj, 0)
+        adj1 <- t(Rho)%*%adj
         adj1[which(adj1 > 1)] <- 1
     }
     if (method %in% "llr") {
@@ -1053,8 +1067,7 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     }
     if (method %in% "disc") {
         ll <- "max"
-        score <- discScore(D, adj1, weights = weights,
-                           fpfn = fpfn)
+        score <- discScore(D, adj1, weights = weights, fpfn = fpfn)
     }
     if (is.null(subtopo)) {
         subtopo <- apply(score, 1, which.max)

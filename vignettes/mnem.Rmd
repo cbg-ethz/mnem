@@ -62,6 +62,11 @@ fig.cap5 <- "Penalized and raw log likelihood ratios. Blue denotes the raw
 log likelihood and red the negative penalized for complexity."
 fig.cap6 <- "Histograms of the responsibilities. The responsibilities for the
 highest scoring mixture according to the penalized log likelihood."
+fig.cap61 <- "Multiple perturbations. Simulated data including samples in
+which more than one S-gene has been perturbed."
+fig.cap62 <- "Multi sample result. The result of the mixture NEM inference
+on data
+including samples with multiple perturbations."
 fig.cap7 <- "Highest scoring mixture for the Perturb-Seq dataset of cell
 cycle regulators. On top we show
 the cell assignments for hard clustering and the mixture weights. The large
@@ -102,33 +107,54 @@ The input data is an m times n matrix of log odds (e.g. for fold changes as in
 ## Data simulation
 
 The M\&NEM package includes a functions for the simulation of typical single
-    cell log odds. We use this function to create data for three S-genes and
+cell log odds. We use this function to create data for three S-genes and
     eight E-genes. Two E-genes for each S-gene and two uninformative E-genes.
     Additionally we generate the data from a mixture of two components
     and sample $100$ cells, $20$ for one and $80$ for the other component
     (approx. mixture weights: mw). The function simulates discrete data ($1$
     for effect and $0$ for no effect). We transform the discrete data to log
     odds by adding Gaussian noise with mean $1$ to all $1$s and with mean $-1$
-    to all $0$s. Figure 1 shows a heatmap of our generated data. Since we used
-    only little noise, effects and no effects are still clearly distinguished
-    into shades of blue and red. We can identify the uninformative E-genes
-    (no rownames) by their random/unique patterns. Cells perturbed by S-gene
-    $1$ all behave similarly. However, cells perturbed by S-genes $2$ and $3$
-    fall into two clusters each hinting at differential causal regulation
-    within the cell population.
+    to all $0$s. Hint: If you use the 'mw' parameter, the 'Nems'
+    parameter is not necessary.
+
+
+Figure 1 shows a heatmap of our generated data. Since we used
+only little noise, effects and no effects are still clearly distinguished
+into shades of blue and red. We can identify the uninformative E-genes
+(no rownames) by their random/unique patterns. There is a clear
+clustering noticeable for all knock-downs hinting at differential
+causal regulation within the cell population. The E-gene numbers
+denote the attachment of the E-genes in regards to the first
+component. For the other components attachments differ and do not agree with the
+E-gene name anymore.
 
 ```{r, fig.height=6, fig.width=10, fig.cap=fig.cap0}
-set.seed(9247)    
-simmini <- simData(Sgenes = 4, Egenes = 10,
-                  Nems = 3, mw = c(0.3, 0.3, 0.4), nCells = 100, uninform = 2)
+seed <- 8675309
+Sgenes <- 3
+Egenes <- 10
+nCells <- 100
+uninform <- 2
+mw <- c(0.4, 0.3, 0.3)
+Nems <- 3
+noise <- 0.5
+set.seed(seed)    
+simmini <- simData(Sgenes = Sgenes, Egenes = Egenes,
+                  Nems = Nems, mw = mw, nCells = nCells, uninform = uninform)
 data <- simmini$data
 ones <- which(data == 1)
 zeros <- which(data == 0)
-data[ones] <- rnorm(length(ones), 1, 0.5)
-data[zeros] <- rnorm(length(zeros), -1, 0.5)
+data[ones] <- rnorm(length(ones), 1, noise)
+data[zeros] <- rnorm(length(zeros), -1, noise)
 epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
                   bordercol = "transparent", xrot = 0, dendrogram = "both")
 ```
+```{r, fig.cap=fig.cap02}
+plot(simmini, data)
+```
+
+Figure 2 shows three different causal networks for the population
+of simulated cells. The choses mixture weights almost agree with the
+noisy mixture weights due to only little noise.
 
 ## Network inference w.r.t. complexity
 
@@ -138,28 +164,25 @@ We forget the solution stored in 'simmini$Nem' and use the 'mnem' function to
    independent starts for the EM algorithm. Since the number of components $k$
    is a priori
    not known, we perform optimization for $k=1,2,3,4,5$ and use our penalized
-   log likelihood to choose the best $k$. Figure 2 shows the best mixture of
-   our causal networks with $k=2$. We have almost found the same causal
-   networks we used to generate the data. We got only one false positive edge
-   ($2$ to $1$) in the red network. Notice, that our input for the
-   mixture weights is only an approximation, since the real mixture of the
-   data is dependent on the ground truth networks (e.g. how similar they are)
-   and noise.
+   log likelihood to choose the best $k$. Figure 3 shows the best mixture of
+   our causal networks with $k=3$. We have found the same causal
+   networks we used to generate the data. However, mixture weights are
+   quite different to our input. E.g. only $34$\% instead of $40$\%
+   for our largest component. Interestingly in the red and blue
+   networks S-gene 1 is always at the bottom and this similarity leads
+   to the fact, that neither network reaches a responsibility of
+   $100$\% for any cell.
 
 ```{r, fig.height=6, fig.width=14, fig.cap=fig.cap01}
 mlist <- list()
 mpen <- mllh <- numeric(5)
 for (k in 1:5) {
-    mlist[[k]] <- mnem(data, k = k, search = "greedy", runs = 10)
+    mlist[[k]] <- mnem(data, k = k, search = "greedy", starts = 10)
     mpen[k] <- getIC(mlist[[k]])
     mllh[k] <- mlist[[k]]$ll
 }
 plot(mlist[[which.min(mpen)]])
 ```
-```{r, fig.cap=fig.cap02, out.width="75%"}
-plot(simmini, data = data)
-```
-
 ```{r, fig.cap=fig.cap03}
 par(mfrow=c(1,2)) 
 plot(mllh, col = "blue", main = "raw log likelihood", type = "b",
@@ -172,21 +195,20 @@ We compare the actual log likelihood shown in figure 4 (left, blue)
 to the penalized log likelihood
 (right, red). Notice that the raw log likelihoods of $k=4$ and $k=5$ are higher
 than the $k=3$ component model. However, if we penalize complexity
-the three component model gives us the best score (minimum). The five component
-model is now also overtaken by the two component model due to complexity or lack
-thereof, respectively.
+the three component model gives us the best score (minimum). The four
+and five component models are now also overtaken by the two component
+model due to complexity or lack thereof, respectively.
 
 ## Cell responsibilities
 
 Figure 5 shows the actual responsibilities of the best scoring
 model. Many cells reach a responsibility of $100\%$. This
-is expected due to the relatively low level of noise. However, almost $20$ cells
-have responsibilities around $50\%$. This is not unexpected either. Both the
-red and blue networks put the knock-down of S-gene $2$ as a key regulator
-most upstream. Thus both networks predict the same profile for cells perturbed
-by a knock-down of S-gene $2$. The mixture weights are
-responsible for the slight shift of cell responsibilities from around $57$ and
-$43$ percent, respectively.
+is expected due to the relatively low level of noise. However, some cells
+have responsibilities around $50$ and $80$\%, respectively. Also
+notice, that the intermediate responsibilities are symmetric. This
+means two of the three components are more similar to each other and
+compete for some cells, while the third components has all cells
+exclusively at $100$\%.
 
 ```{r, fig.cap=fig.cap04, fig.height = 4, fig.width = 4}
 postprobs <- getAffinity(mlist[[3]]$probs, mw = mlist[[3]]$mw)
@@ -224,14 +246,59 @@ causal networks is still recognizable even with the addition of our (mild)
 noise. As a shortcut, we directly set the number of components to $3$.
 
 ```{r, fig.cap=fig.cap06, fig.height=6, fig.width=14}
-result_disc <- mnem(datadisc, k = 3, search = "greedy", runs = 10,
-                        method = "disc", fpfn = c(0.05,0.1))
+result_disc <- mnem(datadisc, k = 3, search = "greedy", starts = 10,
+                        method = "disc", fpfn = c(0.1,0.1))
 plot(result_disc)
 ```
 
-Apart from slightly different mixture weights we get the same signaling
-networks. However, notice also the difference in E-gene distribution; at
-least for the blue and brown networks.
+Apart from different mixture weights (more similar to the
+groudn truth) we get the same signaling
+networks.
+
+## Multiple perturbations
+
+Mixtures are in general very complex. Currently M\&NEM only supports the
+standard NEM approach and no other extensions, which would increase complexity
+even further. However, M\&NEM supports multiple perturbation per sample.
+The information of multiple perturbations is not used to infer more complex
+signaling structures like B-NEM (Pirkl et al., 2016). M\&NEM just uses the
+information to increase accuracy of the standard NEM approach. E.g. let's
+assume during a knock-down of gene A genes E1 to E10 react and during a
+knock-down of gene B genes E11 to E20 react. A sample with a perturbation of
+genes A and B will show a reaction of genes E1 to E20 (assuming perfect data),
+even though A and B are not linearly connected.
+
+Again, we simulate data this time including $20\%$ double and $10\%$ triple
+knock-downs. The inference is done the same way, except we specifically
+tell the algorithm, that we have data with multiple perturbations with
+'multi = TRUE'. Take a look at how the samples are named. The "_"
+character separates different S-genes in the data column names.
+
+```{r, fig.height=6, fig.width=10, fig.cap=fig.cap61}
+set.seed(seed)
+simmini2 <- simData(Sgenes = Sgenes, Egenes = Egenes,
+                   Nems = Nems, mw = mw, nCells = nCells,
+                   uninform = uninform, multi = c(0.2, 0.1))
+data <- simmini2$data
+ones <- which(data == 1)
+zeros <- which(data == 0)
+data[ones] <- rnorm(length(ones), 1, noise)
+data[zeros] <- rnorm(length(zeros), -1, noise)
+epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
+                  bordercol = "transparent", dendrogram = "both")
+```
+
+Parallel computation on the random restarts to speed up the inference
+is available with the parameter setting 'parallel = n' for $n$ threads.
+
+```{r, fig.height=6, fig.width=10, fig.cap=fig.cap62}
+result <- mnem(data, k = 3, search = "greedy", multi = TRUE, starts = 10,
+               parallel = NULL)
+plot(result)
+```
+
+M\&NEM infers the correct causal networks for $k=3$ slightly better
+mixture weights than without sample with multiple knock-downs.
 
 # Application to pooled CRISPR screens
 
@@ -396,6 +463,11 @@ screens. Bioinformatics, 23(13), i305–i312.
 Pirkl, M., Beerenwinkel, N.; Single cell network analysis with a mixture
 of Nested Effects Models, Bioinformatics, Volume 34, Issue 17, 1 September 2018,
 Pages i964–i971, https://doi.org/10.1093/bioinformatics/bty602.
+
+Pirkl, M., Hand, E., Kube, D., Spang, R.; Analyzing synergistic and
+non-synergistic interactions in signalling pathways using Boolean Nested Effect
+Models, Bioinformatics, Volume 32, Issue 6, 15 March 2016, Pages 893–900,
+https://doi.org/10.1093/bioinformatics/btv680
 
 # Data Generation
 

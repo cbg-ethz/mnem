@@ -167,7 +167,7 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
         fpar <- fpar + length(x$comp) - 1
     } else {
         if (degree != 5) {
-            fpar <- 0   
+            fpar <- 0
             for (i in seq_len(length(x$comp))) {
                 tmp <- transitive.reduction(x$comp[[i]]$phi)
                 if (degree > 2) {
@@ -233,7 +233,8 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
 #' @param ratio logical, if true data is log ratios, if false foldchanges
 #' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
 #' for natural)
-#' @param initnets initial networks as a list of phis
+#' @param initnets if TRUE initialize with random phis instead of
+#' responsibilities
 #' @param domean average the data, when calculating a single NEM (speed
 #' improvment)
 #' @param modulesize max number of S-genes per module in module search
@@ -277,16 +278,15 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE) {
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
-        redSpace <- mynem(data[, -which(duplicated(colnames(data)) == TRUE)],
+        colnames(D) <- gsub("_.*", "", colnames(D))
+        if (any(duplicated(colnames(D)) == TRUE)) {
+            D <- D[, -which(duplicated(colnames(D)) == TRUE)]
+        }
+        redSpace <- mynem(D,
                           search = "exhaustive", reduce = TRUE,
                           verbose = verbose, parallel = c(parallel, parallel2),
                           subtopo = subtopoX, ratio = ratio, domean = FALSE,
                           modulesize = modulesize)$redSpace
-    }
-    if (multi) {
-        Rho <- getRho(D)
-    } else {
-        Rho <- NULL
     }
     if (!is.null(parallel)) { if (parallel == 1) { parallel <- NULL } }
     D.backup <- D
@@ -294,6 +294,11 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
     Sgenes <- getSgenes(D)
     data <- D
     D <- NULL
+    if (multi) {
+        Rho <- getRho(data)
+    } else {
+        Rho <- NULL
+    }
     ## learn k:
     if (is.null(k) & is.null(start) & is.null(p)) {
         tmp <- learnk(data, kmax = kmax)
@@ -314,7 +319,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                             runs = runs,
                             verbose = verbose, redSpace = redSpace,
                             ratio = ratio, domean = domean,
-                            modulesize = modulesize)
+                            modulesize = modulesize, Rho = Rho)
             init <- initComps(data, k, starts, verbose, meanet)
             probscl <- 0
         } else {
@@ -353,7 +358,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                       runs = runs,
                                       verbose = verbose, redSpace = redSpace,
                                       ratio = ratio, domean = domean,
-                                      modulesize = modulesize)
+                                      modulesize = modulesize, Rho = Rho)
         limits[[1]]$res[[1]]$D <- NULL
         res <- list()
         res[[1]] <- list()
@@ -364,7 +369,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
         probs0$probs <- matrix(-Inf, k, ncol(data))
         probs <- matrix(0, k, ncol(data))
         probs <- getProbs(probs, k, data, res, method, n, affinity,
-                          converged, subtopoX, ratio, mw = mw, fpfn = fpfn)
+                          converged, subtopoX, ratio, mw = mw, fpfn = fpfn,
+                          Rho = Rho)
         if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) >
             getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
             probs0 <- probs
@@ -376,6 +382,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
     } else {
         if (inference %in% "em") {
             if (!is.null(parallel)) {
+                doMean <- doMean
                 get.deletions <- getFromNamespace("get.deletions", "nem")
                 get.insertions <- getFromNamespace("get.insertions", "nem")
                 get.reversions <- getFromNamespace("get.reversions", "nem")
@@ -390,7 +397,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                          "scoreAdj", "max_iter", "random_probs",
                          "verbose", "llrScore", "search", "redSpace",
                          "affinity", "getProbs", "probscl", "method",
-                         "naturalsort",
+                         "naturalsort", "getRho", "doMean",
                          "transitive.reduction", "get.insertions",
                          "transitive.closure", "get.deletions",
                          "get.reversions", "nemEst", "discScore")
@@ -413,7 +420,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                         probs <- matrix(0, k, ncol(data))
                         probs <- getProbs(probs, k, data, res1, method, n,
                                           affinity, converged, subtopoX,
-                                          ratio, mw = mw, fpfn = fpfn)
+                                          ratio, mw = mw, fpfn = fpfn,
+                                          Rho = Rho)
                         if (getLL(probs$probs, logtype = logtype, mw = mw,
                                   data = data) > getLL(probs0$probs,
                                                        logtype = logtype,
@@ -503,6 +511,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                      dataR <- dataF
                                      postprobsR <- rep(0, n)
                                  }
+                                 RhoR <- getRho(dataR)
                                  if (is.null(start0)) {
                                      res[[i]] <- mynem(D = dataR,
                                                        weights = postprobsR,
@@ -516,7 +525,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                                        redSpace = redSpace,
                                                        ratio = ratio,
                                                        domean = domean,
-                                                       modulesize = modulesize)
+                                                       modulesize = modulesize,
+                                                       Rho = RhoR)
                                  } else {
                                      test01 <- list()
                                      test01scores <- numeric(3)
@@ -542,7 +552,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                                               ratio = ratio,
                                                               domean = domean,
                                                               odulesize =
-                                                                  modulesize)
+                                                                  modulesize,
+                                                              Rho = RhoR)
                                          test01scores[j] <-
                                              max(test01[[j]]$scores)
                                      }
@@ -555,7 +566,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                      sum(res[[i]]$subtopo != res1[[i]]$subtopo)
                                  res[[i]]$D <- NULL
                                  res[[i]]$subweights <- NULL
-                                 
+
                              }
                              evopen <- 0
                              if (evolution) {
@@ -572,7 +583,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                                n,
                                                affinity, converged,
                                                subtopoX, ratio,
-                                               mw = mw, fpfn = fpfn)
+                                               mw = mw, fpfn = fpfn,
+                                               Rho = Rho)
                              if (getLL(probs$probs, logtype = logtype,
                                        mw = mw,
                                        data = data) > getLL(probs0$probs,
@@ -875,7 +887,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
     x2 <- x
 
     data <- x$data
-    
+
     laymat <- rbind(seq_len(length(x$comp)+1),
                     c(length(x$comp)+2, rep(length(x$comp)+3,
                                             length(x$comp))))
@@ -892,7 +904,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                                                 length(x$comp)-1)))
     }
     layout(laymat)
-    
+
     par(oma=oma)
     if (legend) {
         plotDnf(c("Sgenes=Egenes", "Egenes=Cells", "Cells=Fit"),
@@ -926,8 +938,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
     unipct <- mixnorm
     unipct[, which(colSums(mixnorm) > 1)] <- 0
     unipct <- round(rowSums(unipct)/ncol(mixnorm), 3)*100
-    Sgenes <- naturalsort(unique(colnames(x$data)))
-    SgeneN <- length(Sgenes)
+    Sgenes <- getSgenes(data)
+    SgeneN <- getSgeneN(data)
     for (i in seq_len(length(x$comp))) {
 
         shared <- unique(colnames(mixnorm)[
@@ -951,7 +963,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                 weights <- getAffinity(x$probs, affinity = affinity,
                                        norm = TRUE, logtype = logtype,
                                        mw = x$mw, data = data)
-                subtopo <- scoreAdj(modData(x$data), x$comp[[i]]$phi,
+                subtopo <- scoreAdj(modData(data), x$comp[[i]]$phi,
                                     method = method, weights = weights[i, ],
                                     ratio = ratio, ...)$subtopo
             } else {
@@ -974,7 +986,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
             enodewidth <- NULL
         }
         if (cells) {
-            datanorm <- modData(x$data)
+            datanorm <- modData(data)
             pnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE,
                                  logtype = logtype, mw = x$mw, data = data)
             pnorm <- apply(pnorm, 2, function(x) {
@@ -1016,7 +1028,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                 gam <- (logtype^x$probs)*x$mw
                 gam <- gam/gam
             }
-            for (bnode in naturalsort(unique(colnames(gam)))) {
+            for (bnode in Sgenes) {
                 tmpN <- paste0("_9247bnode", bnode)
                 graph <- c(graph, paste0(bnode, "=_9247bnode", bnode))
                 bnodes[[tmpN]] <-
@@ -1229,7 +1241,7 @@ clustNEM <- function(data, k = 2:5, ...) {
     }
     res$comp <- list()
     res$mw <- numeric(K)
-    Sgenes <- length(unique(colnames(data)))
+    Sgenes <- getSgeneN(data)
     for (i in seq_len(K)) {
         res$comp[[i]] <- list()
         tmp <- res[[i]]$adj
@@ -1291,7 +1303,14 @@ clustNEM <- function(data, k = 2:5, ...) {
 simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,
-                    edgeprob = 0.5, multi = NULL) {
+                    edgeprob = 0.25, multi = NULL) {
+    if (!is.null(mw) & Nems != length(mw)) {
+        print(paste0("Vector of mixture weights 'mw' must be the length of the",
+                     " number of komponents 'Nems'. Input 'Nems=", Nems,
+                     " is overridden by the length ", length(mw),
+                     " of 'mw'."))
+        Nems <- length(mw)
+    }
     if (is.null(multi)) { multi <- rep(0, Sgenes-1) }
     if (length(multi) < Sgenes-1) {
         multi <- c(multi, rep(0, Sgenes - length(multi) - 1))
@@ -1301,7 +1320,7 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
     index <- NULL
     theta <- list()
     for (i in seq_len(Nems)) {
-        if (i == 1 | !evolution) {
+      if (i == 1 | !evolution) {
             adj <- matrix(sample(c(0,1), Sgenes^2, replace = TRUE,
                                  prob = c(1-edgeprob, edgeprob)),
                           Sgenes, Sgenes)
@@ -1334,14 +1353,17 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
             adj <- Nem[[(i-1)]]
             adj[, child] <- 0
             adj[child, parent] <- 1
-            adj <- transitive.closure(adj, mat = TRUE)
+            adj <- adj
         }
+        Nem[[i]] <- transitive.reduction(adj)
+    }
+    for (i in seq_len(Nems)) {
         if (is.null(reps)) {
             reps2 <- ceiling(nCells/Sgenes)
         } else {
             reps2 <- reps
         }
-        Nem[[i]] <- transitive.reduction(adj)
+        adj <- transitive.closure(Nem[[i]], mat = TRUE)
         data_tmp <- t(adj)
         colntmp <- rep(seq_len(ncol(data_tmp)), reps2)
         data_tmp <- data_tmp[, rep(seq_len(ncol(data_tmp)), reps2)]
@@ -1364,8 +1386,8 @@ simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
             adj1 <- t(adj)%*%Rho
             adj1[which(adj1 > 1)] <- 1
             colnames(adj1) <- colnames(data_fake)
-            cells <-sample(which(!(seq_len(ncol(data_tmp)) %in%
-                                   grep("_", colnames(data_tmp)))),
+            cells <- sample(which(!(seq_len(ncol(data_tmp)) %in%
+                                    grep("_", colnames(data_tmp)))),
                             ceiling(multi[j]*ncol(data_tmp)),
                             replace = TRUE)
             knockdowns <- sample(seq_len(ncol(adj1)),
@@ -1417,6 +1439,11 @@ plot.mnemsim <- function(x, data = NULL, ...) {
         noisymix2 <- ""
         noisymix <- FALSE
     }
+    if (length(grep("_", colnames(data))) > 0) {
+        Rho <- getRho(data)
+    } else {
+        Rho <- NULL
+    }
     par(mfrow=c(1,length(x$mw)))
     probs <- matrix(0, length(x$mw), ncol(x$data))
     res <- list()
@@ -1428,15 +1455,20 @@ plot.mnemsim <- function(x, data = NULL, ...) {
     }
     probs <- log2(probs)
     probs <- getProbs(probs, k = length(x$mw), data = data, res = res,
-                      n = ncol(res[[1]]$adj), logtype = 2, mw = x$mw, ...)$probs
+                      n = ncol(res[[1]]$adj), logtype = 2, mw = x$mw, Rho = Rho,
+                      ...)$probs
     mw <- getAffinity(probs, mw = x$mw, logtype = 2)
-    mw2 <- mw*0
-    mw2[cbind(apply(mw, 2, function(x) { return(which(x == max(x))) }),
-              seq_len(ncol(mw)))] <- 1
-    mw2 <- apply(mw2, 1, sum)/sum(mw2)
-    mw3 <- mw*0
-    mw3[cbind(apply(mw, 2, which.max), seq_len(ncol(mw)))] <- 1
-    mw3 <- apply(mw3, 1, sum)/sum(mw3)
+    mw2 <- unlist(apply(mw, 2, function(x) { return(which(x == max(x))) }))
+    mw2 <- table(mw2)/ncol(mw)
+    mw3 <- unlist(apply(mw, 2, function(x) {
+        y <- which(x == max(x))
+        if (length(y) > 1) {
+            return(NULL)
+        } else {
+            return(y)
+        }
+    }))
+    mw3 <- table(mw3)/ncol(mw)
     mw <- apply(mw, 1, sum)/sum(mw)
     for (i in seq(length(x$mw))) {
         if (noisymix) {
@@ -1681,12 +1713,12 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         dnf <- c("A=B")
         dolegend <- TRUE
     }
-    
+
     if (!is.null(simulate)) {
         nodestates <- simulateDnf(graph, stimuli = simulate$stimuli,
                                   inhibitors = simulate$inhibitors)
     }
-    
+
     if (is.null(freq)) {
         use.freq = FALSE
     } else {
@@ -1698,7 +1730,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
     if (is.null(labels)) {
         labels <- rep("", length(dnf))
     }
-    
+
     if (is.null(fontsize)) {
         fontsize <- ""
     }
@@ -1741,7 +1773,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
     }
 
     V <- sort(V)
-    
+
     Vneg <- c(V, Vneg[grep("!", Vneg)])
 
     if (!is.null(nodecol)) {
@@ -1781,7 +1813,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
     }
 
     count <- 0
-    
+
     for (i in dnf) {
         tmp <- unlist(strsplit(i, "="))
         if (length(tmp)==1) {
@@ -1824,13 +1856,13 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
     nodes <- buildNodeList(g)
 
     edges <- buildEdgeList(g)
-    
+
     nodesneg <- buildNodeList(gneg)
 
     edgesneg <- buildEdgeList(gneg)
 
     edgesnew <- list()
-    
+
     for (i in sort(names(edges))) {
         edgesnew <- c(edgesnew, edges[[i]])
     }
@@ -1840,7 +1872,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
     edges <- edgesnew
 
     edgesnegnew <- list()
-    
+
     for (i in names(edgesneg)) {
         edgesnegnew <- c(edgesnegnew, edgesneg[[i]])
     }
@@ -1862,7 +1894,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
     for (i in seq_len(length(edges))) {
         edges[[i]]@from <- gsub("!", "", edges[[i]]@from)
     }
-    
+
     nodeshape2 <- nodeshape
     nodeshape <- list()
     if (length(nodeshape2) == 1 & !(is.list(nodeshape2))) {
@@ -1872,7 +1904,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
     } else {
         nodeshape <- nodeshape2
     }
-    
+
     for (i in seq_len(length(nodes))) {
         nodes[[i]]@attrs$height <- height
         nodes[[i]]@attrs$width <- width
@@ -2232,7 +2264,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         }
     }
     if (type == 1) {
-        
+
         g2 <- agopen(name="boolean", nodes=nodes, recipEdges = "distinct",
                      edges=edges, edgeMode="undirected",
                      attrs=list(edge = list(),
@@ -2269,7 +2301,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
             }
         }
         arrowlwd <- as.numeric(arrowlwd)
-        
+
         graph.trans <- NULL
         and.count <- 0
         for (i in dnf) {
@@ -2300,13 +2332,13 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
             edgecol <- edgecol[order(match(graph.trans, names(edges)))]
             arrowcolors <- edgecol
         }
-        
+
         nodeshapes <- character()
         nodecolors <- character()
         nodeheight <- character()
         nodewidth <- character()
         nodecolor <- character()
-        
+
         for (i in seq_len(length(nodes))) {
             nodeshapes <- c(nodeshapes, nodes[[i]]@attrs$shape)
             nodecolors <- c(nodecolors, nodes[[i]]@attrs$fillcolor)
@@ -2320,7 +2352,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         if (is.null(lty) & is.null(edgestyle)) {
             arrowlty <- rep("solid", length(edges))
         }
-        
+
         if (use.freq) {
             if (is.null(lty)) {
                 if (edgestyle) {
@@ -2339,14 +2371,14 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         if (is.null(edgewidth) & is.null(edgelabel)) {
             arrowlabels <- rep("", length(edges))
         }
-        
+
         if (length(arrowlty) == 0) {
             arrowlty <- rep("solid", length(edges))
         }
         if (length(arrowlwd) == 0) {
             arrowlwd <- rep(lwd, length(edges))
         }
-        
+
         names(arrowfontsize) <- names(arrowheads) <- names(arrowtails) <-
             names(arrowcolors) <- names(arrowlwd) <- names(arrowlty) <-
             names(arrowlabels) <- names(edges)
@@ -2395,7 +2427,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
             arrowcolors <- rep(edgecol, length(arrowcolors))
             names(arrowcolors) <- names(arrowlabels)
         }
-        
+
         if (legend == 1 | legend == 3) {
             if (dolegend) {
                 start <- 1

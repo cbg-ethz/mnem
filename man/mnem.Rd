@@ -74,7 +74,8 @@ different from each other.}
 \item{logtype}{logarithm type of the data (e.g. 2 for log2 data or exp(1)
 for natural)}
 
-\item{initnets}{initial networks as a list of phis}
+\item{initnets}{if TRUE initialize with random phis instead of
+responsibilities}
 
 \item{domean}{average the data, when calculating a single NEM (speed
 improvment)}

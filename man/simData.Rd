@@ -7,7 +7,7 @@ mixture of networks.}
 \usage{
 simData(Sgenes = 5, Egenes = 1, subsample = 1, Nems = 2, reps = NULL,
   mw = NULL, evolution = FALSE, nCells = 1000, uninform = 0,
-  unitheta = FALSE, edgeprob = 0.5, multi = NULL)
+  unitheta = FALSE, edgeprob = 0.25, multi = NULL)
 }
 \arguments{
 \item{Sgenes}{number of Sgenes}
