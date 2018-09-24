@@ -168,10 +168,10 @@ We forget the solution stored in 'simmini$Nem' and use the 'mnem' function to
    our causal networks with $k=3$. We have found the same causal
    networks we used to generate the data. However, mixture weights are
    quite different to our input. E.g. only $34$\% instead of $40$\%
-   for our largest component. Interestingly in the red and blue
+   for our largest component. Interestingly in the red and brown
    networks S-gene 1 is always at the bottom and this similarity leads
-   to the fact, that neither network reaches a responsibility of
-   $100$\% for any cell.
+   to the fact, that best cell in the red network never reaches a
+   responsibility of $100$\% for any cell attached to S-gene 1.
    
    We can speed up the computation with the 'parallel = n' parameter with
    $n$ threads.
@@ -199,8 +199,8 @@ We compare the actual log likelihood shown in figure 4 (left, blue)
 to the penalized log likelihood
 (right, red). Notice that the raw log likelihoods of $k=4$ and $k=5$ are higher
 than the $k=3$ component model. However, if we penalize complexity
-the three component model gives us the best score (minimum). The four
-and five component models are now also overtaken by the two component
+the three component model gives us the best score (minimum). The five
+component model is now also overtaken by the two component
 model due to complexity or lack thereof, respectively.
 
 ## Cell responsibilities
