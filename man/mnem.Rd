@@ -12,10 +12,11 @@ Crop-Seq. Datlinger et al., 2017).}
 mnem(D, inference = "em", search = "greedy", start = NULL,
   method = "llr", parallel = NULL, reduce = FALSE, runs = 1,
   starts = 3, type = "random", p = NULL, k = NULL, kmax = 10,
-  verbose = FALSE, max_iter = 100, parallel2 = NULL, converged = 10^-1,
-  redSpace = NULL, affinity = 0, evolution = FALSE, subtopoX = NULL,
-  ratio = TRUE, logtype = 2, initnets = FALSE, domean = TRUE,
-  modulesize = 5, compress = FALSE, increase = TRUE, fpfn = c(0.1, 0.1),
+  verbose = FALSE, max_iter = 100, parallel2 = NULL,
+  converged = 10^-1, redSpace = NULL, affinity = 0,
+  evolution = FALSE, subtopoX = NULL, ratio = TRUE, logtype = 2,
+  initnets = FALSE, domean = TRUE, modulesize = 5,
+  compress = FALSE, increase = TRUE, fpfn = c(0.1, 0.1),
   multi = FALSE)
 }
 \arguments{
@@ -111,7 +112,6 @@ sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 data <- (sim$data - 0.5)/0.5
 data <- data + rnorm(length(data), 0, 1)
 result <- mnem(data, k = 2, starts = 2)
-plot(result)
 }
 \author{
 Martin Pirkl

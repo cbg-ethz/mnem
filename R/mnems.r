@@ -195,6 +195,49 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
     }
     return(ic)
 }
+#' Learn K.
+#' High level function for learning the number of components k, if unknown.
+#' @param D data with cells indexing the columns and features (E-genes)
+#' indexing the rows
+#' @param ks vector of number of components k to test
+#' @param man logical. manual data penalty, e.g. man=TRUE and pen=2 for an
+#' approximation of the Akaike Information Criterion
+#' @param degree different degree of penalty for complexity: positive entries
+#' of transitively reduced phis or phi^r (degree=0), phi^r and mixture
+#' components minus one k-1 (1), phi^r, k-1 and positive entries of thetas (2),
+#' positive entries of transitively closed phis or phi^t, k-1 (3), phi^t, theta,
+#' k-1 (4, default), all entries of phis, thetas and k-1 (5)
+#' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
+#' for natural)
+#' @param pen penalty weight for the data (e.g. pen=2 for approximate Akaike
+#' Information Criterion)
+#' @param useF use F (see publication) as complexity instead of phi and theta
+#' @param Fnorm normalize complexity of F, i.e. if two components have the
+#' same entry in F, it is only counted once
+#' @param ... additional parameters for the mnem main function
+#' @author Martin Pirkl
+#' @return wrapper to test several different component sizes k
+#' @export
+#' @examples
+#' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+#' data <- (sim$data - 0.5)/0.5
+#' data <- data + rnorm(length(data), 0, 1)
+#' result <- mnemk(data, ks = seq_len(2), starts = 2)
+mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
+                  pen = 2, useF = FALSE, Fnorm = FALSE, ...) {
+    kres <- list()
+    kic <- numeric(length(ks))
+    kll <- numeric(length(ks))
+    for (i in ks) {
+        kres[[i]] <- mnem(D, k = i, ...)
+        kic[i] <- getIC(kres[[i]], man = man, degree = degree,
+                        logtype = logtype, pen = pen, useF = useF,
+                        Fnorm = Fnorm)
+        kll[i] <- kres[[i]]$ll
+    }
+    res <- list(best = kres[[which.min(kic)]], ics = kic, lls = kll)
+    return(res)
+}
 #' Mixture NEMs - main function.
 #' This function simultaneously learns a mixture
 #' of causal networks and clusters of a cell population from single cell
@@ -266,7 +309,6 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 2)
-#' plot(result)
 mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                  method = "llr",
                  parallel = NULL, reduce = FALSE, runs = 1, starts = 3,
@@ -1298,8 +1340,6 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
-#' result <- mnem(data, k = 2, starts = 2)
-#' plot(result)
 simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,

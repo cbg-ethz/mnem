@@ -7,18 +7,19 @@ This function visualizes a graph encodedas a disjunctive nromal form.}
 \usage{
 plotDnf(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
   inhibitors = c(), connected = TRUE, CNOlist = NULL, cex = NULL,
-  fontsize = NULL, labelsize = NULL, type = 2, lwd = 1, edgelwd = 1,
-  legend = 0, x = 0, y = 0, xjust = 0, yjust = 0, width = 1,
-  height = 1, rankdir = "TB", rank = "same", layout = "dot",
-  main = "", sub = "", cex.main = 1.5, cex.sub = 1, col.sub = "grey",
-  fontcolor = NULL, nodestates = NULL, simulate = NULL,
-  andcolor = "transparent", edgecol = NULL, labels = NULL,
-  labelcol = "blue", nodelabel = NULL, nodecol = NULL, bordercol = NULL,
+  fontsize = NULL, labelsize = NULL, type = 2, lwd = 1,
+  edgelwd = 1, legend = 0, x = 0, y = 0, xjust = 0, yjust = 0,
+  width = 1, height = 1, rankdir = "TB", rank = "same",
+  layout = "dot", main = "", sub = "", cex.main = 1.5,
+  cex.sub = 1, col.sub = "grey", fontcolor = NULL,
+  nodestates = NULL, simulate = NULL, andcolor = "transparent",
+  edgecol = NULL, labels = NULL, labelcol = "blue",
+  nodelabel = NULL, nodecol = NULL, bordercol = NULL,
   nodeshape = NULL, verbose = FALSE, edgestyle = NULL,
-  nodeheight = NULL, nodewidth = NULL, edgewidth = NULL, lty = NULL,
-  hierarchy = NULL, showall = FALSE, nodefontsize = NULL,
-  edgehead = NULL, edgelabel = NULL, edgetail = NULL, bool = TRUE,
-  draw = TRUE, ...)
+  nodeheight = NULL, nodewidth = NULL, edgewidth = NULL,
+  lty = NULL, hierarchy = NULL, showall = FALSE,
+  nodefontsize = NULL, edgehead = NULL, edgelabel = NULL,
+  edgetail = NULL, bool = TRUE, draw = TRUE, ...)
 }
 \arguments{
 \item{dnf}{Hyper-graph in disjunctive normal form,

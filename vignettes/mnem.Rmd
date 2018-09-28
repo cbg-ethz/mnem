@@ -177,21 +177,15 @@ We forget the solution stored in 'simmini$Nem' and use the 'mnem' function to
    $n$ threads.
 
 ```{r, fig.height=6, fig.width=14, fig.cap=fig.cap01}
-mlist <- list()
-mpen <- mllh <- numeric(5)
-for (k in 1:5) {
-    mlist[[k]] <- mnem(data, k = k, search = "greedy", starts = 10,
+bestk <- mnemk(data, ks = 1:5, search = "greedy", starts = 10,
                        parallel = NULL)
-    mpen[k] <- getIC(mlist[[k]])
-    mllh[k] <- mlist[[k]]$ll
-}
-plot(mlist[[which.min(mpen)]])
+plot(bestk$best)
 ```
 ```{r, fig.cap=fig.cap03}
 par(mfrow=c(1,2)) 
-plot(mllh, col = "blue", main = "raw log likelihood", type = "b",
+plot(bestk$lls, col = "blue", main = "raw log likelihood", type = "b",
      xlab = "number of components", ylab = "score")
-plot(mpen, col = "red", main = "penalized log likelihood", type = "b",
+plot(bestk$ics, col = "red", main = "penalized log likelihood", type = "b",
      xlab = "number of components", ylab = "score")
 ```
 
@@ -215,7 +209,7 @@ compete for some cells, while the third components has all cells
 exclusively at $100$\%.
 
 ```{r, fig.cap=fig.cap04, fig.height = 4, fig.width = 4}
-postprobs <- getAffinity(mlist[[3]]$probs, mw = mlist[[3]]$mw)
+postprobs <- getAffinity(bestk$best$probs, mw = bestk$best$mw)
 hist(postprobs, xlab = "responsibilities", main = "")
 ```
 
@@ -256,7 +250,7 @@ plot(result_disc)
 ```
 
 Apart from different mixture weights (more similar to the
-groudn truth) we get the same signaling
+ground truth) we get the same signaling
 networks.
 
 ## Multiple perturbations
