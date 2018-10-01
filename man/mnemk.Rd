@@ -37,7 +37,8 @@ same entry in F, it is only counted once}
 \item{...}{additional parameters for the mnem main function}
 }
 \value{
-wrapper to test several different component sizes k
+list containing the result of the best k as an mnem object and the
+raw and penalized log likelihoods
 }
 \description{
 Learn K.

@@ -128,7 +128,7 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
 #' @param Fnorm normalize complexity of F, i.e. if two components have the
 #' same entry in F, it is only counted once
 #' @author Martin Pirkl
-#' @return penalized likelihood
+#' @return penalized log likelihood
 #' @export
 #' @importFrom nem transitive.closure transitive.reduction
 #' @examples
@@ -216,7 +216,8 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
 #' same entry in F, it is only counted once
 #' @param ... additional parameters for the mnem main function
 #' @author Martin Pirkl
-#' @return wrapper to test several different component sizes k
+#' @return list containing the result of the best k as an mnem object and the
+#' raw and penalized log likelihoods
 #' @export
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
@@ -241,7 +242,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' Mixture NEMs - main function.
 #' This function simultaneously learns a mixture
 #' of causal networks and clusters of a cell population from single cell
-#' perturbation data (e.g. log odds of fold change) with a mutli-trait
+#' perturbation data (e.g. log odds of fold change) with a multi-trait
 #' readout. E.g. Pooled CRISPR scRNA-Seq data (Perturb-Seq. Dixit et al., 2016,
 #' Crop-Seq. Datlinger et al., 2017).
 #' @param D data with cells indexing the columns and features (E-genes)
@@ -290,8 +291,16 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' @param multi set to TRUE if the data contains multiple perturbation
 #' per sample; make sure the samples are reasonably named, e.g. "IRF1_CTNNB1"
 #' @author Martin Pirkl
-#' @return object of class mnem with the log expected of the hidden data
-#' and phi and theta for all components k
+#' @return object of class mnem
+#' \item{comp}{list of the component with each component being
+#' a list of the causal network phi and the E-gene attachment theta}
+#' \item{data}{input data matrix}
+#' \item{limits}{list of results for all indpendent searches}
+#' \item{ll}{log likelihood of the best model}
+#' \item{lls}{log likelihood ascent of the best model search}
+#' \item{mw}{vector with mixture weights}
+#' \item{probs}{kxl matrix containing the cell log likelihoods
+#' of the model}
 #' @export
 #' @import
 #' epiNEM
@@ -328,7 +337,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                           search = "exhaustive", reduce = TRUE,
                           verbose = verbose, parallel = c(parallel, parallel2),
                           subtopo = subtopoX, ratio = ratio, domean = FALSE,
-                          modulesize = modulesize)$redSpace
+                          modulesize = modulesize, logtype = logtype)$redSpace
     }
     if (!is.null(parallel)) { if (parallel == 1) { parallel <- NULL } }
     D.backup <- D
@@ -361,7 +370,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                             runs = runs,
                             verbose = verbose, redSpace = redSpace,
                             ratio = ratio, domean = domean,
-                            modulesize = modulesize, Rho = Rho)
+                            modulesize = modulesize, Rho = Rho,
+                            logtype = logtype)
             init <- initComps(data, k, starts, verbose, meanet)
             probscl <- 0
         } else {
@@ -400,7 +410,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                       runs = runs,
                                       verbose = verbose, redSpace = redSpace,
                                       ratio = ratio, domean = domean,
-                                      modulesize = modulesize, Rho = Rho)
+                                      modulesize = modulesize, Rho = Rho,
+                                      logtype = logtype)
         limits[[1]]$res[[1]]$D <- NULL
         res <- list()
         res[[1]] <- list()
@@ -568,7 +579,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                                        ratio = ratio,
                                                        domean = domean,
                                                        modulesize = modulesize,
-                                                       Rho = RhoR)
+                                                       Rho = RhoR,
+                                                       logtype = logtype)
                                  } else {
                                      test01 <- list()
                                      test01scores <- numeric(3)
@@ -595,7 +607,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                                               domean = domean,
                                                               odulesize =
                                                                   modulesize,
-                                                              Rho = RhoR)
+                                                              Rho = RhoR,
+                                                              logtype = logtype)
                                          test01scores[j] <-
                                              max(test01[[j]]$scores)
                                      }
@@ -801,7 +814,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
 #' for natural)
 #' @param ... additional parameters for hte nem function
 #' @author Martin Pirkl
-#' @return returns bootstrap support for each edge in each component (phi)
+#' @return returns bootstrap support for each edge in each component (phi); list
+#' of adjacency matrices
 #' @export
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
@@ -1242,7 +1256,11 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' @param k number of clusters
 #' @param ... additional arguments for standard nem function
 #' @author Martin Pirkl
-#' @return family of nems
+#' @return family of nems; the first k list entries hold full information of
+#' the standard nem search
+#' \item{comp}{list of all adjacency matrices phi}
+#' \item{mw}{vector of mixture weights}
+#' \item{probs}{fake cell probabilities (see mw: mixture weights)}
 #' @export
 #' @import
 #' stats
@@ -1287,9 +1305,7 @@ clustNEM <- function(data, k = 2:5, ...) {
     for (i in seq_len(K)) {
         res$comp[[i]] <- list()
         tmp <- res[[i]]$adj
-        ## the next if biases towards clustNEM
         if (nrow(tmp) < Sgenes) {
-            print("test")
             smiss <- unique(colnames(data)[-which(colnames(data)
                                                   %in% colnames(tmp))])
             tmp <-
@@ -1327,6 +1343,12 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' no quadruple knock-downs
 #' @author Martin Pirkl
 #' @return simulation object with meta information and data
+#' \item{Nem}{list of adjacency matrixes generatign the data}
+#' \item{theta}{E-gene attachaments}
+#' \item{data}{data matrix}
+#' \item{index}{index for which Nem generated which cell
+#' (data column)}
+#' \item{mw}{vector of input mixture weights}
 #' @export
 #' @import
 #' epiNEM

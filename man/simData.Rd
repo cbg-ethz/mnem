@@ -40,6 +40,12 @@ no quadruple knock-downs}
 }
 \value{
 simulation object with meta information and data
+\item{Nem}{list of adjacency matrixes generatign the data}
+\item{theta}{E-gene attachaments}
+\item{data}{data matrix}
+\item{index}{index for which Nem generated which cell
+(data column)}
+\item{mw}{vector of input mixture weights}
 }
 \description{
 Simulate data. This function simulates single cell data from a random

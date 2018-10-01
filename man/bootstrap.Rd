@@ -22,7 +22,8 @@ for natural)}
 \item{...}{additional parameters for hte nem function}
 }
 \value{
-returns bootstrap support for each edge in each component (phi)
+returns bootstrap support for each edge in each component (phi); list
+of adjacency matrices
 }
 \description{
 Bootstrap.

@@ -109,17 +109,17 @@ modAdj <- function(adj, D) {
 }
 #' @noRd
 getRho <- function(data) {
-    
+
     Sgenes <- getSgenes(data)
-    
+
     Rho <- matrix(0, length(Sgenes), ncol(data))
-    
+
     for (i in seq_len(length(Sgenes))) {
         Rho[i, grep(paste0("^", Sgenes[i], "_|_", Sgenes[i],
                            "$|_", Sgenes[i], "_|^", Sgenes[i], "$"),
                     colnames(data))] <- 1
     }
-    
+
     rownames(Rho) <- Sgenes
     colnames(Rho) <- colnames(data)
     Rho <- Rho[naturalsort(rownames(Rho)), ]
@@ -159,9 +159,9 @@ initps <- function(data, ks, k, starts = 3) {
         }
     }
     probscl <- list()
-    
+
     n <- getSgeneN(data)
-    
+
     count <- 0
     llstr <- NULL
     resstr <- NULL
@@ -196,7 +196,7 @@ initps <- function(data, ks, k, starts = 3) {
             probscl[[count]] <- log2(tmp)
         }
     }
-    
+
     return(probscl)
 }
 #' @noRd
@@ -595,14 +595,22 @@ nemEst <- function(data, maxiter = 100, start = "null",
     nem <- list(phi = phibest, theta = thetabest, iter = iter,
                 ll = llbest, lls = lls, num = numbest, C = Cz,
                 O = Obest, E = E0)
-    class(nem) <- "nemEst" 
+    class(nem) <- "nemEst"
     return(nem)
 }
 #' @noRd
-doMean <- function(D, weights = NULL, Rho = NULL) {
+doMean <- function(D, weights = NULL, Rho = NULL, logtype = 2) {
     mD <- matrix(0, nrow(D), length(unique(colnames(D))))
     if (!is.null(weights)) {
-        D <- t(t(D)*weights)
+        doodds <- FALSE
+        if (doodds) {
+            A <- exp(D)/(1+exp(D))
+            D <- log(t(t(A)*weights +
+                       (1-weights)*0.5)/t(t(1 - A)*weights +
+                                          (1-weights)*0.5))/log(logtype)
+        } else {
+            D <- t(t(D)*weights)
+        }
     }
     for (i in seq_len(length(unique(colnames(D))))) {
         mD[, i] <-
@@ -619,12 +627,12 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
                     subtopo = NULL, ratio = TRUE, parallel = NULL,
                     prior = NULL, fpfn = c(0.1, 0.1),
                     modulesize = 4, search = "exhaustive", domean = TRUE,
-                    Rho = NULL) {
+                    Rho = NULL, logtype = 2) {
     D <- data <- modData(D)
     n <- getSgeneN(D)
     Sgenes <- getSgenes(D)
     if (domean) {
-        D <- doMean(D, weights = weights, Rho = Rho)
+        D <- doMean(D, weights = weights, Rho = Rho, logtype = logtype)
         weights <- rep(1, ncol(D))
         sumdata <- data <- D
     } else {
@@ -675,7 +683,8 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
                          verbose = verbose,
                          redSpace = redSpace, trans.close = trans.close,
                          subtopo = subtopo, prior = prior, ratio = ratio,
-                         domean = FALSE, fpfn = fpfn, Rho = Rho)
+                         domean = FALSE, fpfn = fpfn, Rho = Rho,
+                         logtype = logtype)
             if (is.null(fullnet)) {
                 fullnet <- tmp$adj
             } else {
@@ -722,7 +731,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   verbose = FALSE, redSpace = NULL,
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
                   ratio = TRUE, domean = TRUE, modulesize = 5,
-                  fpfn = c(0.1, 0.1), Rho = NULL, ...) {
+                  fpfn = c(0.1, 0.1), Rho = NULL, logtype = 2, ...) {
     get.deletions <- getFromNamespace("get.deletions", "nem")
     get.insertions <- getFromNamespace("get.insertions", "nem")
     get.reversions <- getFromNamespace("get.reversions", "nem")
@@ -740,7 +749,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                              subtopo = subtopo, fpfn = fpfn,
                              ratio = ratio, parallel = parallel, prior = prior,
                              modulesize = modulesize, search = search,
-                             domean = domean, Rho = Rho)
+                             domean = domean, Rho = Rho, logtype = logtype)
         }
         if (search %in% "exhaustive") {
             search <- "greedy"
@@ -751,7 +760,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     colnames(D) <- gsub("\\..*", "", colnames(D))
     if (!is.null(Rho)) { Rho <- getRho(D) }
     if (domean) {
-        D <- doMean(D, weights = weights, Rho = Rho)
+        D <- doMean(D, weights = weights, Rho = Rho, logtype = logtype)
         weights <- rep(1, ncol(D))
         if (!is.null(Rho)) { Rho <- getRho(D) }
     }
@@ -786,7 +795,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     score <- score$score
     oldscore <- score
     allscores <- score
-    
+
     if (!is.null(parallel)) {
         get.deletions <- getFromNamespace("get.deletions", "nem")
         get.insertions <- getFromNamespace("get.insertions", "nem")
@@ -898,7 +907,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         better <- transitive.closure(models[[best]], mat = TRUE)
         diag(better) <- 1
     }
-    
+
     if (search %in% "estimate") {
         if (!is.null(weights)) {
             Dw <- t(t(D)*weights)
@@ -912,7 +921,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         allscores <- tmp$lls
         subweights <- Dw%*%cbind(tmp$phi[colnames(Dw), ], 0)
     }
-    
+
     if (!is.null(parallel)) {
         sfStop()
     }
@@ -925,7 +934,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         subweights <- subtopo$subweights
         subtopo <- subtopo$subtopo
     }
-    
+
     better <- transitive.reduction(better)
     better <- better[order(as.numeric(rownames(better))),
                      order(as.numeric(colnames(better)))]
@@ -938,7 +947,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
 adj2dnf <- function(A) {
 
     dnf <- NULL
-    
+
     for (i in seq_len(ncol(A))) {
         for (j in seq_len(nrow(A))) {
             if (i %in% j) { next() }
@@ -953,7 +962,7 @@ adj2dnf <- function(A) {
     }
 
     dnf <- unique(dnf)
-    
+
     return(dnf)
 
 }
@@ -1092,7 +1101,7 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
 adj2dnf <- function(A) {
 
     dnf <- NULL
-    
+
     for (i in seq_len(ncol(A))) {
         dnf <- c(dnf, rownames(A))
         for (j in seq_len(nrow(A))) {
@@ -1106,11 +1115,11 @@ adj2dnf <- function(A) {
             }
         }
     }
-    
+
     dnf <- unique(dnf)
-    
+
     return(dnf)
-    
+
 }
 #' @noRd
 simulateDnf <- function(dnf, stimuli = NULL, inhibitors = NULL) {

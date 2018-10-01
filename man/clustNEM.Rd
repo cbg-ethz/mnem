@@ -15,7 +15,11 @@ clustNEM(data, k = 2:5, ...)
 \item{...}{additional arguments for standard nem function}
 }
 \value{
-family of nems
+family of nems; the first k list entries hold full information of
+the standard nem search
+\item{comp}{list of all adjacency matrices phi}
+\item{mw}{vector of mixture weights}
+\item{probs}{fake cell probabilities (see mw: mixture weights)}
 }
 \description{
 Cluster NEM.

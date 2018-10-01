@@ -35,7 +35,7 @@ Information Criterion)}
 same entry in F, it is only counted once}
 }
 \value{
-penalized likelihood
+penalized log likelihood
 }
 \description{
 Calculate negative penalized log likelihood.

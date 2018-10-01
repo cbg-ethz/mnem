@@ -167,7 +167,7 @@ We forget the solution stored in 'simmini$Nem' and use the 'mnem' function to
    log likelihood to choose the best $k$. Figure 3 shows the best mixture of
    our causal networks with $k=3$. We have found the same causal
    networks we used to generate the data. However, mixture weights are
-   quite different to our input. E.g. only $34$\% instead of $40$\%
+   quite different to our input. E.g. only $36.1$\% instead of $40$\%
    for our largest component. Interestingly in the red and brown
    networks S-gene 1 is always at the bottom and this similarity leads
    to the fact, that best cell in the red network never reaches a
@@ -290,8 +290,8 @@ result <- mnem(data, k = 3, search = "greedy", multi = TRUE, starts = 10)
 plot(result)
 ```
 
-M\&NEM infers the correct causal networks for $k=3$ slightly better
-mixture weights than without sample with multiple knock-downs.
+M\&NEM infers the correct causal networks for $k=3$ and similar
+mixture weights.
 
 # Application to pooled CRISPR screens
 
@@ -428,6 +428,64 @@ rest of our application are shown in Pirkl & Beerenwinkel (2018).
 ```{r}
 sessionInfo()
 ```
+# Discrete data model
+
+Log odds are a reasonable way for the data normalization, if the
+perturbation experiments are accompanied by a single control (Pirkl \&
+Beerenwinkel 2018). If the
+experimental setup includes positive control (e.g. stimulated cells)
+and negative control (unstimulated), discretizing the data to $0,1$ is
+also feasible (Markowetz et al., 2007). 
+
+Let $\Phi$ be the transitively closed adjacency matrix of the causal
+network connecting the S-genes and $\Theta$ the E-gene attachment with
+$\theta_{ij} = 1$, if E-gene $j$ is attached to S-gene $i$. Let $\rho$
+be the perturbation map with $\rho_{ij} = 1$, if cell $j$ has been
+perturbed by a knock-down of S-gene $i$.
+
+In the case of discrete data we need to account for false positives
+and negatives with rates $\alpha$ and $\beta$. In this case we
+calculate
+the responsibilities by
+\begin{equation*}
+    \gamma_{ik} = \frac{\pi_k \prod\limits_{j=1}^m P\left(d_{ji} =
+    a \mid f_{k,ij} = b\right)}{\sum\limits_s \pi_s
+    \prod\limits_{j=1}^m P\left(d_{ji} = a \mid f_{s,ij} = b\right)}
+\end{equation*}
+with the discrete data $D = \left(d_{ij}\right)$, $F_k =
+\rho^T\Phi_k\Theta_k = \left(f_{k,ij}\right)$ and
+\begin{equation*}
+    P\left(d_{ji} = a \mid f_{k,ij} = b\right) = \begin{cases}
+    \alpha &\text{if } a = 1, b = 0\\
+    1 - \alpha &\text{if } a = 0, b = 0\\
+    \beta &\text{if } a = 0, b = 1\\
+    1 - \beta &\text{if } a = 1, b = 1
+\end{cases}.
+\end{equation*}
+
+Analogously we calculate the likelihood of the mixture by
+\begin{equation}\label{mlh}
+    \mathbf{\mathcal{L}} = \prod\limits_{i=1}^l \sum\limits_k \pi_k
+    \prod\limits_{j=1}^m P\left(d_{ji} \mid f_{k,ij} \right).
+\end{equation}
+
+In contrast to the log odds we cannot just weight the data matrix by
+the responsibilities. We use the following adjustment for the
+conditional
+probabilities during the optimization of $\Phi_k$ and $\Theta_k$.
+\begin{equation*}
+    P\left(d_{ji} \mid f_{k,ij} \right) = \gamma_{ik}\delta +
+    \left(1-\gamma_{ik}\right)0.5
+\end{equation*}
+
+with $\delta \in \left\{\alpha, 1 - \alpha, \beta, 1 -
+\beta\right\}$. Hence, the smaller the responsibility the closer the
+conditional probability is to $0.5$ and the less influence the cell
+has on the optimization.
+
+If cells exist, which have been perturbed by a knock-down of more than
+one S-gene, values greater than $1$ in $F_k$ have to be normalized to
+$1$. This is independent of discrete or continuous data.
 
 # References:
 

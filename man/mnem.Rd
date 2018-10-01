@@ -5,7 +5,7 @@
 \title{Mixture NEMs - main function.
 This function simultaneously learns a mixture
 of causal networks and clusters of a cell population from single cell
-perturbation data (e.g. log odds of fold change) with a mutli-trait
+perturbation data (e.g. log odds of fold change) with a multi-trait
 readout. E.g. Pooled CRISPR scRNA-Seq data (Perturb-Seq. Dixit et al., 2016,
 Crop-Seq. Datlinger et al., 2017).}
 \usage{
@@ -96,14 +96,22 @@ negative rates for discrete data}
 per sample; make sure the samples are reasonably named, e.g. "IRF1_CTNNB1"}
 }
 \value{
-object of class mnem with the log expected of the hidden data
-and phi and theta for all components k
+object of class mnem
+\item{comp}{list of the component with each component being
+a list of the causal network phi and the E-gene attachment theta}
+\item{data}{input data matrix}
+\item{limits}{list of results for all indpendent searches}
+\item{ll}{log likelihood of the best model}
+\item{lls}{log likelihood ascent of the best model search}
+\item{mw}{vector with mixture weights}
+\item{probs}{kxl matrix containing the cell log likelihoods
+of the model}
 }
 \description{
 Mixture NEMs - main function.
 This function simultaneously learns a mixture
 of causal networks and clusters of a cell population from single cell
-perturbation data (e.g. log odds of fold change) with a mutli-trait
+perturbation data (e.g. log odds of fold change) with a multi-trait
 readout. E.g. Pooled CRISPR scRNA-Seq data (Perturb-Seq. Dixit et al., 2016,
 Crop-Seq. Datlinger et al., 2017).
 }
