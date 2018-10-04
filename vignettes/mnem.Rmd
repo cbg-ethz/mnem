@@ -84,10 +84,11 @@ paltmp[3] <- "blue"
 paltmp[4] <- "brown"
 palette(paltmp)
 ```
-Install the package with the bioconductor function.
+Install the package with the bioconductor manager package.
 ```{r, eval=FALSE}
-source("https://bioconductor.org/biocLite.R")
-biocLite("mnem")
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("mnem")
 ```
 Load the package with the library function.
 ```{r}
@@ -97,7 +98,8 @@ library(mnem)
 # Small example
 
 The input data is an m times n matrix of log odds (e.g. for fold changes as in
-    the R package "limma"). The *i*th row of the *j*th column are the log odds
+    the R package 'limma', Ritchie *et al.*, 2015). The *i*th row of
+    the *j*th column are the log odds
     for feature (E-gene) i in cell j. As in the case of the original NEM, the
     data consists of a multitude of E-genes. However, where for the original
     NEM only one column complies to each perturbed signaling gene (S-gene),
@@ -110,7 +112,8 @@ The M\&NEM package includes a functions for the simulation of typical single
 cell log odds. We use this function to create data for three S-genes and
     eight E-genes. Two E-genes for each S-gene and two uninformative E-genes.
     Additionally we generate the data from a mixture of two components
-    and sample $100$ cells, $20$ for one and $80$ for the other component
+    and sample $100$ cells with different numbers of cells belonging
+    to each component
     (approx. mixture weights: mw). The function simulates discrete data ($1$
     for effect and $0$ for no effect). We transform the discrete data to log
     odds by adding Gaussian noise with mean $1$ to all $1$s and with mean $-1$
@@ -119,22 +122,22 @@ cell log odds. We use this function to create data for three S-genes and
 
 
 Figure 1 shows a heatmap of our generated data. Since we used
-only little noise, effects and no effects are still clearly distinguished
-into shades of blue and red. We can identify the uninformative E-genes
-(no rownames) by their random/unique patterns. There is a clear
-clustering noticeable for all knock-downs hinting at differential
+only mild noise, effects and no effects are still clearly distinguished
+into shades of blue and red. We can identify the uninformative E-gene
+(no rownames) by its random/unique patterns. There is a clear
+clustering noticeable for the knock-downs hinting at differential
 causal regulation within the cell population. The E-gene numbers
 denote the attachment of the E-genes in regards to the first
 component. For the other components attachments differ and do not agree with the
 E-gene name anymore.
 
 ```{r, fig.height=6, fig.width=10, fig.cap=fig.cap0}
-seed <- 8675309
+seed <- 1234
 Sgenes <- 3
 Egenes <- 10
 nCells <- 100
-uninform <- 2
-mw <- c(0.4, 0.3, 0.3)
+uninform <- 1
+mw <- c(0.3, 0.3, 0.4)
 Nems <- 3
 noise <- 0.5
 set.seed(seed)    
@@ -153,31 +156,30 @@ plot(simmini, data)
 ```
 
 Figure 2 shows three different causal networks for the population
-of simulated cells. The choses mixture weights almost agree with the
+of simulated cells. The chosen mixture weights almost agree with the
 noisy mixture weights due to only little noise.
 
 ## Network inference w.r.t. complexity
 
 We forget the solution stored in 'simmini$Nem' and use the 'mnem' function to
    infer
-   the network. We choose our a greedy search for the M-step and $10$
-   independent starts for the EM algorithm. Since the number of components $k$
-   is a priori
-   not known, we perform optimization for $k=1,2,3,4,5$ and use our penalized
+   the network. We choose our a greedy search for the M-step and $3$
+   independent starts for the EM algorithm to keep this vignette
+   short. However, even for only three S-genes more starts are
+   generally recommended.
+   
+   Since the number of components $k$ is a priori
+   not known, we perform optimization for $k=1,2,3,4$ and use our penalized
    log likelihood to choose the best $k$. Figure 3 shows the best mixture of
    our causal networks with $k=3$. We have found the same causal
-   networks we used to generate the data. However, mixture weights are
-   quite different to our input. E.g. only $36.1$\% instead of $40$\%
-   for our largest component. Interestingly in the red and brown
-   networks S-gene 1 is always at the bottom and this similarity leads
-   to the fact, that best cell in the red network never reaches a
-   responsibility of $100$\% for any cell attached to S-gene 1.
+   networks we used to generate the data.
    
    We can speed up the computation with the 'parallel = n' parameter with
    $n$ threads.
 
 ```{r, fig.height=6, fig.width=14, fig.cap=fig.cap01}
-bestk <- mnemk(data, ks = 1:5, search = "greedy", starts = 10,
+starts <- 3
+bestk <- mnemk(data, ks = 1:4, search = "greedy", starts = starts,
                        parallel = NULL)
 plot(bestk$best)
 ```
@@ -191,22 +193,19 @@ plot(bestk$ics, col = "red", main = "penalized log likelihood", type = "b",
 
 We compare the actual log likelihood shown in figure 4 (left, blue)
 to the penalized log likelihood
-(right, red). Notice that the raw log likelihoods of $k=4$ and $k=5$ are higher
-than the $k=3$ component model. However, if we penalize complexity
-the three component model gives us the best score (minimum). The five
-component model is now also overtaken by the two component
-model due to complexity or lack thereof, respectively.
+(right, red). Notice that the raw log likelihood of $k=4$ is higher
+than for the $k=3$ component model. However, if we penalize complexity
+the three component model gives us the best score (minimum). However,
+the penalized like the raw log likelihood is not guaranteed to have
+only a global, but can have several local optima. Hence, in practice
+when there are little time constraints larger $k>4$ should also be tested.
 
 ## Cell responsibilities
 
 Figure 5 shows the actual responsibilities of the best scoring
-model. Many cells reach a responsibility of $100\%$. This
-is expected due to the relatively low level of noise. However, some cells
-have responsibilities around $50$ and $80$\%, respectively. Also
-notice, that the intermediate responsibilities are symmetric. This
-means two of the three components are more similar to each other and
-compete for some cells, while the third components has all cells
-exclusively at $100$\%.
+model. They denote how well each cell fits to each
+component. e.g. when a cell has a responsibility of $100$\% for one
+component, then the responsibility for the other two is $0$\%.
 
 ```{r, fig.cap=fig.cap04, fig.height = 4, fig.width = 4}
 postprobs <- getAffinity(bestk$best$probs, mw = bestk$best$mw)
@@ -216,14 +215,15 @@ hist(postprobs, xlab = "responsibilities", main = "")
 ## Discrete data
 
 For certain data sets calculating binary data (1 for effect and 0 for no effect)
-might be more straightforward (e.g. Markowetz et al., 2005)
+might be more straightforward (e.g. Markowetz *et al*., 2005)
 than log odds. Thus mixture NEM also supports discrete data as input for the EM
 algorithm. To do inference on discrete data, we just have to set the method
 parameter to "disc". However, for likelihood calculations we need to set
 false positive and false negative rates. I.e. how many effects we assume are
 coming from noise and how many real effects have been turned to zeros. These are
-typically not known, but sometimes can be estimated. Although, Markowetz et al.,
-2007 have shown, that the causal network is stable across a variety of
+typically not known, but sometimes can be estimated. Although,
+Markowetz *et al*., 2007 have shown, that the causal network is stable
+across a variety of
 different rates and only breaks down for very unreasonable (i.e. high)
 values.
 
@@ -231,6 +231,7 @@ We choose false positive and false negative rates of $10\%$ each and apply
    them to our simulated data set.
 
 ```{r, fig.cap=fig.cap05, fig.height=6, fig.width=14}
+set.seed(seed)
 datadisc <- simmini$data
 fp <- sample(which(datadisc == 0), floor(0.1*sum(datadisc == 0)))
 fn <- sample(which(datadisc == 1), floor(0.1*sum(datadisc == 1)))
@@ -244,14 +245,10 @@ causal networks is still recognizable even with the addition of our (mild)
 noise. As a shortcut, we directly set the number of components to $3$.
 
 ```{r, fig.cap=fig.cap06, fig.height=6, fig.width=14}
-result_disc <- mnem(datadisc, k = 3, search = "greedy", starts = 10,
+result_disc <- mnem(datadisc, k = Nems, search = "greedy", starts = starts,
                         method = "disc", fpfn = c(0.1,0.1))
 plot(result_disc)
 ```
-
-Apart from different mixture weights (more similar to the
-ground truth) we get the same signaling
-networks.
 
 ## Multiple perturbations
 
@@ -259,7 +256,7 @@ Mixtures are in general very complex. Currently M\&NEM only supports the
 standard NEM approach and no other extensions, which would increase complexity
 even further. However, M\&NEM supports multiple perturbation per sample.
 The information of multiple perturbations is not used to infer more complex
-signaling structures like B-NEM (Pirkl et al., 2016). M\&NEM just uses the
+signaling structures like B-NEM (Pirkl *et al.*, 2016). M\&NEM just uses the
 information to increase accuracy of the standard NEM approach. E.g. let's
 assume during a knock-down of gene A genes E1 to E10 react and during a
 knock-down of gene B genes E11 to E20 react. A sample with a perturbation of
@@ -286,18 +283,16 @@ epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
                   bordercol = "transparent", dendrogram = "both")
 ```
 ```{r, fig.height=6, fig.width=10, fig.cap=fig.cap62}
-result <- mnem(data, k = 3, search = "greedy", multi = TRUE, starts = 10)
+result <- mnem(data, k = Nems, search = "greedy", multi = TRUE, starts = starts)
 plot(result)
 ```
-
-M\&NEM infers the correct causal networks for $k=3$ and similar
-mixture weights.
 
 # Application to pooled CRISPR screens
 
 We apply M\&NEM to three different data sets from two different pooled CRISPR
 screens, Crop-seq (Datlinger *et al.*, 2017) and
-Perturb-seq (Dixit *et al.*, 2016). Those screens consists of single cell RNAseq
+Perturb-seq (Dixit *et al.*, 2016). Those screens consists of single
+cell RNA-seq
 data. Each cell has been perturbed by a knock-down of a gene
 (S-gene) and each cell is observed by its gene expression profile
 (E-genes).
@@ -428,6 +423,7 @@ rest of our application are shown in Pirkl & Beerenwinkel (2018).
 ```{r}
 sessionInfo()
 ```
+
 # Discrete data model
 
 Log odds are a reasonable way for the data normalization, if the
@@ -435,7 +431,7 @@ perturbation experiments are accompanied by a single control (Pirkl \&
 Beerenwinkel 2018). If the
 experimental setup includes positive control (e.g. stimulated cells)
 and negative control (unstimulated), discretizing the data to $0,1$ is
-also feasible (Markowetz et al., 2007). 
+also feasible (Markowetz *et al.*, 2007). 
 
 Let $\Phi$ be the transitively closed adjacency matrix of the causal
 network connecting the S-genes and $\Theta$ the E-gene attachment with
@@ -520,10 +516,14 @@ non-synergistic interactions in signalling pathways using Boolean Nested Effect
 Models, Bioinformatics, Volume 32, Issue 6, 15 March 2016, Pages 893–900,
 https://doi.org/10.1093/bioinformatics/btv680
 
+Ritchie ME, Phipson B, Wu D, Hu Y, Law CW, Shi W, Smyth GK (2015).
+“limma powers differential expression analyses for RNA-sequencing and
+microarray studies.” Nucleic Acids Research, 43(7), e47.
+
 # Data Generation
 
-The R code for generating the data objects 'sim' and 'app' is shown
-in the accompanying R file.
+The R code for generating the data objects 'sim' (simulation results)
+and 'app' is shown in the accompanying R file.
 
 ```{r, eval=FALSE, include=FALSE}
 data <- read.csv("GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv",

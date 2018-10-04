@@ -51,7 +51,7 @@ NA
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
-#' result <- mnem(data, k = 2, starts = 2)
+#' result <- mnem(data, k = 2, starts = 1)
 #' resp <- getAffinity(result$probs, mw = result$mw, data = data)
 getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
                         data = matrix(0, 2, ncol(x))) {
@@ -137,8 +137,8 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
 #' data <- data + rnorm(length(data), 0, 1)
 #' pen <- numeric(3)
 #' result <- list()
-#' for (k in seq_len(3)) {
-#'     result[[k]] <- mnem(data, k = k, starts = 2)
+#' for (k in seq_len(2)) {
+#'     result[[k]] <- mnem(data, k = k, starts = 1)
 #'     pen[k] <- getIC(result[[k]])
 #' }
 #' print(pen)
@@ -223,7 +223,7 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
-#' result <- mnemk(data, ks = seq_len(2), starts = 2)
+#' result <- mnemk(data, ks = seq_len(2), starts = 1)
 mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
                   pen = 2, useF = FALSE, Fnorm = FALSE, ...) {
     kres <- list()
@@ -317,7 +317,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
-#' result <- mnem(data, k = 2, starts = 2)
+#' result <- mnem(data, k = 2, starts = 1)
 mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                  method = "llr",
                  parallel = NULL, reduce = FALSE, runs = 1, starts = 3,
@@ -821,8 +821,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
-#' result <- mnem(data, k = 2, starts = 2)
-#' boot <- bootstrap(result, size = 10)
+#' result <- mnem(data, k = 2, starts = 1)
+#' boot <- bootstrap(result, size = 2)
 bootstrap <- function(x, size = 1000, p = 1, logtype = 2, ...) {
     data <- x$data
     post <- getAffinity(x$probs, logtype = logtype, mw = x$mw, data = data)
@@ -855,8 +855,8 @@ bootstrap <- function(x, size = 1000, p = 1, logtype = 2, ...) {
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
-#' result <- mnem(data, k = 2, starts = 2)
-#' boot <- bootstrap(result, size = 10)
+#' result <- mnem(data, k = 2, starts = 1)
+#' boot <- bootstrap(result, size = 2)
 #' plot(boot)
 plot.bootmnem <- function(x, reduce = TRUE, ...) {
     dnfs <- freqs <- NULL
@@ -930,7 +930,7 @@ plot.bootmnem <- function(x, reduce = TRUE, ...) {
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
-#' result <- mnem(data, k = 2, starts = 2)
+#' result <- mnem(data, k = 2, starts = 1)
 #' plot(result)
 plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                                         # import deleted graphics
@@ -1269,7 +1269,7 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
-#' resulst <- clustNEM(data)
+#' resulst <- clustNEM(data, k = 2:3)
 clustNEM <- function(data, k = 2:5, ...) {
     smax <- 0
     K <- 1
@@ -1360,8 +1360,6 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' @importFrom utils combn
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
-#' data <- (sim$data - 0.5)/0.5
-#' data <- data + rnorm(length(data), 0, 1)
 simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,
@@ -1674,7 +1672,7 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 #' @import
 #' Rgraphviz
 #' @examples
-#' g <- c("!A+B=G", "C=G", "!D=G", "C+D+E=G")
+#' g <- c("!A+B+C=G", "C=G", "!D=G")
 #' plotDnf(g)
 plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                     inhibitors = c(), connected = TRUE,  CNOlist = NULL,
