@@ -50,8 +50,8 @@ data <- (sim$data - 0.5)/0.5
 data <- data + rnorm(length(data), 0, 1)
 pen <- numeric(3)
 result <- list()
-for (k in seq_len(3)) {
-    result[[k]] <- mnem(data, k = k, starts = 2)
+for (k in seq_len(2)) {
+    result[[k]] <- mnem(data, k = k, starts = 1)
     pen[k] <- getIC(result[[k]])
 }
 print(pen)

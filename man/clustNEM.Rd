@@ -29,7 +29,7 @@ This function clusters the data and performs standard nem on each cluster.
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 data <- (sim$data - 0.5)/0.5
 data <- data + rnorm(length(data), 0, 1)
-resulst <- clustNEM(data)
+resulst <- clustNEM(data, k = 2:3)
 }
 \author{
 Martin Pirkl

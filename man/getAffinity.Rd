@@ -38,7 +38,7 @@ hidden data.
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 data <- (sim$data - 0.5)/0.5
 data <- data + rnorm(length(data), 0, 1)
-result <- mnem(data, k = 2, starts = 2)
+result <- mnem(data, k = 2, starts = 1)
 resp <- getAffinity(result$probs, mw = result$mw, data = data)
 }
 \author{

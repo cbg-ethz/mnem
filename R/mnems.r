@@ -1,17 +1,3 @@
-#' Simulation results
-#' Example data: simulation results
-#' Contains four lists with results of mixtures with 3, 5, 10 and 20 S-genes.
-#' Each list consists of an array including 100 runs for three different
-#' noise levels, five different numbers of components (1,2,3,4,5) and three
-#' different methods, which results in overall 2400 runs. For each run the
-#' array includes values for time, over-fit, component accuracy (accuracy) and
-#' mixing weight accuracy (mixing).
-#' @name sim
-#' @docType data
-#' @usage sim
-#' @examples
-#' data(sim)
-NA
 #' Processed scRNAseq from pooled CRISPR screens
 #' Example data: mnem results for
 #' the Dixit et al., 2016 and Datlinger et al., pooled CRISPR screens.

@@ -149,7 +149,7 @@ Plot disjunctive normal form.
 This function visualizes a graph encodedas a disjunctive nromal form.
 }
 \examples{
-g <- c("!A+B=G", "C=G", "!D=G", "C+D+E=G")
+g <- c("!A+B+C=G", "C=G", "!D=G")
 plotDnf(g)
 }
 \author{

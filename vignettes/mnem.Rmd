@@ -522,8 +522,9 @@ microarray studies.” Nucleic Acids Research, 43(7), e47.
 
 # Data Generation
 
-The R code for generating the data objects 'sim' (simulation results)
-and 'app' is shown in the accompanying R file.
+The R code for generating the data object 'app' is shown in the
+accompanying R file. It also includes the code for the simulations
+from the method paper (Pirkl & Beerenwinkel 2018).
 
 ```{r, eval=FALSE, include=FALSE}
 data <- read.csv("GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv",
