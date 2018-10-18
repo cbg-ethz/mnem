@@ -9,16 +9,14 @@ plotDnf(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
   inhibitors = c(), connected = TRUE, CNOlist = NULL, cex = NULL,
   fontsize = NULL, labelsize = NULL, type = 2, lwd = 1,
   edgelwd = 1, legend = 0, x = 0, y = 0, xjust = 0, yjust = 0,
-  width = 1, height = 1, rankdir = "TB", rank = "same",
-  layout = "dot", main = "", sub = "", cex.main = 1.5,
-  cex.sub = 1, col.sub = "grey", fontcolor = NULL,
-  nodestates = NULL, simulate = NULL, andcolor = "transparent",
-  edgecol = NULL, labels = NULL, labelcol = "blue",
-  nodelabel = NULL, nodecol = NULL, bordercol = NULL,
-  nodeshape = NULL, verbose = FALSE, edgestyle = NULL,
-  nodeheight = NULL, nodewidth = NULL, edgewidth = NULL,
-  lty = NULL, hierarchy = NULL, showall = FALSE,
-  nodefontsize = NULL, edgehead = NULL, edgelabel = NULL,
+  width = 1, height = 1, layout = "dot", main = "", sub = "",
+  cex.main = 1.5, cex.sub = 1, col.sub = "grey", fontcolor = NULL,
+  nodestates = NULL, simulate = NULL, edgecol = NULL,
+  labels = NULL, labelcol = "blue", nodelabel = NULL,
+  nodecol = NULL, bordercol = NULL, nodeshape = NULL,
+  verbose = FALSE, edgestyle = NULL, nodeheight = NULL,
+  nodewidth = NULL, edgewidth = NULL, lty = NULL, hierarchy = NULL,
+  showall = FALSE, edgehead = NULL, edgelabel = NULL,
   edgetail = NULL, bool = TRUE, draw = TRUE, ...)
 }
 \arguments{
@@ -69,10 +67,6 @@ in a standard box.}
 
 \item{height}{Vertice height.}
 
-\item{rankdir}{not used}
-
-\item{rank}{not used}
-
 \item{layout}{Graph layout. See graphvizCapabilities()$layoutTypes.}
 
 \item{main}{Main title.}
@@ -92,8 +86,6 @@ in a standard box.}
 \item{simulate}{Simulate stimulation and inhibition of a list of vertices.
 E.g. simulate = list(stimuli = c("A", "B"), inhibitors = c("C", "D")).}
 
-\item{andcolor}{not used}
-
 \item{edgecol}{Vector with colors for every edge of the graph
 (not hyper-graph). E.g. an AND gate consists of three distinct edges.}
 
@@ -112,7 +104,7 @@ E.g. labels = list(A="test", B="label for B").}
 
 \item{verbose}{Verbose output.}
 
-\item{edgestyle}{not used}
+\item{edgestyle}{set the edge style like dashed, can be numerical}
 
 \item{nodeheight}{List of vertices with height as input.}
 
@@ -126,8 +118,6 @@ E.g. labels = list(A="test", B="label for B").}
 E.g. list(top = c("A", "B"), bottom = c("C", "D")).}
 
 \item{showall}{See "connected" above.}
-
-\item{nodefontsize}{not used}
 
 \item{edgehead}{Vector with edge heads.}
 

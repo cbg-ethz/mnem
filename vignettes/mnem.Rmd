@@ -460,24 +460,16 @@ with the discrete data $D = \left(d_{ij}\right)$, $F_k =
 \end{equation*}
 
 Analogously we calculate the likelihood of the mixture by
-\begin{equation}\label{mlh}
+\begin{equation*}
     \mathbf{\mathcal{L}} = \prod\limits_{i=1}^l \sum\limits_k \pi_k
     \prod\limits_{j=1}^m P\left(d_{ji} \mid f_{k,ij} \right).
-\end{equation}
-
-In contrast to the log odds we cannot just weight the data matrix by
-the responsibilities. We use the following adjustment for the
-conditional
-probabilities during the optimization of $\Phi_k$ and $\Theta_k$.
-\begin{equation*}
-    P\left(d_{ji} \mid f_{k,ij} \right) = \gamma_{ik}\delta +
-    \left(1-\gamma_{ik}\right)0.5
 \end{equation*}
 
-with $\delta \in \left\{\alpha, 1 - \alpha, \beta, 1 -
-\beta\right\}$. Hence, the smaller the responsibility the closer the
-conditional probability is to $0.5$ and the less influence the cell
-has on the optimization.
+In contrast to the log odds we cannot just weight the data matrix by
+the responsibilities. However, we can use the error probabilities and
+turn the discrete data into log odds. We turn all ones in the data
+matrix into $log\left(\frac{1-\beta}{\alpha}\right)$ and all zeros
+into $log\left(\frac{\beta}{1-\alpha}\right)$.
 
 If cells exist, which have been perturbed by a knock-down of more than
 one S-gene, values greater than $1$ in $F_k$ have to be normalized to

@@ -314,6 +314,11 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE) {
+    if (method %in% "disc") {
+        D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
+        D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
+        method <- "llr"
+    }
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
         colnames(D) <- gsub("_.*", "", colnames(D))
         if (any(duplicated(colnames(D)) == TRUE)) {
@@ -1313,8 +1318,6 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' mixture of networks.
 #' @param Sgenes number of Sgenes
 #' @param Egenes number of Egenes
-#' @param subsample range to subsample data. 1 means the full simulated data is
-#' used.
 #' @param Nems number of components
 #' @param reps number of replicates, if set (not realistic for cells)
 #' @param mw mixture weights (has to be vector of length Nems)
@@ -1327,6 +1330,8 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' @param multi a vector with the percentages of cell with multiple
 #' perturbations, e.g. c(0.2,0.1,0) for 20% double and 10% triple and
 #' no quadruple knock-downs
+#' @param subsample range to subsample data. 1 means the full simulated data is
+#' used
 #' @author Martin Pirkl
 #' @return simulation object with meta information and data
 #' \item{Nem}{list of adjacency matrixes generatign the data}
@@ -1346,10 +1351,10 @@ clustNEM <- function(data, k = 2:5, ...) {
 #' @importFrom utils combn
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
-simData <- function(Sgenes = 5, Egenes = 1, subsample = 1,
+simData <- function(Sgenes = 5, Egenes = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,
-                    edgeprob = 0.25, multi = NULL) {
+                    edgeprob = 0.25, multi = NULL, subsample = 1) {
     if (!is.null(mw) & Nems != length(mw)) {
         print(paste0("Vector of mixture weights 'mw' must be the length of the",
                      " number of komponents 'Nems'. Input 'Nems=", Nems,
@@ -1614,8 +1619,6 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 #' @param yjust Justification of legend box top, bottom or middle (-1,1,0).
 #' @param width Vertice width.
 #' @param height Vertice height.
-#' @param rankdir not used
-#' @param rank not used
 #' @param layout Graph layout. See graphvizCapabilities()$layoutTypes.
 #' @param main Main title.
 #' @param sub Subtitle.
@@ -1626,7 +1629,6 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 #' @param nodestates Binary state of each vertice.
 #' @param simulate Simulate stimulation and inhibition of a list of vertices.
 #' E.g. simulate = list(stimuli = c("A", "B"), inhibitors = c("C", "D")).
-#' @param andcolor not used
 #' @param edgecol Vector with colors for every edge of the graph
 #' (not hyper-graph). E.g. an AND gate consists of three distinct edges.
 #' @param labels Vector with labels for the edges.
@@ -1637,7 +1639,7 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 #' @param bordercol List of vertices with colors as input.
 #' @param nodeshape List of vertices with shapes (diamond, box, square,...).
 #' @param verbose Verbose output.
-#' @param edgestyle not used
+#' @param edgestyle set the edge style like dashed, can be numerical
 #' @param nodeheight List of vertices with height as input.
 #' @param nodewidth List of vertices with width as input.
 #' @param edgewidth Vector with edge widths.
@@ -1645,7 +1647,6 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 #' @param hierarchy List with the hierarchy of the vertices.
 #' E.g. list(top = c("A", "B"), bottom = c("C", "D")).
 #' @param showall See "connected" above.
-#' @param nodefontsize not used
 #' @param edgehead Vector with edge heads.
 #' @param edgelabel Vector with edge labels.
 #' @param edgetail Vector with edge tails.
@@ -1664,16 +1665,16 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                     inhibitors = c(), connected = TRUE,  CNOlist = NULL,
                     cex = NULL, fontsize = NULL, labelsize = NULL, type = 2,
                     lwd = 1, edgelwd = 1, legend = 0, x = 0, y = 0, xjust = 0,
-                    yjust = 0, width = 1, height = 1, rankdir = "TB",
-                    rank = "same", layout = "dot", main = "", sub = "",
+                    yjust = 0, width = 1, height = 1, layout = "dot", main = "",
+                    sub = "",
                     cex.main = 1.5, cex.sub = 1, col.sub = "grey",
                     fontcolor = NULL, nodestates = NULL, simulate = NULL,
-                    andcolor = "transparent", edgecol = NULL, labels = NULL,
+                    edgecol = NULL, labels = NULL,
                     labelcol = "blue", nodelabel = NULL, nodecol = NULL,
                     bordercol = NULL, nodeshape = NULL, verbose = FALSE,
                     edgestyle = NULL, nodeheight = NULL, nodewidth = NULL,
                     edgewidth = NULL, lty = NULL, hierarchy = NULL,
-                    showall = FALSE, nodefontsize = NULL, edgehead = NULL,
+                    showall = FALSE, edgehead = NULL,
                     edgelabel = NULL, edgetail = NULL, bool = TRUE,
                     draw = TRUE, ...) {
     if (is.matrix(dnf)) {
@@ -1969,7 +1970,6 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
             }
             nodelabel[[nodes[[i]]@name]] <- "AND"
             nodes[[i]]@attrs$label <- ""
-            nodes[[i]]@attrs$fontcolor <- andcolor
             if (is.null(bordercol[[nodes[[i]]@name]])) {
                 nodes[[i]]@attrs$color <- "grey"
             } else {
@@ -2314,7 +2314,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         g2 <- agopen(name="boolean", nodes=nodes, recipEdges = "distinct",
                      edges=edges, edgeMode="undirected",
                      attrs=list(edge = list(),
-                                graph = list(lwd = lwd,rankdir = rankdir),
+                                graph = list(lwd = lwd),
                                 node=list(lwd = lwd, fixedsize=FALSE)))
 
         plot(g2, "dot", lwd = lwd, ...)
@@ -2581,16 +2581,6 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         for (i in seq_len(length(nodelabel))) {
             nodelabels[which(names(nodelabels) %in% names(nodelabel)[i])] <-
                 nodelabel[i]
-        }
-        nodefontsizes <- NULL
-        if (!is.null(nodefontsize)) {
-            nodefontsizes <- rep(14, length(nodelabels))
-            names(nodefontsizes) <- names(nodelabels)
-            for (i in seq_len(length(nodefontsize))) {
-                nodefontsizes[which(names(nodefontsizes)
-                                    %in% names(nodefontsize)[i])] <-
-                    nodefontsize[[i]]
-            }
         }
         g <- layoutGraph(g, edgeAttrs = list(arrowhead = arrowheads,
                                              color = arrowcolors,

@@ -5,17 +5,14 @@
 \title{Simulate data. This function simulates single cell data from a random
 mixture of networks.}
 \usage{
-simData(Sgenes = 5, Egenes = 1, subsample = 1, Nems = 2,
-  reps = NULL, mw = NULL, evolution = FALSE, nCells = 1000,
-  uninform = 0, unitheta = FALSE, edgeprob = 0.25, multi = NULL)
+simData(Sgenes = 5, Egenes = 1, Nems = 2, reps = NULL, mw = NULL,
+  evolution = FALSE, nCells = 1000, uninform = 0, unitheta = FALSE,
+  edgeprob = 0.25, multi = NULL, subsample = 1)
 }
 \arguments{
 \item{Sgenes}{number of Sgenes}
 
 \item{Egenes}{number of Egenes}
-
-\item{subsample}{range to subsample data. 1 means the full simulated data is
-used.}
 
 \item{Nems}{number of components}
 
@@ -37,6 +34,9 @@ dense networks}
 \item{multi}{a vector with the percentages of cell with multiple
 perturbations, e.g. c(0.2,0.1,0) for 20% double and 10% triple and
 no quadruple knock-downs}
+
+\item{subsample}{range to subsample data. 1 means the full simulated data is
+used}
 }
 \value{
 simulation object with meta information and data
