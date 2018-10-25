@@ -485,8 +485,8 @@ nemEst <- function(data, maxiter = 100, start = "null",
         diag(phi) <- 1
         phi[seq_len(length(phi))] <- sample(c(0,1), length(phi), replace = TRUE)
         phi[lower.tri(phi)] <- 0
-        phi <- phi[sample(seq_len(nrow(phi)), nrow(phi)), sample(seq_len(nrow(phi)),
-                                                                 nrow(phi))]
+        phi <- phi[sample(seq_len(nrow(phi)), nrow(phi)),
+                   sample(seq_len(nrow(phi)), nrow(phi))]
         phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
     } else if ("null" %in% start) {
         phi <- phi*0
