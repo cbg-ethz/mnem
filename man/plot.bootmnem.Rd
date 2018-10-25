@@ -2,7 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{plot.bootmnem}
 \alias{plot.bootmnem}
-\title{Plot boostrap mnem result.}
+\title{Plot bootstrap mnem result.}
 \usage{
 \method{plot}{bootmnem}(x, reduce = TRUE, ...)
 }
@@ -17,7 +17,7 @@
 visualization of bootstrap mnem result with Rgraphviz
 }
 \description{
-Plot boostrap mnem result.
+Plot bootstrap mnem result.
 }
 \examples{
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))

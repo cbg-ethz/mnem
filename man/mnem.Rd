@@ -2,12 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{mnem}
 \alias{mnem}
-\title{Mixture NEMs - main function.
-This function simultaneously learns a mixture
-of causal networks and clusters of a cell population from single cell
-perturbation data (e.g. log odds of fold change) with a multi-trait
-readout. E.g. Pooled CRISPR scRNA-Seq data (Perturb-Seq. Dixit et al., 2016,
-Crop-Seq. Datlinger et al., 2017).}
+\title{Mixture NEMs - main function.}
 \usage{
 mnem(D, inference = "em", search = "greedy", start = NULL,
   method = "llr", parallel = NULL, reduce = FALSE, runs = 1,
@@ -108,7 +103,6 @@ a list of the causal network phi and the E-gene attachment theta}
 of the model}
 }
 \description{
-Mixture NEMs - main function.
 This function simultaneously learns a mixture
 of causal networks and clusters of a cell population from single cell
 perturbation data (e.g. log odds of fold change) with a multi-trait

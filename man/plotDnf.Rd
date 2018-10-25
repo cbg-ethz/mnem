@@ -2,8 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{plotDnf}
 \alias{plotDnf}
-\title{Plot disjunctive normal form.
-This function visualizes a graph encodedas a disjunctive nromal form.}
+\title{Plot disjunctive normal form.}
 \usage{
 plotDnf(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
   inhibitors = c(), connected = TRUE, CNOlist = NULL, cex = NULL,
@@ -135,8 +134,7 @@ E.g. list(top = c("A", "B"), bottom = c("C", "D")).}
 Rgraphviz object
 }
 \description{
-Plot disjunctive normal form.
-This function visualizes a graph encodedas a disjunctive nromal form.
+This function visualizes a graph encoded as a disjunctive nromal form.
 }
 \examples{
 g <- c("!A+B+C=G", "C=G", "!D=G")

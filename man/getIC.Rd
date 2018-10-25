@@ -2,11 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{getIC}
 \alias{getIC}
-\title{Calculate negative penalized log likelihood.
-This function calculates
-a negative penalized log likelihood given a object of class mnem. This
-penalized likelihood is based on the normal likelihood and penalizes
-complexity of the mixture components (i.e. the networks).}
+\title{Calculate negative penalized log likelihood.}
 \usage{
 getIC(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
   useF = FALSE, Fnorm = FALSE)
@@ -38,7 +34,6 @@ same entry in F, it is only counted once}
 penalized log likelihood
 }
 \description{
-Calculate negative penalized log likelihood.
 This function calculates
 a negative penalized log likelihood given a object of class mnem. This
 penalized likelihood is based on the normal likelihood and penalizes

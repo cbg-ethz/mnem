@@ -2,8 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{mnemk}
 \alias{mnemk}
-\title{Learn K.
-High level function for learning the number of components k, if unknown.}
+\title{Learn the number of components K and optimize the mixture.}
 \usage{
 mnemk(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
   pen = 2, useF = FALSE, Fnorm = FALSE, ...)
@@ -41,7 +40,6 @@ list containing the result of the best k as an mnem object and the
 raw and penalized log likelihoods
 }
 \description{
-Learn K.
 High level function for learning the number of components k, if unknown.
 }
 \examples{

@@ -556,6 +556,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
             phi <- transitive.closure(phi, mat = TRUE)
         }
     }
+    phintc <- phibest
     phibest <- transitive.closure(phibest, mat = TRUE)
     if (is.null(Rho)) {
         phibest2 <- phibest
@@ -573,7 +574,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     llbest <- sum(diag(ll))
     nem <- list(phi = phibest, theta = thetabest, iter = iter,
                 ll = llbest, lls = lls, num = numbest, C = Cz,
-                O = Obest, E = E0)
+                O = Obest, E = E0, phintc = phintc)
     class(nem) <- "nemEst"
     return(nem)
 }

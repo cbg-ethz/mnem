@@ -1,4 +1,5 @@
 #' Processed scRNAseq from pooled CRISPR screens
+#'
 #' Example data: mnem results for
 #' the Dixit et al., 2016 and Datlinger et al., pooled CRISPR screens.
 #' For details see the vignette.
@@ -19,6 +20,7 @@
 #' data(app)
 NA
 #' Calculate responsibilities.
+#'
 #' This function calculates the responsibilities
 #' of each component for all cells from the expected log distribution of the
 #' hidden data.
@@ -94,6 +96,7 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
     return(y)
 }
 #' Calculate negative penalized log likelihood.
+#'
 #' This function calculates
 #' a negative penalized log likelihood given a object of class mnem. This
 #' penalized likelihood is based on the normal likelihood and penalizes
@@ -181,7 +184,8 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
     }
     return(ic)
 }
-#' Learn K.
+#' Learn the number of components K and optimize the mixture.
+#'
 #' High level function for learning the number of components k, if unknown.
 #' @param D data with cells indexing the columns and features (E-genes)
 #' indexing the rows
@@ -226,6 +230,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
     return(res)
 }
 #' Mixture NEMs - main function.
+#'
 #' This function simultaneously learns a mixture
 #' of causal networks and clusters of a cell population from single cell
 #' perturbation data (e.g. log odds of fold change) with a multi-trait
@@ -795,6 +800,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
     return(res)
 }
 #' Bootstrap.
+#'
 #' Run bootstrap simulations on the components (phi)  of an object of
 #' class mnem.
 #' @param x mnem object
@@ -834,7 +840,8 @@ bootstrap <- function(x, size = 1000, p = 1, logtype = 2, ...) {
     class(bootres) <- "bootmnem"
     return(bootres)
 }
-#' Plot boostrap mnem result.
+#' Plot bootstrap mnem result.
+#'
 #' @param x bootmnem object
 #' @param reduce if TRUE transitively reduces the graphs
 #' @param ... additional parameters for the plotting function plotDNF
@@ -876,6 +883,7 @@ plot.bootmnem <- function(x, reduce = TRUE, ...) {
     plotDnf(dnfs, edgelabel = freqs, ...)
 }
 #' Plot mnem result.
+#'
 #' @param x mnem object
 #' @param oma outer margin
 #' @param main main text
@@ -1242,9 +1250,11 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
     }
 }
 #' Cluster NEM.
+#'
 #' This function clusters the data and performs standard nem on each cluster.
 #' @param data data of log ratios with cells in columns and features in rows
 #' @param k number of clusters
+#' @param cluster given clustering has to correspond to the columns of data
 #' @param ... additional arguments for standard nem function
 #' @author Martin Pirkl
 #' @return family of nems; the first k list entries hold full information of
@@ -1261,25 +1271,31 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' resulst <- clustNEM(data, k = 2:3)
-clustNEM <- function(data, k = 2:5, ...) {
-    smax <- 0
-    K <- 1
-    res <- NULL
-    for (i in k) {
-        d <- (1 - cor(data))/2
-        d <- as.dist(d)
-        kres <- kmeans(d, i)
-        sres <- silhouette(kres$cluster, d)
-        print(sum(sres[, 3]))
-        if (sum(sres[, 3]) > smax) {
-            Kres <- kres
-            K <- i
-            smax <- sum(sres[, 3])
+clustNEM <- function(data, k = 2:5, cluster = NULL, ...) {
+    if (is.null(cluster)) {
+        smax <- 0
+        K <- 1
+        res <- NULL
+        for (i in k) {
+            d <- (1 - cor(data))/2
+            d <- as.dist(d)
+            kres <- kmeans(d, i)
+            sres <- silhouette(kres$cluster, d)
+            if (sum(sres[, 3]) > smax) {
+                Kres <- kres
+                K <- i
+                smax <- sum(sres[, 3])
+            }
         }
+    } else {
+        Kres <- list()
+        Kres$cluster <- cluster
+        K <- max(cluster)
     }
     res <- list()
     for (i in seq_len(K)) {
-        if (sum(Kres$cluster == i) > 1) {
+        if (sum(Kres$cluster == i) > 1 &
+            length(unique(colnames(data[, which(Kres$cluster == i)]))) > 1) {
             res[[i]] <- mynem(data[, which(Kres$cluster == i)], ...)
             rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <-
                 unique(naturalsort(names(which(Kres$cluster == i))))
@@ -1287,7 +1303,7 @@ clustNEM <- function(data, k = 2:5, ...) {
             res[[i]] <- list()
             res[[i]]$adj <- matrix(1, 1, 1)
             rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <-
-                names(which(Kres$cluster == i))
+                unique(colnames(data[, which(Kres$cluster == i), drop = FALSE]))
         }
     }
     res$comp <- list()
@@ -1304,8 +1320,8 @@ clustNEM <- function(data, k = 2:5, ...) {
                                         ncol = length(smiss))),
                       matrix(0, nrow = length(smiss),
                              ncol =ncol(tmp) + length(smiss)))
-            colnames(tmp)[(dim(res[[i]]$adj)+1):nrow(tmp)] <-
-                rownames(tmp)[(dim(res[[i]]$adj)+1):nrow(tmp)] <- smiss
+            colnames(tmp)[(dim(res[[i]]$adj)[1]+1):nrow(tmp)] <-
+                rownames(tmp)[(dim(res[[i]]$adj)[1]+1):nrow(tmp)] <- smiss
             tmp <- tmp[order(rownames(tmp)), order(colnames(tmp))]
         }
         res$comp[[i]]$phi <- tmp
@@ -1314,7 +1330,9 @@ clustNEM <- function(data, k = 2:5, ...) {
     res$probs <- matrix(res$mw, K, ncol(data))
     return(res)
 }
-#' Simulate data. This function simulates single cell data from a random
+#' Simulate data.
+#'
+#' This function simulates single cell data from a random
 #' mixture of networks.
 #' @param Sgenes number of Sgenes
 #' @param Egenes number of Egenes
@@ -1472,6 +1490,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
     return(sim)
 }
 #' Plot simulated mixture.
+#'
 #' @param x mnemsim object
 #' @param data noisy data matrix (optional)
 #' @param ... additional parameters for the plotting function plotDNF
@@ -1536,6 +1555,7 @@ plot.mnemsim <- function(x, data = NULL, ...) {
     }
 }
 #' Accuracy for two phis.
+#'
 #' This function uses the hamming distance to calculate
 #' an accuracy for two networks (phi).
 #' @param a adjacency matrix (phi)
@@ -1591,7 +1611,8 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
     return(ham)
 }
 #' Plot disjunctive normal form.
-#' This function visualizes a graph encodedas a disjunctive nromal form.
+#'
+#' This function visualizes a graph encoded as a disjunctive nromal form.
 #' @param dnf Hyper-graph in disjunctive normal form,
 #' e.g. c("A=B", "A=C+D", "E=!B") with the child on the left and the parents
 #' on the right of the equation with "A=C+D" for A = C AND D. Alternatively,
@@ -1678,7 +1699,13 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                     edgelabel = NULL, edgetail = NULL, bool = TRUE,
                     draw = TRUE, ...) {
     if (is.matrix(dnf)) {
-        dnf <- adj2dnf(transitive.reduction(dnf))
+        diag(dnf) <- 0
+        if (all(dnf == 0)) {
+            diag(dnf) <- 1
+            dnf <- adj2dnf(dnf)
+        } else {
+            dnf <- adj2dnf(transitive.reduction(dnf))
+        }
     }
 
     if (!bool & length(grep("\\+", dnf)) > 0) {

@@ -2,9 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{hamSim}
 \alias{hamSim}
-\title{Accuracy for two phis.
-This function uses the hamming distance to calculate
-an accuracy for two networks (phi).}
+\title{Accuracy for two phis.}
 \usage{
 hamSim(a, b, diag = 1, symmetric = TRUE)
 }
@@ -22,7 +20,6 @@ comparison b to a}
 normalized hamming accuracy for a and b
 }
 \description{
-Accuracy for two phis.
 This function uses the hamming distance to calculate
 an accuracy for two networks (phi).
 }

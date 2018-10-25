@@ -2,15 +2,16 @@
 % Please edit documentation in R/mnems.r
 \name{clustNEM}
 \alias{clustNEM}
-\title{Cluster NEM.
-This function clusters the data and performs standard nem on each cluster.}
+\title{Cluster NEM.}
 \usage{
-clustNEM(data, k = 2:5, ...)
+clustNEM(data, k = 2:5, cluster = NULL, ...)
 }
 \arguments{
 \item{data}{data of log ratios with cells in columns and features in rows}
 
 \item{k}{number of clusters}
+
+\item{cluster}{given clustering has to correspond to the columns of data}
 
 \item{...}{additional arguments for standard nem function}
 }
@@ -22,7 +23,6 @@ the standard nem search
 \item{probs}{fake cell probabilities (see mw: mixture weights)}
 }
 \description{
-Cluster NEM.
 This function clusters the data and performs standard nem on each cluster.
 }
 \examples{

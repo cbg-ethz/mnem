@@ -2,10 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{getAffinity}
 \alias{getAffinity}
-\title{Calculate responsibilities.
-This function calculates the responsibilities
-of each component for all cells from the expected log distribution of the
-hidden data.}
+\title{Calculate responsibilities.}
 \usage{
 getAffinity(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
   data = matrix(0, 2, ncol(x)))
@@ -29,7 +26,6 @@ for natural)}
 responsibilities as a kxl matrix (k components, l cells)
 }
 \description{
-Calculate responsibilities.
 This function calculates the responsibilities
 of each component for all cells from the expected log distribution of the
 hidden data.

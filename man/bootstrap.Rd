@@ -2,9 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{bootstrap}
 \alias{bootstrap}
-\title{Bootstrap.
-Run bootstrap simulations on the components (phi)  of an object of
-class mnem.}
+\title{Bootstrap.}
 \usage{
 bootstrap(x, size = 1000, p = 1, logtype = 2, ...)
 }
@@ -26,7 +24,6 @@ returns bootstrap support for each edge in each component (phi); list
 of adjacency matrices
 }
 \description{
-Bootstrap.
 Run bootstrap simulations on the components (phi)  of an object of
 class mnem.
 }

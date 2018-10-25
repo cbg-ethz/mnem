@@ -2,8 +2,7 @@
 % Please edit documentation in R/mnems.r
 \name{simData}
 \alias{simData}
-\title{Simulate data. This function simulates single cell data from a random
-mixture of networks.}
+\title{Simulate data.}
 \usage{
 simData(Sgenes = 5, Egenes = 1, Nems = 2, reps = NULL, mw = NULL,
   evolution = FALSE, nCells = 1000, uninform = 0, unitheta = FALSE,
@@ -48,7 +47,7 @@ simulation object with meta information and data
 \item{mw}{vector of input mixture weights}
 }
 \description{
-Simulate data. This function simulates single cell data from a random
+This function simulates single cell data from a random
 mixture of networks.
 }
 \examples{
