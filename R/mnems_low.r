@@ -446,7 +446,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         Rho2 <- matrix(0, length(unique(colnames(R))), ncol(R))
         Rho2[cbind(as.numeric(colnames(R)), seq_len(ncol(R)))] <- 1
         R <- R%*%t(Rho2)
-        colnames(R) <- 1:ncol(R)
+        colnames(R) <- seq_len(ncol(R))
     }
     n <- length(unique(colnames(R)))
     if (alpha < 1) {
@@ -485,7 +485,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         diag(phi) <- 1
         phi[seq_len(length(phi))] <- sample(c(0,1), length(phi), replace = TRUE)
         phi[lower.tri(phi)] <- 0
-        phi <- phi[sample(1:nrow(phi), nrow(phi)), sample(1:nrow(phi),
+        phi <- phi[sample(seq_len(nrow(phi)), nrow(phi)), sample(seq_len(nrow(phi)),
                                                           nrow(phi))]
         phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
     } else if ("null" %in% start) {
