@@ -1,4 +1,32 @@
 #' @noRd
+mnemh.rec <- function(data, k = 2, logtype = 2, ...) {
+    tmp <- mnemk(data, ks=seq_len(k), logtype = logtype, ...)
+    cluster <- apply(getAffinity(tmp$best$probs,
+                                 logtype = logtype,
+                                 mw = tmp$mw), 2, which.max)
+    if (length(tmp$best$comp) == 1) {
+        return(tmp$best)
+    } else {
+        tmp1 <- c()
+        for (i in seq_len(length(tmp$best$comp))) {
+            data1 <- t(t(data)*getAffinity(tmp$best$probs, mw = tmp$mw,
+                                           logtype = logtype)[i, ])
+            colnames(data1) <- colnames(data)
+            if (length(unique(colnames(data1[, which(cluster == i)]))) > 1) {
+                tmp2 <- mnemh.rec(data1[, which(cluster == i)],
+                                  k=k, logtype=logtype, ...)
+                ## alternative (takes a lot longer, but might be more accurate)
+                ## tmp2 <- mnemh.rec(data2[, which(cluster == i)], k=k,
+                ##                   logtype=logtype, ...)
+            } else {
+                tmp2 <- NULL
+            }
+            tmp1 <- c(tmp1, tmp2)
+        }
+        return(cluster = tmp1)
+    }
+}
+#' @noRd
 random_probs <- function(k, data, full = FALSE) {
     probs <- matrix(log2(sample(c(0,1), k*ncol(data),
                                 replace = TRUE,
@@ -423,13 +451,19 @@ nemEst <- function(data, maxiter = 100, start = "null",
         data <- D
     }
     data <- modData(data)
-    if (sum(duplicated(colnames(data)) == TRUE) > 0 & is.null(weights) &
+    if (sum(duplicated(colnames(data)) == TRUE) > 0 &
         method %in% "llr" & domean) {
-        data2 <- data[, -which(duplicated(colnames(data)) == TRUE)]
+        if (!is.null(weights)) {
+            D <- data
+            data <- t(t(data)*weights)
+        }
+        data2 <- data[, -which(duplicated(colnames(data)) == TRUE),
+                      drop = FALSE]
         for (j in unique(colnames(data))) {
             data2[, j] <- apply(data[, which(colnames(data) %in% j),
                                      drop = FALSE], 1, sumf)
         }
+        data <- D
     } else {
         data2 <- data
     }
@@ -514,7 +548,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         theta <- t(R2)*0
         theta[cbind(subtopo, seq_len(ncol(theta)))] <- 1
         Oold <- O
-        ll <- llrScore(theta, P, weights = weights)
+        ll <- llrScore(theta, P)
         ll <- sum(diag(ll))
         if (ll %in% lls | all(phi == phibest)) {
             stop <- TRUE
@@ -564,13 +598,13 @@ nemEst <- function(data, maxiter = 100, start = "null",
         phibest2 <- t(Rho)%*%phibest
         phibest2[which(phibest2 > 1)] <- 1
     }
-    P <- t(t(R2)*weights)%*%cbind(phibest2, 0)
+    P <- llrScore(R2, phibest2, weights = weights)
     P[, grep("_", colnames(phibest2))] <- min(P)
     subtopo <- as.numeric(gsub(
         ncol(phibest2)+1, 0, apply(P, 1, which.max)))
     thetabest <- t(R)*0
     thetabest[cbind(subtopo, seq_len(ncol(thetabest)))] <- 1
-    llbest <- llrScore(thetabest, P, weights = weights)
+    llbest <- llrScore(thetabest, P)
     llbest <- sum(diag(ll))
     nem <- list(phi = phibest, theta = thetabest, iter = iter,
                 ll = llbest, lls = lls, num = numbest, C = Cz,
