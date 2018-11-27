@@ -4,12 +4,17 @@
 \alias{plot.mnemsim}
 \title{Plot simulated mixture.}
 \usage{
-\method{plot}{mnemsim}(x, data = NULL, ...)
+\method{plot}{mnemsim}(x, data = NULL, logtype = 2,
+  fuzzypars = list(), ...)
 }
 \arguments{
 \item{x}{mnemsim object}
 
 \item{data}{noisy data matrix (optional)}
+
+\item{logtype}{logarithm type of the data}
+
+\item{fuzzypars}{list of parameters for the function fuzzyindex}
 
 \item{...}{additional parameters for the plotting function plotDNF}
 }

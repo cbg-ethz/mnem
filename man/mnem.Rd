@@ -12,7 +12,7 @@ mnem(D, inference = "em", search = "greedy", start = NULL,
   evolution = FALSE, subtopoX = NULL, ratio = TRUE, logtype = 2,
   initnets = FALSE, domean = TRUE, modulesize = 5,
   compress = FALSE, increase = TRUE, fpfn = c(0.1, 0.1),
-  multi = FALSE)
+  multi = FALSE, ksel = c("hc", "silhouette", "cor"))
 }
 \arguments{
 \item{D}{data with cells indexing the columns and features (E-genes)
@@ -21,7 +21,8 @@ indexing the rows}
 \item{inference}{inference method "em" for expectation maximization}
 
 \item{search}{search method for single network inference "greedy",
-"exhaustive" or "modules"}
+"exhaustive" or "modules" (also possible: "small", which is greedy with
+only one edge change per M-step to make for a smooth convergence)}
 
 \item{start}{A list of n lists of k networks for n starts of the EM and
 k components}
@@ -89,6 +90,10 @@ negative rates for discrete data}
 
 \item{multi}{set to TRUE if the data contains multiple perturbation
 per sample; make sure the samples are reasonably named, e.g. "IRF1_CTNNB1"}
+
+\item{ksel}{character vector of methods for the ifnerence of k; can combine
+"hc" (hierarchical clustering) or "kmeans" with "silhouette", "BIC" or "AIC";
+can also include "cor" for correlation distance instead of euclidean}
 }
 \value{
 object of class mnem

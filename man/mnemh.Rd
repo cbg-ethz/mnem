@@ -14,11 +14,11 @@ mnemh(data, k = 2, logtype = 2, getprobspars = list(),
 
 \item{logtype}{log type of the data}
 
-\item{getprobspars}{parameters for the getProbs function}
+\item{getprobspars}{list of parameters for the getProbs function}
 
-\item{getaffinitypars}{parameters for the getAffinity function}
+\item{getaffinitypars}{list of parameters for the getAffinity function}
 
-\item{...}{parameters for the mnem function}
+\item{...}{additional parameters for the mnem function}
 }
 \value{
 object of class mnem

@@ -17,6 +17,7 @@
 #' @param path path to the data files path/file.csv
 #' @param dataonly if TRUE only fetches and normalizes the data and
 #' computes the log odds
+#' @param allcrop if TRUE does not restrict and uses the full CROPseq dataset
 #' @param ... additional parameters for the mixture nem function
 #' @return app data object
 #' @author Martin Pirkl
@@ -32,7 +33,7 @@
 #' data(app)
 createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
                       maxk = 5, parallel = NULL, path = "", dataonly = FALSE,
-                      ...) {
+                      allcrop = FALSE, ...) {
     ## load datasets
     datas <- list()
     if (1 %in% sets) {
@@ -187,13 +188,17 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
         llr <- do.call("rbind", llr)
         llr[is.na(llr)] <- 0
         llr[is.infinite(llr)] <- max(llr[!is.infinite(llr)])
+        ## llr <- t(apply(llr, 1, function(x) {
+        ##     x[is.infinite(x)] <- max(x[!is.infinite(x)])
+        ##     return(x)
+        ## }))
         colnames(llr) <- colnames(data)
         llr <- llr[, which(!(colnames(data) %in% ""))]
         rownames(llr) <- rownames(data)
         print("log ratios computed")
         ## mixture nem
         colnames(llr) <- toupper(colnames(llr))
-        if (i == 1) {
+        if (i == 1 & !allcrop) {
             cropgenes <- c("LCK", "ZAP70", "PTPN6", "DOK2", "PTPN11", "EGR3",
                            "LAT")
             lods <- llr[, which(colnames(llr) %in% cropgenes)]
@@ -208,7 +213,6 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
         sdev <- apply(lods, 1, sd)
         lods <- lods[which(sdev > sd(lods)), ]
         n <- length(unique(colnames(lods)))
-        lods <- lods
         if (!dataonly) {
             bics <- rep(Inf, maxk)
             res <- list()
@@ -231,9 +235,9 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
 #' @param data data matrix either binary or log odds
 #' @param k number of maximal components for each hierarchy leaf
 #' @param logtype log type of the data
-#' @param getprobspars parameters for the getProbs function
-#' @param getaffinitypars parameters for the getAffinity function
-#' @param ... parameters for the mnem function
+#' @param getprobspars list of parameters for the getProbs function
+#' @param getaffinitypars list of parameters for the getAffinity function
+#' @param ... additional parameters for the mnem function
 #' @return object of class mnem
 #' @author Martin Pirkl
 #' @export
@@ -260,10 +264,10 @@ mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(),
             tmpdata <- tmp[[(3+7*(i-1))]]
             inGenes <- naturalsort(getSgenes(tmpdata))
             tmpidx <- which(Sgenes %in% inGenes)
-            if (max(thetatmp) > max(inGenes)) {
+            if (max(thetatmp) > length(tmpidx)) {
                 thetatmp[which(thetatmp == max(thetatmp))] <- length(Sgenes)+1
             }
-            for (j in inGenes) {
+            for (j in seq_len(length(tmpidx))) {
                 thetatmp <- gsub(j, tmpidx[j], thetatmp)
             }
             outGenes <- Sgenes[which(!(Sgenes %in% inGenes))]
@@ -339,10 +343,10 @@ NA
 #' resp <- getAffinity(result$probs, mw = result$mw, data = data)
 getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
                         data = matrix(0, 2, ncol(x))) {
+    complete <- FALSE
     if (is.null(mw)) { mw <- rep(1, nrow(x))/nrow(x) }
     if (affinity == 1) {
-        if (any(is.infinite(logtype^apply(data, 2, function(x)
-            return(sum(x[which(x>0)])))))) {
+        if (complete) {
             y <- apply(y, 2, function(x) {
                 xmax <- max(x)
                 maxnum <- 2^1023
@@ -370,8 +374,7 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
         if (nrow(x) > 1) {
             y <- x
             if (norm) {
-                if (any(is.infinite(logtype^apply(data, 2, function(x)
-                    return(sum(x[which(x>0)])))))) {
+                if (complete) {
                     y <- apply(y, 2, function(x) {
                         xmax <- max(x)
                         maxnum <- 2^1023
@@ -536,7 +539,8 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' indexing the rows
 #' @param inference inference method "em" for expectation maximization
 #' @param search search method for single network inference "greedy",
-#' "exhaustive" or "modules"
+#' "exhaustive" or "modules" (also possible: "small", which is greedy with
+#' only one edge change per M-step to make for a smooth convergence)
 #' @param start A list of n lists of k networks for n starts of the EM and
 #' k components
 #' @param method "llr" for log ratios or foldchanges as input (see ratio)
@@ -577,6 +581,9 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' negative rates for discrete data
 #' @param multi set to TRUE if the data contains multiple perturbation
 #' per sample; make sure the samples are reasonably named, e.g. "IRF1_CTNNB1"
+#' @param ksel character vector of methods for the ifnerence of k; can combine
+#' "hc" (hierarchical clustering) or "kmeans" with "silhouette", "BIC" or "AIC";
+#' can also include "cor" for correlation distance instead of euclidean
 #' @author Martin Pirkl
 #' @return object of class mnem
 #' \item{comp}{list of the component with each component being
@@ -614,11 +621,13 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                  redSpace = NULL, affinity = 0, evolution = FALSE,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
                  domean = TRUE, modulesize = 5, compress = FALSE,
-                 increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE) {
+                 increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE,
+                 ksel = c("hc", "silhouette", "cor")) {
     if (method %in% "disc") {
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
         D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
         method <- "llr"
+        D <- D + rnorm(length(D), 0, 10^-5)
     }
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
         colnames(D) <- gsub("_.*", "", colnames(D))
@@ -629,7 +638,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                           search = "exhaustive", reduce = TRUE,
                           verbose = verbose, parallel = c(parallel, parallel2),
                           subtopo = subtopoX, ratio = ratio, domean = FALSE,
-                          modulesize = modulesize, logtype = logtype)$redSpace
+                          modulesize = modulesize, logtype = logtype,
+                          modified = TRUE, Sgenes = Sgenes)$redSpace
     }
     if (!is.null(parallel)) { if (parallel == 1) { parallel <- NULL } }
     D.backup <- D
@@ -639,14 +649,18 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
     D <- NULL
     if (multi) {
         Rho <- getRho(data)
+        type <- "random"
     } else {
         Rho <- NULL
     }
     ## learn k:
     if (is.null(k) & is.null(start) & is.null(p)) {
-        tmp <- learnk(data, kmax = kmax)
+        tmp <- learnk(data, kmax = kmax, ksel = ksel, starts = starts,
+                      verbose = verbose)
         k <- tmp$k
-        print(paste("components detected: ", k, sep = ""))
+        if (verbose) {
+            print(paste("components detected: ", k, sep = ""))
+        }
         ks <- tmp$ks
     } else {
         ks <- rep(k, length(Sgenes))
@@ -663,7 +677,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                             verbose = verbose, redSpace = redSpace,
                             ratio = ratio, domean = domean,
                             modulesize = modulesize, Rho = Rho,
-                            logtype = logtype)
+                            logtype = logtype, modified = TRUE, Sgenes = Sgenes)
             init <- initComps(data, k, starts, verbose, meanet)
             probscl <- 0
         } else {
@@ -703,7 +717,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                       verbose = verbose, redSpace = redSpace,
                                       ratio = ratio, domean = domean,
                                       modulesize = modulesize, Rho = Rho,
-                                      logtype = logtype)
+                                      logtype = logtype, modified = TRUE,
+                                      Sgenes = Sgenes)
         limits[[1]]$res[[1]]$D <- NULL
         res <- list()
         res[[1]] <- list()
@@ -856,7 +871,11 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                      dataR <- dataF
                                      postprobsR <- rep(0, n)
                                  }
-                                 RhoR <- getRho(dataR)
+                                 if (!is.null(Rho)) {
+                                     RhoR <- getRho(dataR)
+                                 } else {
+                                     RhoR <- Rho
+                                 }
                                  if (is.null(start0)) {
                                      res[[i]] <- mynem(D = dataR,
                                                        weights = postprobsR,
@@ -872,7 +891,9 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                                        domean = domean,
                                                        modulesize = modulesize,
                                                        Rho = RhoR,
-                                                       logtype = logtype)
+                                                       logtype = logtype,
+                                                       modified = TRUE,
+                                                       Sgenes = Sgenes)
                                  } else {
                                      test01 <- list()
                                      test01scores <- numeric(3)
@@ -900,7 +921,9 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                                               odulesize =
                                                                   modulesize,
                                                               Rho = RhoR,
-                                                              logtype = logtype)
+                                                              logtype = logtype,
+                                                              modified = TRUE,
+                                                              Sgenes = Sgenes)
                                          test01scores[j] <-
                                              max(test01[[j]]$scores)
                                      }
@@ -1551,6 +1574,8 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' @param data data of log ratios with cells in columns and features in rows
 #' @param k number of clusters
 #' @param cluster given clustering has to correspond to the columns of data
+#' @param learnkpars list of additional arguments for functio learnk, if
+#' cluster is NULL
 #' @param ... additional arguments for standard nem function
 #' @author Martin Pirkl
 #' @return family of nems; the first k list entries hold full information of
@@ -1567,22 +1592,11 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' resulst <- clustNEM(data, k = 2:3)
-clustNEM <- function(data, k = 2:5, cluster = NULL, ...) {
+clustNEM <- function(data, k = 2:5, cluster = NULL, learnkpars = list(), ...) {
+    data <- modData(data)
     if (is.null(cluster)) {
-        smax <- 0
-        K <- 1
-        res <- NULL
-        for (i in k) {
-            d <- (1 - cor(data))/2
-            d <- as.dist(d)
-            kres <- kmeans(d, i)
-            sres <- silhouette(kres$cluster, d)
-            if (sum(sres[, 3]) > smax) {
-                Kres <- kres
-                K <- i
-                smax <- sum(sres[, 3])
-            }
-        }
+        Kres <- do.call(learnk, c(list(data = data), learnkpars))
+        K <- Kres$k
     } else {
         Kres <- list()
         Kres$cluster <- cluster
@@ -1593,8 +1607,6 @@ clustNEM <- function(data, k = 2:5, cluster = NULL, ...) {
         if (sum(Kres$cluster == i) > 1 &
             length(unique(colnames(data[, which(Kres$cluster == i)]))) > 1) {
             res[[i]] <- mynem(data[, which(Kres$cluster == i)], ...)
-            rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <-
-                unique(naturalsort(names(which(Kres$cluster == i))))
         } else {
             res[[i]] <- list()
             res[[i]]$adj <- matrix(1, 1, 1)
@@ -1624,6 +1636,7 @@ clustNEM <- function(data, k = 2:5, cluster = NULL, ...) {
         res$mw[i] <- sum(Kres$cluster == i)/ncol(data)
     }
     res$probs <- matrix(res$mw, K, ncol(data))
+    res$cluster <- Kres$cluster
     return(res)
 }
 #' Simulate data.
@@ -1789,6 +1802,8 @@ simData <- function(Sgenes = 5, Egenes = 1,
 #'
 #' @param x mnemsim object
 #' @param data noisy data matrix (optional)
+#' @param logtype logarithm type of the data
+#' @param fuzzypars list of parameters for the function fuzzyindex
 #' @param ... additional parameters for the plotting function plotDNF
 #' @author Martin Pirkl
 #' @return visualization of simulated mixture with Rgraphviz
@@ -1797,7 +1812,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' plot(sim)
-plot.mnemsim <- function(x, data = NULL, ...) {
+plot.mnemsim <- function(x, data = NULL, logtype = 2, fuzzypars = list(), ...) {
     noisymix <- TRUE
     if (is.null(data)) {
         data <- x$data
@@ -1811,22 +1826,13 @@ plot.mnemsim <- function(x, data = NULL, ...) {
         Rho <- NULL
     }
     par(mfrow=c(1,length(x$mw)))
-    probs <- matrix(0, length(x$mw), ncol(x$data))
-    res <- list()
-    for (i in seq(length(x$mw))) {
-        res[[i]] <- list()
-        res[[i]]$adj <- x$Nem[[i]]
-        res[[i]]$subtopo <- x$theta[[i]]
-        probs[i, which(x$index == i)] <- 1
-    }
-    probs <- log2(probs)
-    probs <- getProbs(probs, k = length(x$mw), data = modData(data), res = res,
-                      n = ncol(res[[1]]$adj), logtype = 2, mw = x$mw, Rho = Rho,
-                      ...)$probs
-    mw <- getAffinity(probs, mw = x$mw, logtype = 2)
-    mw2 <- unlist(apply(mw, 2, function(x) { return(which(x == max(x))) }))
-    mw2 <- table(mw2)/ncol(mw)
-    mw3 <- unlist(apply(mw, 2, function(x) {
+    fuzzypars <- c(list(x=x, data=data, logtype=logtype), fuzzypars)
+    probs <- do.call(fuzzyindex, fuzzypars)
+    mw <- probs$mw
+    probs <- probs$probs
+    mw2 <- unlist(apply(probs, 2, function(x) { return(which(x == max(x))) }))
+    mw2 <- table(mw2)/ncol(probs)
+    mw3 <- unlist(apply(probs, 2, function(x) {
         y <- which(x == max(x))
         if (length(y) > 1) {
             return(NULL)
@@ -1834,8 +1840,7 @@ plot.mnemsim <- function(x, data = NULL, ...) {
             return(y)
         }
     }))
-    mw3 <- table(mw3)/ncol(mw)
-    mw <- apply(mw, 1, sum)/sum(mw)
+    mw3 <- table(mw3)/ncol(probs)
     for (i in seq(length(x$mw))) {
         if (noisymix) {
             noisymix2 <- paste0("\n\nNoisy Mixture weight: ",
@@ -1851,6 +1856,49 @@ plot.mnemsim <- function(x, data = NULL, ...) {
                               round(x$mw[i]*100), "%",
                               noisymix2), ...)
     }
+}
+#' Calculate fuzzy ground truth.
+#'
+#' Calculates responsibilities and mixture weights based on
+#' the ground truth and noisy data.
+#' @param x mnemsim object
+#' @param data noisy data matrix
+#' @param logtype logarithm type of the data
+#' @param ... additional parameters for the function getAffinity
+#' @author Martin Pirkl
+#' @return visualization of simulated mixture with Rgraphviz
+#' @export
+#' @examples
+#' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+#' data <- sim$data
+#' data[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 1)
+#' data[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 1)
+#' fuzzy <- fuzzyindex(sim, data)
+fuzzyindex <- function(x, data, logtype = 2, ...) {
+    data <- modData(data)
+    k <- length(x$Nem)
+    probs <- matrix(0, length(x$mw), ncol(x$data))
+    res <- list()
+    for (i in seq_len(k)) {
+        res[[i]] <- list()
+        res[[i]]$adj <- x$Nem[[i]]
+        res[[i]]$subtopo <- x$theta[[i]]
+        probs[i, which(x$index == i)] <- 1
+    }
+    if (length(grep("_", colnames(data))) > 0) {
+        Rho <- getRho(data)
+    } else {
+        Rho <- NULL
+    }
+    n <- getSgeneN(data)
+    probs <- log(probs)/log(logtype)
+    probs <- getProbs(probs, k, data, res, n = n, mw = x$mw, logtype = logtype,
+                      Rho=Rho)
+    ll <- probs$ll
+    probs2 <- do.call(getAffinity, c(list(x=probs$probs, mw=probs$mw), ...))
+    mw <- apply(probs2, 1, sum)
+    mw <- mw/sum(mw)
+    return(list(probs = probs2, mw = mw, ll = ll))
 }
 #' Accuracy for two phis.
 #'

@@ -5,7 +5,8 @@
 \title{Creating app data.}
 \usage{
 createApp(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
-  maxk = 5, parallel = NULL, path = "", dataonly = FALSE, ...)
+  maxk = 5, parallel = NULL, path = "", dataonly = FALSE,
+  allcrop = FALSE, ...)
 }
 \arguments{
 \item{sets}{numeric vector with the data sets: 1 (CROPseq),
@@ -25,6 +26,8 @@ createApp(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
 
 \item{dataonly}{if TRUE only fetches and normalizes the data and
 computes the log odds}
+
+\item{allcrop}{if TRUE does not restrict and uses the full CROPseq dataset}
 
 \item{...}{additional parameters for the mixture nem function}
 }

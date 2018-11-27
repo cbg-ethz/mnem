@@ -3,27 +3,21 @@ mnemh.rec <- function(data, k = 2, logtype = 2, ...) {
     tmp <- mnemk(data, ks=seq_len(k), logtype = logtype, ...)
     cluster <- apply(getAffinity(tmp$best$probs,
                                  logtype = logtype,
-                                 mw = tmp$mw), 2, which.max)
+                                 mw = tmp$best$mw), 2, which.max)
     if (length(tmp$best$comp) == 1) {
         return(tmp$best)
     } else {
-        tmp1 <- c()
+        tmp1 <- NULL
         for (i in seq_len(length(tmp$best$comp))) {
-            data1 <- t(t(data)*getAffinity(tmp$best$probs, mw = tmp$mw,
-                                           logtype = logtype)[i, ])
-            colnames(data1) <- colnames(data)
-            if (length(unique(colnames(data1[, which(cluster == i)]))) > 1) {
-                tmp2 <- mnemh.rec(data1[, which(cluster == i)],
+            if (length(unique(colnames(data[, which(cluster == i)]))) > 1) {
+                tmp2 <- mnemh.rec(data[, which(cluster == i)],
                                   k=k, logtype=logtype, ...)
-                ## alternative (takes a lot longer, but might be more accurate)
-                ## tmp2 <- mnemh.rec(data2[, which(cluster == i)], k=k,
-                ##                   logtype=logtype, ...)
             } else {
                 tmp2 <- NULL
             }
             tmp1 <- c(tmp1, tmp2)
         }
-        return(cluster = tmp1)
+        return(tmp1)
     }
 }
 #' @noRd
@@ -175,10 +169,21 @@ initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
     return(init)
 }
 #' @noRd
-initps <- function(data, ks, k, starts = 3) {
+initps <- function(data, ks, k, starts = 3, ksel = "dist") {
     clusters <- list()
-    for (i in seq_len(length(unique(colnames(data))))) {
-        d <- dist(t(data[, which(colnames(data) %in% i)]))
+    multi <- grep("_", colnames(data))
+    if (length(multi) > 0) {
+        data2 <- data[, -multi]
+    } else {
+        data2 <- data
+    }
+    for (i in seq_len(length(unique(colnames(data2))))) {
+        if ("cor" %in% ksel) {
+            d <- (1 - cor(data[, which(colnames(data) %in% i)]))/2
+            d <- as.dist(d)
+        } else {
+            d <- dist(t(data[, which(colnames(data) %in% i)]))
+        }
         if (length(d) > 1) {
             hc <- hclust(d)
             clusters[[i]] <- cutree(hc, min(ks[i], length(hc$labels)))
@@ -253,49 +258,111 @@ modData <- function(D) {
 }
 #' @noRd
 #' @importFrom cluster silhouette
-learnk <- function(data, kmax = 10, verbose = FALSE) {
+#' @importFrom stats kmeans
+learnk <- function(data, kmax = 10, ksel = c("hc", "silhouette", "cor"),
+                   starts = 10, mono = TRUE, verbose = FALSE) {
     ks <- numeric(length(unique(colnames(data))))
     lab <- list()
+    index <- numeric(ncol(data))
     for (i in naturalsort(as.numeric(unique(colnames(data))))) {
         if (verbose) {
             print(i)
         }
         if (sum(colnames(data) %in% i) <= 1) { k <- 1; next() }
-        d <- dist(t(data[, which(colnames(data) %in% i)]))
-        hc <- hclust(d)
-        ks[i] <- 2
-        lab[[i]] <- rep(1, sum(colnames(data) %in% i))
-        if (length(d) > 1) {
+        if ("cor" %in% ksel) {
+            d <- (1 - cor(data[, which(colnames(data) %in% i)]))/2
+            d <- as.dist(d)
+        } else {
+            d <- dist(t(data[, which(colnames(data) %in% i)]))
+        }
+        if ("hc" %in% ksel) {
+            hc <- hclust(d)
+            ks[i] <- 2
+            lab[[i]] <- rep(1, sum(colnames(data) %in% i))
+            if (length(d) > 1) {
+                silavg <- 0
+                silavgs <- numeric(length(hc$order)-1)
+                clusters <- list()
+                for (j in 2:(length(hc$order)-1)) {
+                    cluster <- cutree(hc, j)
+                    clusters[[j]] <- cluster
+                    if ("BIC" %in% ksel | "AIC" %in% ksel) {
+                        m <- nrow(data)
+                        n <- length(cluster)
+                        k <- length(table(cluster))
+                        D <- log(mean(silhouette(cluster, d)[, 3]))
+                        if ("AIC" %in% ksel) {
+                            silavgs[j] <- 2*m*k - 2*D
+                        } else {
+                            silavgs[j] <- log(n)*m*k - 2*D
+                        }
+                    }
+                    if ("silhouette" %in% ksel) {
+                        silavgs[j] <- mean(silhouette(cluster, d)[, 3])
+                    }
+                    if (verbose) {
+                        print(silavgs[j])
+                    }
+                    if (silavgs[j] < silavgs[(j-1)]) {
+                        break()
+                    }
+                    if (silavg < silavgs[j]) {
+                        silavg <- silavgs[j]
+                        ks[i] <- j
+                        lab[[i]] <- cluster
+                    }
+                }
+            }
+            index[which(colnames(data) %in% i)] <- lab[[i]]
+        }
+        if ("kmeans" %in% ksel) {
             silavg <- 0
-            silavgs <- numeric(length(hc$order)-1)
+            silavgs <- numeric(kmax)
             clusters <- list()
-            for (j in 2:(length(hc$order)-1)) {
-                cluster <- cutree(hc, j)
-                clusters[[j]] <- cluster
-                sil <- silhouette(cluster, d)
-                silavgs[j] <- mean(sil[, 3])
+            for (j in seq_len(kmax)) {
+                if (j == 1) { next() }
+                kc <- kmeans(d, centers = j, nstart = starts)
+                if ("BIC" %in% ksel | "AIC" %in% ksel) {
+                    m <- ncol(kc$centers)
+                    n <- length(kc$cluster)
+                    k <- nrow(kc$centers)
+                    D <- kc$tot.withinss
+                    if ("AIC" %in% ksel) {
+                        silavgs[j] <- 2*m*k + D
+                    } else {
+                        silavgs[j] <- log(n)*m*k + D
+                    }
+                }
+                if ("silhouette" %in% ksel) {
+                    silavgs[j] <- mean(silhouette(kc$cluster, d)[, 3])
+                }
                 if (verbose) {
                     print(silavgs[j])
                 }
-                if (silavgs[j] < silavgs[(j-1)]) {
+                if (j == 1) {
+                    j2 <- j
+                } else {
+                    j2 <- j - 1
+                }
+                if (silavgs[j] < silavgs[j] & mono) {
                     break()
                 }
                 if (silavg < silavgs[j]) {
                     silavg <- silavgs[j]
                     ks[i] <- j
-                    lab[[i]] <- cluster
+                    lab[[i]] <- kc$clusters
                 }
             }
         }
     }
     k <- min(kmax, max(ks))
-    return(list(ks = ks, k = k, lab = lab))
+    return(list(ks = ks, k = k, lab = lab, cluster = index))
 }
 #' @noRd
 getLL <- function(x, logtype = 2, mw = NULL, data = NULL) {
     if (is.null(mw)) { mw = rep(1, nrow(x))/nrow(x) }
-    if (any(is.infinite(logtype^apply(data, 2, function(x)
-        return(sum(x[which(x>0)])))))) {
+    complete <- FALSE
+    if (complete) {
         Z <- getAffinity(x, logtype = logtype, mw = mw, data = data)
         l <- sum(apply(Z*(x + log(mw)/log(logtype)), 2, sum))
     } else {
@@ -334,7 +401,11 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
     bestprobs <- probsold <- probs
     time0 <- TRUE
     count <- 0
-    max_count <- 100
+    if (ncol(data) <= 100) {
+        max_count <- 100
+    } else {
+        max_count <- 1
+    }
     ll0 <- -Inf
     stop <- FALSE
     mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE,
@@ -346,79 +417,29 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
         time0 <- FALSE
         probsold <- probs
         subtopo0 <- matrix(0, k, nrow(data))
-        subweights0 <- matrix(0, nrow(data), n+1) # account for null node
+        subweights0 <- matrix(0, nrow(data), n+1)
         postprobsold <- getAffinity(probsold, affinity = affinity, norm = TRUE,
                                     logtype = logtype, mw = mw, data = data)
-        align <- list()
+        probs0 <- probsold*0
         for (i in seq_len(k)) {
-            n <- getSgeneN(data)
-            dataF <- matrix(0, nrow(data), n)
-            colnames(dataF) <- seq_len(n)
-            nozero <- which(postprobsold[i, ] != 0)
-            if (length(nozero) != 0) {
-                dataR <- cbind(data[, nozero, drop = FALSE], dataF)
-                postprobsoldR <- c(postprobsold[i, nozero], rep(0, n))
-            } else {
-                dataR <- dataF
-                postprobsoldR <- rep(0, n)
+            adj1 <- transitive.closure(res[[i]]$adj, mat = TRUE)
+            if (is.null(Rho)) { Rho <- getRho(data) }
+            adj1 <- t(Rho)%*%adj1
+            adj1[which(adj1 > 1)] <- 1
+            subtopo <- apply(data%*%adj1, 1, which.max)
+            adj1 <- cbind(adj1, "0" = 0)
+            adj2 <- adj1[, subtopo]
+            if (method %in% "llr") {
+                tmp <- colSums(data*t(adj2)) # t(data)%*%t(adj2)
             }
-            if (!is.null(Rho)) {
-                Rho <- getRho(dataR)
-            }
-            align[[i]] <- scoreAdj(dataR, res[[i]]$adj,
-                                   method = method, ratio = ratio,
-                                   weights = postprobsoldR, fpfn = fpfn,
-                                   Rho = Rho)
-            subtopo0[i, ] <- align[[i]]$subtopo
-            subweights0 <- subweights0 + align[[i]]$subweights
+            probs0[i, ] <- tmp
         }
-        subtopoMax <- apply(subweights0, 1, which.max)
-        subtopoMax[which(subtopoMax > n)] <-
-            subtopoMax[which(subtopoMax > n)] - n
-        subtopo0 <- rbind(subtopoMax, subtopo0, subtopoX, subtopoY)
-        probs0 <- list()
-        ll0 <- numeric(nrow(subtopo0)+1)
-        if (!is.null(Rho)) {
-            Rho <- getRho(data)
-        }
-        for (do in seq_len(nrow(subtopo0)+1)) {
-            probs0[[do]] <- probsold*0
-            if (do > 1) {
-                subtopo <- subtopo0[do-1, ]
-            }
-            for (i in seq_len(k)) {
-                if (do == 1) {
-                    subtopo <- align[[i]]$subtopo
-                }
-                adj1 <- transitive.closure(res[[i]]$adj, mat = TRUE)
-                if (is.null(Rho)) { Rho <- getRho(data) }
-                adj1 <- t(Rho)%*%adj1
-                adj1[which(adj1 > 1)] <- 1
-                adj1 <- cbind(adj1, "0" = 0)
-                adj2 <- adj1[, subtopo]
-                if (method %in% "llr") {
-                    tmp <- llrScore(t(data), t(adj2), ratio = ratio)
-                }
-                if (method %in% "disc") {
-                    tmp <- discScore(t(data), t(adj2), fpfn = fpfn)
-                }
-                probs0[[do]][i, ] <-
-                    tmp[cbind(seq_len(nrow(tmp)), seq_len(nrow(tmp)))]
-            }
-            ll0[do] <- getLL(probs0[[do]], logtype = logtype, mw = mw,
-                             data = data)
-        }
-        if (which.max(ll0) == 1) {
-            sdo <- 1
-        } else {
-            sdo <- which.max(ll0) - 1
-        }
+        ll0 <- getLL(probs0, logtype = logtype, mw = mw,
+                     data = data)
         if (max(ll0) - llold > 0) {
-            bestprobs <- probs0[[which.max(ll0)]]
-            bestsubtopoY <- subtopo0[sdo, ]
+            bestprobs <- probs0
         }
-        probs <- probs0[[which.max(ll0)]]
-        subtopoY <- subtopo0[sdo, ]
+        probs <- probs0
         if (max(ll0) - llold <= converged) {
             stop <- TRUE
         }
@@ -428,7 +449,8 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
         mw <- mw/sum(mw)
         count <- count + 1
     }
-    return(list(probs = bestprobs, subtopoX = bestsubtopoY))
+    return(list(probs = bestprobs, subtopoX = estimateSubtopo(data),
+                mw = mw, ll = llold))
 }
 #' @noRd
 annotAdj <- function(adj, data) {
@@ -442,7 +464,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
                    monoton = FALSE, logtype = 2,
                    useF = FALSE, method = "llr",
                    weights = NULL, fpfn = c(0.1, 0.1), Rho = NULL,
-                   close = FALSE, domean = TRUE, ...) {
+                   close = FALSE, domean = TRUE, modified = FALSE, ...) {
     if (method %in% "disc") {
         D <- data
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
@@ -450,23 +472,21 @@ nemEst <- function(data, maxiter = 100, start = "null",
         method <- "llr"
         data <- D
     }
-    data <- modData(data)
+    if (!modified) {
+        data <- modData(data)
+    }
     if (sum(duplicated(colnames(data)) == TRUE) > 0 &
         method %in% "llr" & domean) {
         if (!is.null(weights)) {
             D <- data
             data <- t(t(data)*weights)
         }
-        data2 <- data[, -which(duplicated(colnames(data)) == TRUE),
-                      drop = FALSE]
-        for (j in unique(colnames(data))) {
-            data2[, j] <- apply(data[, which(colnames(data) %in% j),
-                                     drop = FALSE], 1, sumf)
-        }
+        data2 <- doMean(data, weights = weights, Rho = Rho, logtype = logtype)
         data <- D
     } else {
         data2 <- data
     }
+
     if (is.null(weights)) { weights <- rep(1, ncol(data2)) }
     R <- data2[, naturalsort(colnames(data2))]
     if (!is.null(Rho)) {
@@ -474,13 +494,6 @@ nemEst <- function(data, maxiter = 100, start = "null",
         if (length(combs) > 0) {
             R <- R[, -combs]
         }
-    }
-    if (sum(duplicated(colnames(data)) == TRUE) > 0 & domean &
-        is.null(weights)) {
-        Rho2 <- matrix(0, length(unique(colnames(R))), ncol(R))
-        Rho2[cbind(as.numeric(colnames(R)), seq_len(ncol(R)))] <- 1
-        R <- R%*%t(Rho2)
-        colnames(R) <- seq_len(ncol(R))
     }
     n <- length(unique(colnames(R)))
     if (alpha < 1) {
@@ -614,24 +627,32 @@ nemEst <- function(data, maxiter = 100, start = "null",
 }
 #' @noRd
 doMean <- function(D, weights = NULL, Rho = NULL, logtype = 2) {
-    mD <- matrix(0, nrow(D), length(unique(colnames(D))))
-    if (!is.null(weights)) {
-        doodds <- FALSE
-        if (doodds) {
-            A <- exp(D)/(1+exp(D))
-            D <- log(t(t(A)*weights +
-                       (1-weights)*0.5)/t(t(1 - A)*weights +
-                                          (1-weights)*0.5))/log(logtype)
-        } else {
+    man <- FALSE
+    if (man) {
+        mD <- matrix(0, nrow(D), length(unique(colnames(D))))
+        if (!is.null(weights)) {
+            doodds <- FALSE
+            if (doodds) {
+                A <- exp(D)/(1+exp(D))
+                D <- log(t(t(A)*weights +
+                           (1-weights)*0.5)/t(t(1 - A)*weights +
+                                              (1-weights)*0.5))/log(logtype)
+            } else {
+                D <- t(t(D)*weights)
+            }
+        }
+        for (i in seq_len(length(unique(colnames(D))))) {
+            mD[, i] <-
+                apply(D[, which(colnames(D) %in% unique(colnames(D))[i]),
+                        drop = FALSE], 1, mean)
+        }
+        colnames(mD) <- unique(colnames(D))
+    } else {
+        if (!is.null(weights)) {
             D <- t(t(D)*weights)
         }
+        mD <- t(rowsum(t(D), colnames(D))/as.numeric(table(colnames(D))))
     }
-    for (i in seq_len(length(unique(colnames(D))))) {
-        mD[, i] <-
-            apply(D[, which(colnames(D) %in% unique(colnames(D))[i]),
-                    drop = FALSE], 1, mean)
-    }
-    colnames(mD) <- unique(colnames(D))
     return(mD)
 }
 #' @noRd
@@ -745,23 +766,17 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   verbose = FALSE, redSpace = NULL,
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
                   ratio = TRUE, domean = TRUE, modulesize = 5,
-                  fpfn = c(0.1, 0.1), Rho = NULL, logtype = 2, ...) {
+                  fpfn = c(0.1, 0.1), Rho = NULL, logtype = 2,
+                  modified = FALSE, Sgenes = NULL, ...) {
     if (method %in% "disc") {
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
         D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
         method <- "llr"
     }
+
     get.deletions <- getFromNamespace("get.deletions", "nem")
     get.insertions <- getFromNamespace("get.insertions", "nem")
     get.reversions <- getFromNamespace("get.reversions", "nem")
-    if (method %in% "disc") {
-        if (search %in% "estimate") {
-            D[which(D == 0)] <- -1
-            method <- "llr"
-        } else {
-            domean = FALSE
-        }
-    }
     if ("modules" %in% search) {
         if (length(search) > 1) {
             search <- search[-which(search %in% "modules")]
@@ -782,8 +797,10 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         }
     }
     D.backup <- D
-    D <- modData(D)
-    colnames(D) <- gsub("\\..*", "", colnames(D))
+    if (!modified) {
+        D <- modData(D)
+        colnames(D) <- gsub("\\..*", "", colnames(D))
+    }
     if (!is.null(Rho)) { Rho <- getRho(D) }
     if (domean) {
         D <- doMean(D, weights = weights, Rho = Rho, logtype = logtype)
@@ -799,7 +816,9 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                      length(unique(unlist(strsplit(colnames(D), "_")))),
                      replace = TRUE))
     }
-    Sgenes <- getSgenes(D)
+    if (is.null(Sgenes)) {
+        Sgenes <- getSgenes(D)
+    }
     if (is.null(start)) {
         start2 <- "null"
         start <- better <- matrix(0, length(Sgenes), length(Sgenes))
@@ -846,6 +865,13 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                  "get.reversions", "discScore", "getRho", "doMean")
     }
 
+    if (search %in% "small") {
+        search <- "greedy"
+        max_iter <- 1
+    } else {
+        max_iter <- Inf
+    }
+
     if (search %in% "greedy") {
         for (iter in seq_len(runs)) {
             if (iter > 1) {
@@ -869,6 +895,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 allscores <- score
             }
             stop <- FALSE
+            count <- 0
             while(!stop) {
                 doScores <- function(i) {
                     new <- models[[i]]
@@ -893,9 +920,10 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 scores[is.na(scores)] <- 0
                 best <- models[[which.max(scores)]]
                 best <- transitive.closure(best, mat = TRUE)
-                if (max(scores, na.rm = TRUE) > oldscore |
+                if ((max(scores, na.rm = TRUE) > oldscore |
                     (max(scores, na.rm = TRUE) == oldscore &
-                     sum(better == 1) > sum(best == 1))) {
+                     sum(better == 1) > sum(best == 1)))
+                    & count < max_iter) {
                     better <- best
                     better <- transitive.closure(better, mat = TRUE)
                     oldscore <- max(scores)
@@ -903,6 +931,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                 } else {
                     stop <- TRUE
                 }
+                count <- count + 1
             }
             if (iter > 1) {
                 if (oldscore > oldscore2) {
@@ -950,8 +979,16 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         } else {
             Dw <- D
         }
-        tmp <- nemEst(Dw, start = start2, method = method, fpfn = fpfn,
-                      Rho = Rho, domean = domean, ...)
+        tmp <- nemEst(Dw, start = "null", method = method, fpfn = fpfn,
+                      Rho = Rho, domean = domean, modified = TRUE, ...)
+        tmp1 <- nemEst(Dw, start = "full", method = method, fpfn = fpfn,
+                       Rho = Rho, domean = domean, modified = TRUE, ...)
+        if (tmp1$ll > tmp$ll) { tmp <- tmp1 }
+        if (is.matrix(start2)) {
+            tmp2 <- nemEst(Dw, start = start2, method = method, fpfn = fpfn,
+                           Rho = Rho, domean = domean, modified = TRUE, ...)
+            if (tmp2$ll > tmp$ll) { tmp <- tmp2 }
+        }
         better <- tmp$phi
         oldscore <- tmp$ll
         allscores <- tmp$lls
@@ -966,7 +1003,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         subtopo <- scoreAdj(D, better, method = method, weights = weights,
                             prior = prior,
                             ratio = ratio, fpfn = fpfn,
-                            Rho = Rho)
+                            Rho = Rho, dotopo = TRUE)
         subweights <- subtopo$subweights
         subtopo <- subtopo$subtopo
     }
@@ -1047,55 +1084,13 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
             score <- -dist2(data, t((adj*mean(data))*weights))
         }
     }
-    return(cbind(score, 0))
-}
-#' @noRd
-discScore <- function(data, adj, weights = NULL, fpfn = c(0.1, 0.1)) {
-    if (is.null(weights)) { weights <- rep(1, ncol(data)) }
-    if (fpfn[1] %in% "learn") {
-        fpfn <- c(0,0)
-        ll <- -Inf
-        range <- c(0.01, seq(0.05, 0.45, length.out = 9))
-        for (i in range) {
-            for (j in range) {
-                llnew <- sum(apply(discScore(data,
-                                             adj, weights,
-                                             fpfn = c(i, j)), 1, max))
-                if (llnew > ll) {
-                    fpfn <- c(i, j)
-                    ll <- llnew
-                }
-            }
-        }
-    }
-    fp <- fpfn[1]
-    fn <- fpfn[2]
-    tp <- 1 - fn
-    tn <- 1 - fp
-    fn <- t(matrix(fn*weights + (1-weights)*0.5, ncol(data), nrow(data)))
-    tp <- 1 - fn
-    fp <- t(matrix(fp*weights + (1-weights)*0.5, ncol(data), nrow(data)))
-    tn <- 1 - fp
-    TP <- log2(data*tp)
-    TP[is.infinite(TP)] <- 0
-    FN <- log2((1-data)*fn)
-    FN[is.infinite(FN)] <- 0
-    FP <- log2(data*fp)
-    FP[is.infinite(FP)] <- 0
-    TN <- log2((1-data)*tn)
-    TN[is.infinite(TN)] <- 0
-    score <- (TP%*%adj)+
-        (FN%*%adj)+
-        (FP%*%(1-adj))+
-        (TN%*%(1-adj))
-    score <- cbind(score, log2(prod(fpfn))*ncol(data))
     return(score)
 }
 #' @noRd
 scoreAdj <- function(D, adj, method = "llr", weights = NULL,
                      trans.close = TRUE, subtopo = NULL,
                      prior = NULL, ratio = TRUE, fpfn = c(0.1, 0.1),
-                     Rho = NULL) {
+                     Rho = NULL, dotopo = FALSE) {
     adj <- transitive.closure(adj, mat = TRUE)
     if (is.null(Rho)) {
         adj1 <- adj[colnames(D), ]
@@ -1107,16 +1102,13 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
         ll <- "max"
         score <- llrScore(D, adj1, weights = weights, ratio = ratio)
     }
-    if (method %in% "disc") {
-        ll <- "max"
-        score <- discScore(D, adj1, weights = weights, fpfn = fpfn)
-    }
-    if (is.null(subtopo)) {
-        subtopo <- apply(score, 1, which.max)
+    if (is.null(subtopo) & dotopo) {
+        subtopo <- apply(score, 1, function(x) {
+            return(which.max(c(x, 0))) })
     }
     subweights <- score
     if (ll %in% "max") {
-        score <- sum(score[cbind(seq_len(nrow(score)), subtopo)])
+        score <- sum(apply(score, 1, max))
     }
     if (ll %in% "marg") {
         score <- sum(apply(score, 1, sum))
