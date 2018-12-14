@@ -9,10 +9,10 @@ mnem(D, inference = "em", search = "greedy", start = NULL,
   starts = 3, type = "random", p = NULL, k = NULL, kmax = 10,
   verbose = FALSE, max_iter = 100, parallel2 = NULL,
   converged = 10^-1, redSpace = NULL, affinity = 0,
-  evolution = FALSE, subtopoX = NULL, ratio = TRUE, logtype = 2,
-  initnets = FALSE, domean = TRUE, modulesize = 5,
+  evolution = FALSE, lambda = 1, subtopoX = NULL, ratio = TRUE,
+  logtype = 2, initnets = FALSE, domean = TRUE, modulesize = 5,
   compress = FALSE, increase = TRUE, fpfn = c(0.1, 0.1),
-  multi = FALSE, ksel = c("hc", "silhouette", "cor"))
+  multi = FALSE, ksel = c("kmeans", "silhouette", "cor"))
 }
 \arguments{
 \item{D}{data with cells indexing the columns and features (E-genes)
@@ -24,7 +24,7 @@ indexing the rows}
 "exhaustive" or "modules" (also possible: "small", which is greedy with
 only one edge change per M-step to make for a smooth convergence)}
 
-\item{start}{A list of n lists of k networks for n starts of the EM and
+\item{start}{a list of n lists of k networks for n starts of the EM and
 k components}
 
 \item{method}{"llr" for log ratios or foldchanges as input (see ratio)}
@@ -64,6 +64,9 @@ likelihood}
 \item{evolution}{logical. If TRUE components are penelized for being
 different from each other.}
 
+\item{lambda}{smoothness value for the prior put on the components, if
+evolution set to TRUE}
+
 \item{subtopoX}{hard prior on theta as a vector of S-genes for all E-genes}
 
 \item{ratio}{logical, if true data is log ratios, if false foldchanges}
@@ -91,9 +94,10 @@ negative rates for discrete data}
 \item{multi}{set to TRUE if the data contains multiple perturbation
 per sample; make sure the samples are reasonably named, e.g. "IRF1_CTNNB1"}
 
-\item{ksel}{character vector of methods for the ifnerence of k; can combine
+\item{ksel}{character vector of methods for the inference of k; can combine
 "hc" (hierarchical clustering) or "kmeans" with "silhouette", "BIC" or "AIC";
-can also include "cor" for correlation distance instead of euclidean}
+can also include "cor" for correlation distance (preferred)
+instead of euclidean}
 }
 \value{
 object of class mnem

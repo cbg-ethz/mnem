@@ -16,7 +16,7 @@ fuzzyindex(x, data, logtype = 2, ...)
 \item{...}{additional parameters for the function getAffinity}
 }
 \value{
-visualization of simulated mixture with Rgraphviz
+list with cell log odds mixture weights and log likelihood
 }
 \description{
 Calculates responsibilities and mixture weights based on

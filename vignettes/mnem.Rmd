@@ -46,6 +46,8 @@ the cell assignment percentages for hard clustering and the mixture weights.
 The large circular vertices depict the S-genes, the small ones the
 responsibility for the best fitting cell, the diamonds the number of assigned
 cells and the boxes the number of assigned E-genes."
+fig.cap0em <- "EM Convergence. Convergence plot for the different starts of the
+EM algorithm."
 fig.cap02 <- "Ground truth causal networks of our simulated mixture of cells"
 fig.cap03 <- "Model selection. Raw log likelihood of the models with different
 components (left, blue) and penalized log likelihood (right, red)."
@@ -198,7 +200,16 @@ for the $k=3$ component model. However, if we penalize complexity
 the three component model gives us the best score (minimum).
 The penalized like the raw log likelihood is not guaranteed to have
 only one global optimum, but can have several local ones. Hence, in practice
-when there are little time constraints larger $k>4$ should also be tested.
+when there are little time constraints larger $k>4$ should also be
+tested.
+
+We can also look at the convergence of the expectation maximization
+algorithm. Since we started the EM `r starts` times, we have as many
+convergences.
+
+```{r, fig.height=4, fig.width=6, fig.cap=fig.cap0em}
+plotConvergence(bestk$best)
+```
 
 ## Cell responsibilities
 
@@ -472,7 +483,9 @@ Analogously we calculate the likelihood of the mixture by
     \prod\limits_{j=1}^m P\left(d_{ji} \mid f_{k,ij} \right).
 \end{equation*}
 
-However, we can use the algorithm for the log odds by turning the
+In contrast to the log odds we cannot just weight the data matrix by
+the responsibilities. However, we can use the algorithm for the log
+odds by turning the
 error probabilities and the discrete data into log odds. We turn all
 ones in the data matrix into $log\left(\frac{1-\beta}{\alpha}\right)$
 and all zeros into $log\left(\frac{\beta}{1-\alpha}\right)$.

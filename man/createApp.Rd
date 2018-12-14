@@ -6,7 +6,7 @@
 \usage{
 createApp(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
   maxk = 5, parallel = NULL, path = "", dataonly = FALSE,
-  allcrop = FALSE, ...)
+  allcrop = FALSE, multi = FALSE, ...)
 }
 \arguments{
 \item{sets}{numeric vector with the data sets: 1 (CROPseq),
@@ -24,10 +24,12 @@ createApp(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
 
 \item{path}{path to the data files path/file.csv}
 
-\item{dataonly}{if TRUE only fetches and normalizes the data and
+\item{dataonly}{if TRUE, only fetches and normalizes the data and
 computes the log odds}
 
-\item{allcrop}{if TRUE does not restrict and uses the full CROPseq dataset}
+\item{allcrop}{if TRUE, does not restrict and uses the full CROPseq dataset}
+
+\item{multi}{if TRUE, includes cells with more than one perturbed gene}
 
 \item{...}{additional parameters for the mixture nem function}
 }

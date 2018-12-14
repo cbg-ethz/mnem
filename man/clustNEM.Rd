@@ -4,17 +4,16 @@
 \alias{clustNEM}
 \title{Cluster NEM.}
 \usage{
-clustNEM(data, k = 2:5, cluster = NULL, learnkpars = list(), ...)
+clustNEM(data, k = 2:10, cluster = NULL, starts = 1, ...)
 }
 \arguments{
 \item{data}{data of log ratios with cells in columns and features in rows}
 
-\item{k}{number of clusters}
+\item{k}{number of clusters to check}
 
 \item{cluster}{given clustering has to correspond to the columns of data}
 
-\item{learnkpars}{list of additional arguments for functio learnk, if
-cluster is NULL}
+\item{starts}{number of random starts for the kmeans algorithm}
 
 \item{...}{additional arguments for standard nem function}
 }

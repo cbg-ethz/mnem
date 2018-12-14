@@ -1,4 +1,108 @@
 #' @noRd
+bigphi <- function(x) {
+    if (class(x) == "mnemsim") {
+        resfull <- NULL
+        for (l in 1:length(x$Nem)) {
+            tmp <- transitive.closure(x$Nem[[l]], mat = TRUE)
+            resfull <- cbind(resfull, t(tmp))
+        }
+    } else {
+        resfull <- NULL
+        for (l in 1:length(x$comp)) {
+            tmp <- transitive.closure(x$comp[[l]]$phi, mat = TRUE)
+            colnames(tmp) <- rownames(tmp) <- 1:nrow(tmp)
+            resfull <- cbind(resfull, t(tmp))
+        }
+    }
+    return(resfull)
+}
+#' @noRd
+Kratio <- function(x, y) {
+    xn <- uniques(x)
+    yn <- length(y$Nem)
+    if (xn >= yn) {
+        z <- yn/xn
+    } else {
+        z <- xn/yn
+    }
+    return(z)
+}
+#' @noRd
+fitacc <- function(x, y, strict = FALSE, unique = TRUE) {
+    for (i in seq_len(length(x$comp))) {
+        x$comp[[i]]$theta <- NULL
+    }
+    if (unique) {
+        x <- unique(x$comp)
+        y <- unique(y$Nem)
+    } else {
+        x <- x$comp
+        y <- y$Nem
+    }
+    xn <- length(x)
+    yn <- length(y)
+    n <- nrow(x[[1]]$phi)
+    if (strict) {
+        score <- 0
+        while(length(x) > 0 & length(y) > 0) {
+            couple <- numeric(2)
+            best <- 0
+            for (i in seq_len(length(x))) {
+                for (j in seq_len(length(y))) {
+                    A <- mytc(x[[i]]$phi)
+                    B <- mytc(y[[j]])
+                    tmp <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
+                    if (tmp >= best) {
+                        couple <- c(i,j)
+                        best <- tmp
+                    }
+                }
+            }
+            score <- best + score
+            x[[couple[1]]] <- NULL
+            y[[couple[2]]] <- NULL
+        }
+        if (length(x) != 0) {
+            for (i in seq_len(length(x))) {
+                A <- mytc(x[[i]]$phi)
+                score <- score + (n*(n-1) - sum(abs(A - diag(n)*0)))/(n*(n-1))
+            }
+        }
+        if (length(y) != 0) {
+            for (i in seq_len(length(y))) {
+                A <- mytc(y[[i]])
+                score <- score + (n*(n-1) - sum(abs(A - diag(n)*0)))/(n*(n-1))
+            }
+        }
+        score <- score/max(c(xn,yn))
+    } else {
+        xmax <- numeric(xn)
+        ymax <- numeric(yn)
+        for (i in seq_len(xn)) {
+            for (j in seq_len(yn)) {
+                A <- mytc(x[[i]]$phi)
+                B <- mytc(y[[j]])
+                tmp <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
+                if (tmp > xmax[i]) {
+                    xmax[i] <- tmp
+                }
+                if (tmp > ymax[j]) {
+                    ymax[j] <- tmp
+                }
+            }
+        }
+        score <- sum(c(xmax,ymax))/(xn+yn)
+    }
+    return(score)
+}
+uniques <- function(x) {
+    for (i in seq_len(length(x$comp))) {
+        x$comp[[i]]$theta <- NULL
+    }
+    y <- length(unique(x$comp))
+    return(y)
+}
+#' @noRd
 mnemh.rec <- function(data, k = 2, logtype = 2, ...) {
     tmp <- mnemk(data, ks=seq_len(k), logtype = logtype, ...)
     cluster <- apply(getAffinity(tmp$best$probs,
@@ -21,10 +125,16 @@ mnemh.rec <- function(data, k = 2, logtype = 2, ...) {
     }
 }
 #' @noRd
-random_probs <- function(k, data, full = FALSE) {
-    probs <- matrix(log2(sample(c(0,1), k*ncol(data),
-                                replace = TRUE,
-                                prob = c(0.9, 0.1))), k,
+random_probs <- function(k, data, full = FALSE, logtype = 2) {
+    samplefun <- function(n,p) {
+        x <- sample(c(0,1), n,
+               replace = TRUE,
+               prob = p)
+
+        return(x)
+    }
+    probs <- matrix(log(samplefun(k*ncol(data),
+                                  c(0.9, 0.1)))/log(logtype), k,
                     ncol(data))
     if (full) {
         for (i in seq_len(k)) {
@@ -37,13 +147,11 @@ random_probs <- function(k, data, full = FALSE) {
                 return(bad)
             }))
             if (i == k) {
-                probs[i, infcells] <- log2(1)
+                probs[i, infcells] <- log(1)/log(logtype)
             } else {
                 probs[i, infcells] <-
-                    log2(sample(c(0,1),
-                                length(infcells),
-                                replace = TRUE,
-                                prob = c(1-1/k, 1/k)))
+                    log(samplefun(length(infcells),
+                                  c(1-1/k, 1/k)))/log(logtype)
             }
         }
     }
@@ -54,9 +162,8 @@ random_probs <- function(k, data, full = FALSE) {
         }
         return(bad)
     }))) {
-        probs <- matrix(log2(sample(c(0,1), k*ncol(data),
-                                    replace = TRUE,
-                                    prob = c(0.9, 0.1))), k,
+        probs <- matrix(log(samplefun(k*ncol(data),
+                                      c(0.9, 0.1)))/log(logtype), k,
                         ncol(data))
         if (full) {
             for (i in seq_len(k)) {
@@ -69,15 +176,33 @@ random_probs <- function(k, data, full = FALSE) {
                     return(bad)
                 }))
                 if (i == k) {
-                    probs[i, infcells] <- log2(1)
+                    probs[i, infcells] <- log(1)/log(logtype)
                 } else {
                     probs[i, infcells] <-
-                        log2(sample(c(0,1),
-                                    length(infcells),
-                                    replace = TRUE,
-                                    prob = c(1-1/k, 1/k)))
+                        log(samplefun(length(infcells),
+                                      c(1-1/k, 1/k)))/log(logtype)
                 }
             }
+        }
+    }
+    return(probs)
+}
+#' @noRd
+random_probs2 <- function(k, data, full = FALSE, logtype = 2) {
+    samplefun <- function(n,p) {
+        x <- sample(c(0,1), n,
+                    replace = TRUE,
+                    prob = p)
+
+        return(x)
+    }
+    probs <- matrix(0, k, ncol(data))
+    for (i in seq_len(k)) {
+        if (i == 1) {
+            probs[i, ] <- samplefun(ncol(data), c(1-1/k,1/k))
+        } else {
+            probs[i, which(probs[i-1, ] == 0)] <-
+                samplefun(sum(probs[i-1, ] == 0), c(1-1/(k+1-i),1/(k+1-i)))
         }
     }
     return(probs)
@@ -89,11 +214,11 @@ sortAdj <- function(res, list = FALSE) {
         if (list) {
             resmat <-
                 rbind(resmat,
-                      as.vector(transitive.closure(res[[i]], mat = TRUE)))
+                      as.vector(mytc(res[[i]])))
         } else {
             resmat <-
                 rbind(resmat,
-                      as.vector(transitive.closure(res[[i]]$adj, mat = TRUE)))
+                      as.vector(mytc(res[[i]]$adj)))
         }
     }
     d <- as.matrix(dist(resmat))
@@ -111,14 +236,40 @@ sortAdj <- function(res, list = FALSE) {
     return(list(res = res2, order = resorder))
 }
 #' @noRd
-calcEvopen <- function(res) {
+calcEvopen <- function(res, list = TRUE) {
     evopen <- 0
     for (i in seq_len(length(res)-1)) {
-        evopen <- evopen + sum(abs(res[[i]]$adj -
-                                   res[[(i+1)]]$adj))/length(res[[i]]$adj)
+        if (list) {
+            evopen <- evopen + sum(abs(res[[i]] -
+                                       res[[(i+1)]]))/length(res[[i]])
+        } else {
+            evopen <- evopen + sum(abs(res[[i]]$adj -
+                                       res[[(i+1)]]$adj))/length(res[[i]]$adj)
+        }
     }
     evopen <- -evopen#/(k-1)
     return(evopen)
+}
+#' @noRd
+transProb <- function(x, y, lambda = 0.5) {
+    n <- nrow(x)
+    exp <- sum(abs(x-y))
+    enum <- lambda*(1-lambda)^(exp-1)
+    denom <- 0
+    ne <- (n*(n-1))
+    for (i in 0:ne) {
+        denom <- denom + choose(ne, i)*lambda*(1-lambda)^(i-1)
+    }
+    p <- enum/denom
+    return(p)
+}
+#' @noRd
+fullTransProb <- function(x, ...) {
+    p <- 1
+    for (i in seq_len(length(x)-1)) {
+        p <- p*transProb(x[[i]], x[[i+1]], ...)
+    }
+    return(p)
 }
 #' @noRd
 modAdj <- function(adj, D) {
@@ -159,6 +310,7 @@ initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
         nets[[i]] <- tmp
     }
     nets <- sortAdj(nets, list = TRUE)$res
+    init <- list()
     for (j in seq_len(starts)) {
         init[[j]] <- list()
         for (i in seq_len(k)) {
@@ -234,26 +386,16 @@ initps <- function(data, ks, k, starts = 3, ksel = "dist") {
 }
 #' @noRd
 modData <- function(D) {
-    if (length(grep("_", colnames(D))) > 0) {
-        D2 <- D[, grep("_", colnames(D)), drop = FALSE]
-        D <- D[, -grep("_", colnames(D)), drop = FALSE]
-    } else {
-        D2 <- NULL
-    }
     SgeneN <- getSgeneN(D)
     Sgenes <- getSgenes(D)
     if (!all(is.numeric(Sgenes))) {
-        colnamesD <- numeric(ncol(D))
+        colnamesD <- colnames(D)
         for (i in seq_len(SgeneN)) {
-            colnamesD[which(colnames(D) %in% Sgenes[i])] <- i
-            if (!is.null(D2)) {
-                colnames(D2) <- gsub(Sgenes[i], i, colnames(D2))
-            }
+            colnamesD <- gsub(Sgenes[i], i, colnamesD)
         }
-        colnames(D) <- as.numeric(colnamesD)
+        colnames(D) <- colnamesD
     }
     rownames(D) <- as.numeric(seq_len(nrow(D)))
-    D <- cbind(D, D2)
     return(D)
 }
 #' @noRd
@@ -368,12 +510,16 @@ getLL <- function(x, logtype = 2, mw = NULL, data = NULL) {
     } else {
         x <- logtype^x
         x <- x*mw
-        l <- sum(log(apply(x, 2, sum))/log(logtype))
+        l <- sum(log(rep(1,nrow(x))%*%x)/log(logtype))
+        ## sum(log(apply(x, 2, sum))/log(logtype))
     }
     return(l)
 }
 #' @noRd
 estimateSubtopo <- function(data) {
+    if (length(grep("_", colnames(data))) > 0) {
+        data <- data[, -grep("_", colnames(data))]
+    }
     effectsums <- effectsds <- matrix(0, nrow(data),
                                       length(unique(colnames(data))))
     n <- getSgeneN(data)
@@ -422,11 +568,15 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                                     logtype = logtype, mw = mw, data = data)
         probs0 <- probsold*0
         for (i in seq_len(k)) {
-            adj1 <- transitive.closure(res[[i]]$adj, mat = TRUE)
-            if (is.null(Rho)) { Rho <- getRho(data) }
-            adj1 <- t(Rho)%*%adj1
-            adj1[which(adj1 > 1)] <- 1
-            subtopo <- apply(data%*%adj1, 1, which.max)
+            adj1 <- mytc(res[[i]]$adj)
+            if (is.null(Rho)) {
+                adj1 <- adj1[colnames(data), ]
+            } else {
+                adj1 <- t(Rho)%*%adj1
+                adj1[which(adj1 > 1)] <- 1
+            }
+            subtopo <- maxCol_row(data%*%adj1)
+            ## apply(data%*%adj1, 1, which.max)
             adj1 <- cbind(adj1, "0" = 0)
             adj2 <- adj1[, subtopo]
             if (method %in% "llr") {
@@ -449,13 +599,13 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
         mw <- mw/sum(mw)
         count <- count + 1
     }
-    return(list(probs = bestprobs, subtopoX = estimateSubtopo(data),
+    return(list(probs = bestprobs, subtopoX = subtopoX,
                 mw = mw, ll = llold))
 }
 #' @noRd
 annotAdj <- function(adj, data) {
     Sgenes <- getSgenes(data)
-    colnames(adj) <- rownames(adj) <- sort(Sgenes)
+    colnames(adj) <- rownames(adj) <- naturalsort(Sgenes)
     return(adj)
 }
 #' @noRd
@@ -486,9 +636,9 @@ nemEst <- function(data, maxiter = 100, start = "null",
     } else {
         data2 <- data
     }
-
     if (is.null(weights)) { weights <- rep(1, ncol(data2)) }
     R <- data2[, naturalsort(colnames(data2))]
+    R2 <- R
     if (!is.null(Rho)) {
         combs <- which(apply(Rho, 2, sum) > 1)
         if (length(combs) > 0) {
@@ -496,27 +646,8 @@ nemEst <- function(data, maxiter = 100, start = "null",
         }
     }
     n <- length(unique(colnames(R)))
-    if (alpha < 1) {
-        C <- cor(R)
-        C <- C2 <- solve(C, ...)
-        for (r in seq_len(nrow(C))) {
-            C[r, ] <- C[r, ]/(C2[r, r]^0.5)
-        }
-        for (c in seq_len(ncol(C))) {
-            C[, c] <- C[, c]/(C2[c, c]^0.5)
-        }
-        diag(C) <- 1
-        Cz <- apply(C, c(1,2), function(x) return(0.5*log((1+x)/(1-x))))
-        diag(Cz) <- 0
-        Cz <- pnorm(((nrow(R) - n - 2 - 3)^0.5)*Cz)
-        idx <- which(Cz >= alpha)
-        Cp <- Cz
-        Cp[-idx] <- 1
-        Cp[idx] <- 0
-    } else {
-        Cp <- 1
-        Cz <- 0
-    }
+    Cp <- 1
+    Cz <- 0
     phibest <- phi <- matrix(0, n, n)
     rownames(phi) <- colnames(phi) <- colnames(R)
     E0 <- apply(R, 2, sum)
@@ -546,7 +677,6 @@ nemEst <- function(data, maxiter = 100, start = "null",
     lls <- NULL
     llbest <- -Inf
     stop <- FALSE
-    R2 <- data2[, naturalsort(colnames(data2))]
     while(!stop & iter < maxiter) {
         iter <- iter + 1
         if (is.null(Rho)) {
@@ -557,7 +687,8 @@ nemEst <- function(data, maxiter = 100, start = "null",
         }
         P <- llrScore(R2, phi2, weights = weights)
         P[, grep("_", colnames(phi))] <- min(P)
-        subtopo <- as.numeric(gsub(ncol(phi)+1, 0, apply(P, 1, which.max)))
+        subtopo <- as.numeric(gsub(ncol(phi)+1, 0, maxCol_row(P)))
+        ## as.numeric(gsub(ncol(phi)+1, 0, apply(P, 1, which.max)))
         theta <- t(R2)*0
         theta[cbind(subtopo, seq_len(ncol(theta)))] <- 1
         Oold <- O
@@ -588,23 +719,22 @@ nemEst <- function(data, maxiter = 100, start = "null",
             theta2 <- t(Rho)%*%theta
         }
         if (useF) {
-            O <- (t(R2)*weights)%*%t(transitive.closure(phi2,
-                                                        mat = TRUE)%*%theta)
+            O <- (t(R2)*weights)%*%t(mytc(phi2)%*%theta)
         } else {
             O <- (t(R2)*weights)%*%t(theta2)
         }
         cutoff <- cut*max(abs(O))
         if (!is.null(Rho)) {
-            Rho%*%O%*%t(Rho)
+            Rho%*%(O%*%t(Rho))
         }
         phi[which(O > cutoff & E == 1)] <- 1
         phi[which(O <= cutoff | E == 0)] <- 0
         if (close) {
-            phi <- transitive.closure(phi, mat = TRUE)
+            phi <- mytc(phi)
         }
     }
     phintc <- phibest
-    phibest <- transitive.closure(phibest, mat = TRUE)
+    phibest <- mytc(phibest)
     if (is.null(Rho)) {
         phibest2 <- phibest
     } else {
@@ -618,7 +748,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     thetabest <- t(R)*0
     thetabest[cbind(subtopo, seq_len(ncol(thetabest)))] <- 1
     llbest <- llrScore(thetabest, P)
-    llbest <- sum(diag(ll))
+    llbest <- sum(diag(llbest))
     nem <- list(phi = phibest, theta = thetabest, iter = iter,
                 ll = llbest, lls = lls, num = numbest, C = Cz,
                 O = Obest, E = E0, phintc = phintc)
@@ -759,7 +889,65 @@ getSgenes <- function(data) {
     return(Sgenes)
 }
 #' @noRd
-#' @importFrom nem enumerate.models transitive.closure transitive.reduction
+get.rev.tc <-function (Phi) {
+    idx = which(Phi + t(Phi) == 1, arr.ind = TRUE)
+    models = list()
+    nn <- dim(Phi)
+    if (NROW(idx) > 0) {
+        for (i in 1:NROW(idx)) {
+            Phinew = Phi
+            Phinew[idx[i, 1], idx[i, 2]] = 1 - Phinew[idx[i, 1], idx[i, 2]]
+            Phinew[idx[i, 2], idx[i, 1]] = 1 - Phinew[idx[i, 2], idx[i, 1]]
+            diag(Phinew) = 1
+            if (Phinew[idx[i, 1], idx[i, 2]] == 1) {
+                uv <- idx[i, ]
+            } else {
+                uv <- rev(idx[i, ])
+            }
+            Phinew <- mytc(Phinew, uv[1], uv[2])
+            models[[i]] <- Phinew
+        }
+    }
+    models
+}
+#' @noRd
+get.ins.fast <- function (Phi, trans.close = TRUE) {
+    idx = which(Phi == 0)
+    models = list()
+    nn <- dim(Phi)
+    if (length(idx) > 0) {
+        for (i in 1:length(idx)) {
+            uv <- arrayInd(idx[i], nn)
+            Phinew = Phi
+            Phinew[idx[i]] = 1
+            if (trans.close) {
+                Phinew = mytc(Phinew, uv[1], uv[2])
+            }
+            models[[i]] <- Phinew
+        }
+    }
+    models
+}
+#' @noRd
+get.del.tc <- function (Phi) {
+    Phi = Phi - diag(ncol(Phi))
+    idx = which(Phi == 1)
+    models = list()
+    nn <- dim(Phi)
+    if (length(idx) > 0) {
+        for (i in 1:length(idx)) {
+            uv <- arrayInd(i, nn)
+            Phinew = Phi
+            Phinew[idx[i]] = 0
+            diag(Phinew) = 1
+            Phinew <- mytc(Phinew, uv[1], uv[2])
+            models[[i]] <- Phinew
+        }
+    }
+    models
+}
+#' @noRd
+#' @importFrom nem enumerate.models transitive.reduction
 #' @importFrom utils getFromNamespace
 mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
@@ -773,10 +961,9 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
         method <- "llr"
     }
-
-    get.deletions <- getFromNamespace("get.deletions", "nem")
-    get.insertions <- getFromNamespace("get.insertions", "nem")
-    get.reversions <- getFromNamespace("get.reversions", "nem")
+    get.insertions <- get.ins.fast
+    get.reversions <- get.rev.tc
+    get.deletions <- get.del.tc
     if ("modules" %in% search) {
         if (length(search) > 1) {
             search <- search[-which(search %in% "modules")]
@@ -852,17 +1039,16 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     allscores <- score
 
     if (!is.null(parallel)) {
-        get.deletions <- getFromNamespace("get.deletions", "nem")
-        get.insertions <- getFromNamespace("get.insertions", "nem")
-        get.reversions <- getFromNamespace("get.reversions", "nem")
+        get.insertions <- get.ins.fast
+        get.reversions <- get.rev.tc
+        get.deletions <- get.del.tc
         naturalsort <- naturalsort::naturalsort
         transitive.reduction <- nem::transitive.reduction
-        transitive.closure <- nem::transitive.closure
         sfInit(parallel = TRUE, cpus = parallel)
         sfExport("modules", "D", "start", "better", "transitive.reduction",
-                 "method", "scoreAdj", "weights", "transitive.closure",
+                 "method", "scoreAdj", "weights", "mytc",
                  "llrScore", "get.deletions", "get.insertions",
-                 "get.reversions", "discScore", "getRho", "doMean")
+                 "get.reversions", "getRho", "doMean")
     }
 
     if (search %in% "small") {
@@ -872,11 +1058,29 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         max_iter <- Inf
     }
 
+    guess <- FALSE
+    if (search %in% "fast") {
+        search <- "greedy"
+        guess <- TRUE
+    }
+
     if (search %in% "greedy") {
+        P <- oldadj <- NULL
+        if (guess) {
+            better <- mynem(D, search = "estimate", start = start,
+                            method = method, parallel = parallel,
+                            reduce = reduce, weights = weights, runs = runs,
+                            verbose = verbose, redSpace = redSpace,
+                            trans.close = trans.close, subtopo = subtopo,
+                            prior = prior, ratio = ratio, domean = domean,
+                            fpfn = fpfn, Rho = Rho, logtype = logtype,
+                            modified = modified, Sgenes = Sgenes)$adj
+            better <- mytc(better)
+        }
         for (iter in seq_len(runs)) {
             if (iter > 1) {
                 better <- matrix(sample(c(0,1),nrow(better)*ncol(better),
-                                       replace = TRUE),
+                                       replace = TRUE, prob = c(0.9,0.1)),
                                 nrow(better),
                                 ncol(better))
                 colnames(better) <- rownames(better) <-
@@ -890,6 +1094,8 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                                   subtopo = subtopo, prior = prior,
                                   ratio = ratio, fpfn = fpfn,
                                   Rho = Rho)
+                P <- score$subweights
+                oldadj <- better
                 score <- score$score
                 oldscore <- score
                 allscores <- score
@@ -897,37 +1103,43 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
             stop <- FALSE
             count <- 0
             while(!stop) {
+                oldadj <- better
                 doScores <- function(i) {
                     new <- models[[i]]
                     score <- scoreAdj(D, new, method = method,
                                       weights = weights,
                                       subtopo = subtopo, prior = prior,
                                       ratio = ratio, fpfn = fpfn,
-                                      Rho = Rho)
+                                      Rho = Rho, P = P, oldadj = oldadj,
+                                      trans.close = FALSE)
+                    P <- score$subweights
                     score <- score$score
-                    return(score)
+                    return(list(score, P))
                 }
                 models <- unique(c(get.insertions(better),
                                    get.reversions(better),
                                    get.deletions(better)))
                 if (is.null(parallel)) {
                     scores <- unlist(lapply((seq_len(length(models))),
-                                            doScores))
+                                            doScores), recursive = FALSE)
                 } else {
                     scores <- unlist(sfLapply((seq_len(length(models))),
-                                              doScores))
+                                              doScores), recursive = FALSE)
                 }
+                Ps <- scores[seq_len(length(models))*2]
+                scores <- unlist(scores[seq_len(length(models))*2 - 1])
                 scores[is.na(scores)] <- 0
                 best <- models[[which.max(scores)]]
-                best <- transitive.closure(best, mat = TRUE)
+                best <- mytc(best)
                 if ((max(scores, na.rm = TRUE) > oldscore |
                     (max(scores, na.rm = TRUE) == oldscore &
                      sum(better == 1) > sum(best == 1)))
                     & count < max_iter) {
                     better <- best
-                    better <- transitive.closure(better, mat = TRUE)
+                    better <- mytc(better)
                     oldscore <- max(scores)
                     allscores <- c(allscores, oldscore)
+                    P <- Ps[[which.max(scores)]]
                 } else {
                     stop <- TRUE
                 }
@@ -969,7 +1181,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
             scores <- unlist(sfLapply(seq_len(length(models)), doScores))
         }
         best <- which.max(scores)
-        better <- transitive.closure(models[[best]], mat = TRUE)
+        better <- mytc(models[[best]])
         diag(better) <- 1
     }
 
@@ -1071,12 +1283,16 @@ graph2adj <- function(gR) {
 }
 #' @noRd
 #' @importFrom flexclust dist2
+#' @import Rcpp
+#' @import RcppArmadillo
+#' @import RcppEigen
 llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     if (is.null(weights)) {
         weights <- rep(1, ncol(data))
     }
     if (ratio) {
-        score <- data%*%(adj*weights)
+        score <- eigenMapMatMult(data, adj*weights)
+        ## score <- data%*%(adj*weights)
     } else {
         if (max(data) == 1) {
             score <- -dist2(data, t(adj)*weights)
@@ -1087,11 +1303,16 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     return(score)
 }
 #' @noRd
+#' @importFrom matrixStats rowMaxs
 scoreAdj <- function(D, adj, method = "llr", weights = NULL,
                      trans.close = TRUE, subtopo = NULL,
                      prior = NULL, ratio = TRUE, fpfn = c(0.1, 0.1),
-                     Rho = NULL, dotopo = FALSE) {
-    adj <- transitive.closure(adj, mat = TRUE)
+                     Rho = NULL, dotopo = FALSE,
+                     P = NULL, oldadj = NULL) {
+    ## P <- NULL
+    if (trans.close) {
+        adj <- mytc(adj)
+    }
     if (is.null(Rho)) {
         adj1 <- adj[colnames(D), ]
     } else {
@@ -1100,18 +1321,32 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     }
     if (method %in% "llr") {
         ll <- "max"
-        score <- llrScore(D, adj1, weights = weights, ratio = ratio)
+        if (is.null(P) | is.null(oldadj)) {
+            score <- llrScore(D, adj1, weights = weights, ratio = ratio)
+        } else {
+            if (is.null(Rho)) {
+                oldadj <- oldadj[colnames(D), ]
+            } else {
+                oldadj <- t(Rho)%*%oldadj
+                oldadj[which(oldadj > 1)] <- 1
+            }
+            changeidx <-
+                unique(which(adj1 - oldadj != 0, arr.ind = TRUE)[, 2])
+            score <- P
+            score[, changeidx] <-
+                llrScore(D, adj1[, changeidx], weights = weights,ratio = ratio)
+        }
     }
     if (is.null(subtopo) & dotopo) {
-        subtopo <- apply(score, 1, function(x) {
-            return(which.max(c(x, 0))) })
+        subtopo <- maxCol_row(cbind(score, 0))
+        ##apply(score, 1, function(x) { return(which.max(c(x, 0))) })
     }
     subweights <- score
     if (ll %in% "max") {
-        score <- sum(apply(score, 1, max))
+        score <- sum(rowMaxs(score))
     }
     if (ll %in% "marg") {
-        score <- sum(apply(score, 1, sum))
+        score <- sum(score)
     }
     if (!is.null(prior)) {
         prior <- transitive.reduction(prior)
@@ -1124,9 +1359,7 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
 }
 #' @noRd
 adj2dnf <- function(A) {
-
     dnf <- NULL
-
     for (i in seq_len(ncol(A))) {
         dnf <- c(dnf, rownames(A))
         for (j in seq_len(nrow(A))) {
@@ -1145,6 +1378,25 @@ adj2dnf <- function(A) {
 
     return(dnf)
 
+}
+#' @noRd
+#' @useDynLib mnem
+mytc <- function(x, u = NULL, v = NULL) {
+    diag(x) <- 1
+    if (is.null(u) | is.null(v)) {
+        y <- matrix(transClose_W(x), nrow(x), ncol(x))
+    } else {
+        if (x[u,v] == 1) {
+            y <- matrix(transClose_Ins(x, u, v), nrow(x), ncol(x))
+        }
+        if (x[u,v] == 0) {
+            y <- matrix(transClose_Del(x, u, v), nrow(x), ncol(x))
+        }
+    }
+    y[which(y != 0)] <- 1
+    rownames(y) <- rownames(x)
+    colnames(y) <- colnames(x)
+    return(y)
 }
 #' @noRd
 simulateDnf <- function(dnf, stimuli = NULL, inhibitors = NULL) {

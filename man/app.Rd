@@ -10,7 +10,7 @@ app
 \description{
 Example data: mnem results for
 the Dixit et al., 2016 and Datlinger et al., pooled CRISPR screens.
-For details see the vignette.
+For details see the vignette or function createApp().
 }
 \examples{
 data(app)

@@ -1,3 +1,66 @@
+#' Plot convergence of EM
+#'
+#' This function plots the converbence of the different EM iterations.
+#' @param x mnem object
+#' @param col vector of colors for the iterations
+#' @param type see ?plot.default
+#' @param convergence difference of when two log likelihoods
+#' are considered equal; see also convergence for the function
+#' mnem()
+#' @param ... additional parameters ofr the plots/lines functions
+#' @return plot of EM convergence
+#' @author Martin Pirkl
+#' @export
+#' @importFrom grDevices rgb
+#' @examples
+#' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+#' data <- (sim$data - 0.5)/0.5
+#' data <- data + rnorm(length(data), 0, 1)
+#' result <- mnem(data, k = 2, starts = 1)
+#' plotConvergence(result)
+plotConvergence <- function(x, col = NULL, type = "b",
+                            convergence = 0.1, ...) {
+    ymin <- Inf
+    xmax <- 0
+    maxll <- -Inf
+    maxllcount <- 0
+    minlen <- 0
+    runs <- length(x$limits)
+    if (is.null(col)) {
+        col <- rgb(runif(runs),runif(runs),runif(runs),0.75)
+    }
+    for (i in seq_len(runs)) {
+        if (max(x$limits[[i]]$ll) - maxll > convergence) {
+            maxll <- max(x$limits[[i]]$ll)
+            maxllcount <- 0
+        }
+        if (abs(max(x$limits[[i]]$ll) - maxll) <= convergence) {
+            maxllcount <- maxllcount + 1
+        }
+        if (length(x$limits[[i]]$ll) == 2) {
+            minlen <- minlen + 1
+        }
+        ymin <- min(c(ymin, x$limits[[i]]$ll))
+        xmax <- max(c(xmax, length(x$limits[[i]]$ll)))
+    }
+    for (i in seq_len(runs)) {
+        if (i == 1) {
+            plot(x$limits[[i]]$ll, col = col[i], ylim = c(ymin, max(x$lls)),
+                 xlim = c(1, xmax), xlab = "EM iterations", ylab = "log odds",
+                 type = type,
+                 main = paste0(maxllcount,
+                               " (",
+                               round(maxllcount/runs*100, 2),
+                               "%) run(s) with maximum log odds at ",
+                               convergence, " accuracy\n",
+                               minlen, " (", round(minlen/runs*100, 2),
+                               "%) run(s) started in local optimum"),
+                 ...)
+        } else {
+            lines(x$limits[[i]]$ll, col = col[i], type = type, ...)
+        }
+    }
+}
 #' Creating app data.
 #'
 #' This function is for the reproduction of the application
@@ -15,9 +78,10 @@
 #' @param maxk maximum number of component in mnem inference (default: 5)
 #' @param parallel number of threads for parallelisation
 #' @param path path to the data files path/file.csv
-#' @param dataonly if TRUE only fetches and normalizes the data and
+#' @param dataonly if TRUE, only fetches and normalizes the data and
 #' computes the log odds
-#' @param allcrop if TRUE does not restrict and uses the full CROPseq dataset
+#' @param allcrop if TRUE, does not restrict and uses the full CROPseq dataset
+#' @param multi if TRUE, includes cells with more than one perturbed gene
 #' @param ... additional parameters for the mixture nem function
 #' @return app data object
 #' @author Martin Pirkl
@@ -33,12 +97,12 @@
 #' data(app)
 createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
                       maxk = 5, parallel = NULL, path = "", dataonly = FALSE,
-                      allcrop = FALSE, ...) {
+                      allcrop = FALSE, multi = FALSE, ...) {
     ## load datasets
     datas <- list()
     if (1 %in% sets) {
         datafile <- "GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv"
-        data <- fread(datafile, data.table = FALSE)
+        data <- fread(paste0(path, datafile), data.table = FALSE)
         data.backup <- data
         counts <- data[, grep("condition|^stim", colnames(data))]
         counts <- counts[-(seq_len(5)), -1]
@@ -94,7 +158,7 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
         }
         colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
         colnames(data)[grep("INTER", colnames(data))] <- ""
-        if (length(grep("_", colnames(data))) > 0) {
+        if (length(grep("_", colnames(data))) > 0 & !multi) {
             data <- data[, -grep("_", colnames(data))]
         }
         if (!is.null(m)) {
@@ -124,7 +188,7 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
         }
         colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
         colnames(data)[grep("INTER", colnames(data))] <- ""
-        if (length(grep("_", colnames(data))) > 0) {
+        if (length(grep("_", colnames(data))) > 0 & !multi) {
             data <- data[, -grep("_", colnames(data))]
         }
         if (!is.null(m)) {
@@ -142,6 +206,88 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
         }
         datas[[3]] <- data
     }
+    if (4 %in% sets | i %in% 5) {
+        data <- fread(paste0(path, "dc_both_filt_fix_tp10k.txt"))
+        data.backup <- data
+        rownames(data) <- data.backup$GENE
+        if (!is.null(n)) {
+            var <- apply(data, 1, var)
+            data <- data[order(var, decreasing = TRUE)[seq_len(n)], ,
+                         drop = FALSE]
+        }
+        data <- data[, -1]
+        data <- as.matrix(data)
+        data1 <- data[, grep("0h", colnames(data))]
+        data2 <- data[, grep("3h", colnames(data))]
+        data <- data1
+        datafile <- "GSM2396857_dc_0hr_cbc_gbc_dict.csv"
+        c2g <- read.table(paste0(path, datafile), fill = TRUE, sep = ",")
+        cn <- character(ncol(data))
+        for (i in seq_len(length(c2g[[1]]))) {
+            cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
+            cn[which(colnames(data) %in% cells)] <- paste(cn[
+                which(colnames(data) %in% cells)],
+                gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
+                     as.character(c2g[[1]][[i]])), sep = "_")
+        }
+        colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
+        colnames(data)[grep("INTER", colnames(data))] <- ""
+        if (length(grep("_", colnames(data))) > 0 & !multi) {
+            data <- data[, -grep("_", colnames(data))]
+        }
+        if (!is.null(m)) {
+            Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
+            data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
+                         drop = FALSE]
+        }
+        if (!is.null(o)) {
+            Sgenes <- naturalsort(unique(colnames(data)))
+            idx <- NULL
+            for (i in Sgenes) {
+                idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+            }
+            data <- data[, idx]
+        }
+        datas[[4]] <- data
+        data <- data2
+        datafile <- "GSM2396856_dc_3hr_cbc_gbc_dict_strict.csv"
+        c2g <- read.table(paste0(path, datafile), fill = TRUE, sep = ",")
+        cn <- character(ncol(data))
+        for (i in seq_len(length(c2g[[1]]))) {
+            cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
+            cn[which(colnames(data) %in% cells)] <- paste(cn[
+                which(colnames(data) %in% cells)],
+                gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
+                     as.character(c2g[[1]][[i]])), sep = "_")
+        }
+        colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
+        colnames(data)[grep("INTER", colnames(data))] <- ""
+        if (length(grep("_", colnames(data))) > 0 & !multi) {
+            data <- data[, -grep("_", colnames(data))]
+        }
+        if (!is.null(m)) {
+            Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
+            data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
+                         drop = FALSE]
+        }
+        if (!is.null(o)) {
+            Sgenes <- naturalsort(unique(colnames(data)))
+            idx <- NULL
+            for (i in Sgenes) {
+                idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+            }
+            data <- data[, idx]
+        }
+        datas[[5]] <- data
+        data <- cbind(datas[[4]], datas[[5]])
+        data <- exp(data) - 1
+        exprslvl <- apply(data, 1, median)
+        data <- data[which(exprslvl > 0), ]
+        data <- Linnorm(data)
+        datas[[4]] <- data[, seq_len(ncol(datas[[4]]))]
+        datas[[5]] <- data[, -seq_len(ncol(datas[[4]]))]
+        print("data normalized")
+    }
     print("data loaded")
     ## dataset normalization, log odds computation and mnem inference
     app <- list()
@@ -154,13 +300,14 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
             data <- data[which(exprslvl > 0), ]
             data <- t(t(data)/(colSums(data)/10000))
             data <- Linnorm(data)
-        } else {
+            print("data normalized")
+        } else if (i %in% c(2,3)) {
             data <- exp(data) - 1
             exprslvl <- apply(data, 1, median)
             data <- data[which(exprslvl > 0), ]
             data <- Linnorm(data)
+            print("data normalized")
         }
-        print("data normalized")
         ## log ratio calculation
         llr <- data*0
         C <- which(colnames(data) %in% "")
@@ -188,10 +335,6 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
         llr <- do.call("rbind", llr)
         llr[is.na(llr)] <- 0
         llr[is.infinite(llr)] <- max(llr[!is.infinite(llr)])
-        ## llr <- t(apply(llr, 1, function(x) {
-        ##     x[is.infinite(x)] <- max(x[!is.infinite(x)])
-        ##     return(x)
-        ## }))
         colnames(llr) <- colnames(data)
         llr <- llr[, which(!(colnames(data) %in% ""))]
         rownames(llr) <- rownames(data)
@@ -254,8 +397,10 @@ mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(),
     Sgenes <- naturalsort(getSgenes(data))
     tmp <- mnemh.rec(data, k=k, logtype=logtype, ...)
     K <- length(tmp)/7
-    comp <- res <- list()
+    comp <- res <- limits <- list()
+    lls <- numeric(K)
     for (i in seq_len(K)) {
+        lls[i] <- tmp[[(7+7*(i-1))]]
         comp[[i]] <- res[[i]] <- list()
         tmp2 <- tmp[[(2+7*(i-1))]]
         tmp3 <- tmp2[[1]]$phi
@@ -283,6 +428,8 @@ mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(),
         }
         res[[i]]$adj <- comp[[i]]$phi <- tmp3
         comp[[i]]$theta <- tmp[[(2+7*(i-1))]][[1]]$theta
+        limits[[i]] <- list()
+        limits[[i]]$ll <- tmp[[(6+7*(i-1))]]
     }
     probs <- matrix(0, K, ncol(data))
     probs <- do.call(getProbs, c(list(probs=probs, k=K, data=data,
@@ -293,8 +440,8 @@ mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(),
     mw <- apply(probs2, 1, sum)
     mw <- mw/sum(mw)
     ll <- getLL(probs$probs, logtype = logtype, mw = mw, data = data)
-    res <- list(limits = list(), comp = comp, data = D, mw = mw,
-                probs = probs$probs, lls = NA, ll = ll)
+    res <- list(limits = limits, comp = comp, data = D, mw = mw,
+                probs = probs$probs, lls = lls, ll = ll)
     class(res) <- "mnem"
     return(res)
 }
@@ -302,7 +449,7 @@ mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(),
 #'
 #' Example data: mnem results for
 #' the Dixit et al., 2016 and Datlinger et al., pooled CRISPR screens.
-#' For details see the vignette.
+#' For details see the vignette or function createApp().
 #' @name app
 #' @docType data
 #' @usage app
@@ -385,7 +532,8 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
                 }
                 y <- logtype^y
                 y <- y*mw
-                y <- apply(y, 2, function(x) return(x/sum(x)))
+                y <- y/colSums(y)[col(y)]
+                ## apply(y, 2, function(x) return(x/sum(x)))
             }
         } else {
             y <- matrix(1, nrow(x), ncol(x))
@@ -435,7 +583,7 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
     n <- ncol(x$data)
     if (useF) {
         for (i in seq_len(length(x$comp))) {
-            tmp <- transitive.closure(x$comp[[i]]$phi, mat = TRUE)
+            tmp <- mytc(x$comp[[i]]$phi)
             tmp2 <- matrix(0, nrow = nrow(tmp),
                            ncol = length(x$comp[[i]]$theta))
             tmp3 <- x$comp[[i]]$theta
@@ -459,7 +607,7 @@ getIC <- function(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
             for (i in seq_len(length(x$comp))) {
                 tmp <- transitive.reduction(x$comp[[i]]$phi)
                 if (degree > 2) {
-                    tmp <- transitive.closure(x$comp[[i]]$phi, mat = TRUE)
+                    tmp <- mytc(x$comp[[i]]$phi)
                 }
                 diag(tmp) <- 0
                 fpar <- fpar + sum(tmp != 0)
@@ -541,7 +689,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' @param search search method for single network inference "greedy",
 #' "exhaustive" or "modules" (also possible: "small", which is greedy with
 #' only one edge change per M-step to make for a smooth convergence)
-#' @param start A list of n lists of k networks for n starts of the EM and
+#' @param start a list of n lists of k networks for n starts of the EM and
 #' k components
 #' @param method "llr" for log ratios or foldchanges as input (see ratio)
 #' @param parallel number of threads for parallelization of the number of
@@ -564,6 +712,8 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' @param affinity 0 is default for soft clustering, 1 is for hard clustering
 #' @param evolution logical. If TRUE components are penelized for being
 #' different from each other.
+#' @param lambda smoothness value for the prior put on the components, if
+#' evolution set to TRUE
 #' @param subtopoX hard prior on theta as a vector of S-genes for all E-genes
 #' @param ratio logical, if true data is log ratios, if false foldchanges
 #' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
@@ -581,9 +731,10 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' negative rates for discrete data
 #' @param multi set to TRUE if the data contains multiple perturbation
 #' per sample; make sure the samples are reasonably named, e.g. "IRF1_CTNNB1"
-#' @param ksel character vector of methods for the ifnerence of k; can combine
+#' @param ksel character vector of methods for the inference of k; can combine
 #' "hc" (hierarchical clustering) or "kmeans" with "silhouette", "BIC" or "AIC";
-#' can also include "cor" for correlation distance instead of euclidean
+#' can also include "cor" for correlation distance (preferred)
+#' instead of euclidean
 #' @author Martin Pirkl
 #' @return object of class mnem
 #' \item{comp}{list of the component with each component being
@@ -618,11 +769,12 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                  type = "random",
                  p = NULL, k = NULL, kmax = 10, verbose = FALSE,
                  max_iter = 100, parallel2 = NULL, converged = 10^-1,
-                 redSpace = NULL, affinity = 0, evolution = FALSE,
+                 redSpace = NULL, affinity = 0, evolution = FALSE, lambda = 1,
                  subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE,
-                 ksel = c("hc", "silhouette", "cor")) {
+                 ksel = c("kmeans", "silhouette", "cor")) {
+    if (all(D %in% c(0,1))) { method <- "disc" }
     if (method %in% "disc") {
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
         D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
@@ -654,7 +806,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
         Rho <- NULL
     }
     ## learn k:
-    if (is.null(k) & is.null(start) & is.null(p)) {
+    if (is.null(k) & is.null(start) & is.null(p) & !initnets) {
         tmp <- learnk(data, kmax = kmax, ksel = ksel, starts = starts,
                       verbose = verbose)
         k <- tmp$k
@@ -663,6 +815,11 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
         }
         ks <- tmp$ks
     } else {
+        if (is.null(k) & !is.null(p)) {
+            k <- nrow(p)
+        } else if (is.null(k) & is.null(p)) {
+            k <- 2
+        }
         ks <- rep(k, length(Sgenes))
     }
     if (is.null(subtopoX)) {
@@ -692,7 +849,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
     }
     if (!is.null(parallel)) { parallel2 <- NULL }
     if (!is.null(start) | !is.null(p)) {
-        starts <- length(start); k <- max(c(nrow(p), length(start[[1]])))
+        starts <- max(c(length(start),1)); k <- max(c(nrow(p),
+                                                      length(start[[1]])))
     }
     init <- start
     res1 <- NULL
@@ -743,12 +901,12 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
         if (inference %in% "em") {
             if (!is.null(parallel)) {
                 doMean <- doMean
+                rowRanges <- matrixStats::rowRanges
                 get.deletions <- getFromNamespace("get.deletions", "nem")
                 get.insertions <- getFromNamespace("get.insertions", "nem")
                 get.reversions <- getFromNamespace("get.reversions", "nem")
                 naturalsort <- naturalsort::naturalsort
                 transitive.reduction <- nem::transitive.reduction
-                transitive.closure <- nem::transitive.closure
                 sfInit(parallel = TRUE, cpus = parallel)
                 sfExport("modules", "mw", "ratio", "getSgeneN", "modData",
                          "sortAdj", "calcEvopen", "evolution",
@@ -759,8 +917,10 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                          "affinity", "getProbs", "probscl", "method",
                          "naturalsort", "getRho", "doMean",
                          "transitive.reduction", "get.insertions",
-                         "transitive.closure", "get.deletions",
-                         "get.reversions", "nemEst", "discScore")
+                         "mytc", "get.deletions",
+                         "get.reversions", "nemEst", "rowRanges",
+                         "eigenMapMatMult", "get.ins.fast",
+                         "get.rev.tc", "get.del.tc")
             }
             do_inits <- function(s) {
                 if (!is.null(init)) {
@@ -792,22 +952,23 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                         subtopoX <- probs0$subtopoX
                         probs <- probs0$probs
                     } else {
-                        probs <- p
+                        p <- p*t(t(p)*apply(abs(data), 2, sum))
+                        probs <- log(p)/log(logtype)
                     }
                 }
-                if (is.null(p)) {
-                    if (length(probscl) >= s & type %in% "cluster") {
-                        probs <- probscl[[s]]
+                if (is.null(init)) {
+                    if (is.null(p)) {
+                        if (length(probscl) >= s & type %in% "cluster") {
+                            probs <- probscl[[s]]
+                        } else {
+                            probs <- random_probs(k, data, logtype = logtype)
+                        }
                     } else {
-                        probs <- random_probs(k, data)
+                        k <- nrow(p)
+                        pdata <- data
+                        p <- p*t(t(p)*apply(abs(data), 2, sum))
+                        probs <- log(p)/log(logtype)
                     }
-                    mw <- apply(getAffinity(probs, affinity = affinity,
-                                            norm = TRUE, logtype = logtype,
-                                            mw = mw, data = data), 1, sum)
-                    mw <- mw/sum(mw)
-                } else {
-                    k <- nrow(p)
-                    probs <- p
                 }
                 mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE,
                                         logtype = logtype, mw = mw,
@@ -1051,10 +1212,10 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
         dead <- NULL
         for (i in seq_len(length(unique))) {
             dups <- NULL
-            a <- transitive.closure(unique[[i]]$adj, mat = TRUE)
+            a <- mytc(unique[[i]]$adj)
             for (j in seq_len(length(unique))) {
                 if (i %in% j | j %in% dead) { next() }
-                b <- transitive.closure(unique[[j]]$adj, mat = TRUE)
+                b <- mytc(unique[[j]]$adj)
                 dups <- c(dups, which(apply(abs(a - b), 1, sum) == 0))
             }
             if (all(seq_len(nrow(unique[[i]]$adj)) %in% dups)) {
@@ -1150,7 +1311,7 @@ bootstrap <- function(x, size = 1000, p = 1, logtype = 2, ...) {
             dataRR <- dataR[sample(seq_len(nrow(dataR)),
                                    ceiling(p*nrow(dataR)), replace = TRUE), ]
             res <- mynem(dataRR, ...)
-            bootres[[i]] <- bootres[[i]]+transitive.closure(res$adj, mat = TRUE)
+            bootres[[i]] <- bootres[[i]]+mytc(res$adj)
         }
         bootres[[i]] <- bootres[[i]]/size
         colnames(bootres[[i]]) <- rownames(bootres[[i]]) <-
@@ -1572,10 +1733,9 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #'
 #' This function clusters the data and performs standard nem on each cluster.
 #' @param data data of log ratios with cells in columns and features in rows
-#' @param k number of clusters
+#' @param k number of clusters to check
 #' @param cluster given clustering has to correspond to the columns of data
-#' @param learnkpars list of additional arguments for functio learnk, if
-#' cluster is NULL
+#' @param starts number of random starts for the kmeans algorithm
 #' @param ... additional arguments for standard nem function
 #' @author Martin Pirkl
 #' @return family of nems; the first k list entries hold full information of
@@ -1592,11 +1752,25 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' resulst <- clustNEM(data, k = 2:3)
-clustNEM <- function(data, k = 2:5, cluster = NULL, learnkpars = list(), ...) {
+clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, ...) {
     data <- modData(data)
     if (is.null(cluster)) {
-        Kres <- do.call(learnk, c(list(data = data), learnkpars))
-        K <- Kres$k
+        smax <- 0
+        K <- 1
+        res <- NULL
+        for (i in k) {
+            d <- (1 - cor(data))/2
+            d <- as.dist(d)
+            kres <- kmeans(d, i)
+            sres <- silhouette(kres$cluster, d, nstart = starts)
+            if (mean(sres[, 3]) > smax) {
+                Kres <- kres
+                K <- i
+                smax <- mean(sres[, 3])
+            } else {
+                ##break()
+            }
+        }
     } else {
         Kres <- list()
         Kres$cluster <- cluster
@@ -1706,7 +1880,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
                        order(apply(adj, 2, sum), decreasing = FALSE)]
             adj[lower.tri(adj)] <- 0
             diag(adj) <- 1
-            adj <- transitive.closure(adj, mat = TRUE)
+            adj <- mytc(adj)
             colnames(adj) <- rownames(adj) <- sample(seq_len(Sgenes), Sgenes)
             adj <- adj[order(as.numeric(rownames(adj))),
                        order(as.numeric(colnames(adj)))]
@@ -1741,7 +1915,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
         } else {
             reps2 <- reps
         }
-        adj <- transitive.closure(Nem[[i]], mat = TRUE)
+        adj <- mytc(Nem[[i]])
         data_tmp <- t(adj)
         colntmp <- rep(seq_len(ncol(data_tmp)), reps2)
         data_tmp <- data_tmp[, rep(seq_len(ncol(data_tmp)), reps2)]
@@ -1866,7 +2040,7 @@ plot.mnemsim <- function(x, data = NULL, logtype = 2, fuzzypars = list(), ...) {
 #' @param logtype logarithm type of the data
 #' @param ... additional parameters for the function getAffinity
 #' @author Martin Pirkl
-#' @return visualization of simulated mixture with Rgraphviz
+#' @return list with cell log odds mixture weights and log likelihood
 #' @export
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
