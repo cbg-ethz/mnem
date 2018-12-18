@@ -1833,6 +1833,9 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, ...) {
 #' no quadruple knock-downs
 #' @param subsample range to subsample data. 1 means the full simulated data is
 #' used
+#' @param scalefree if TRUE, graph is scale free
+#' @param ... additional parameters for the scale free network
+#' sampler (see 'nem' package)
 #' @author Martin Pirkl
 #' @return simulation object with meta information and data
 #' \item{Nem}{list of adjacency matrixes generatign the data}
@@ -1850,12 +1853,14 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, ...) {
 #' Rgraphviz
 #' tsne
 #' @importFrom utils combn
+#' @import nem
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 simData <- function(Sgenes = 5, Egenes = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,
-                    edgeprob = 0.25, multi = NULL, subsample = 1) {
+                    edgeprob = 0.25, multi = NULL, subsample = 1,
+                    scalefree = FALSE, ...) {
     if (!is.null(mw) & Nems != length(mw)) {
         print(paste0("Vector of mixture weights 'mw' must be the length of the",
                      " number of komponents 'Nems'. Input 'Nems=", Nems,
@@ -1872,18 +1877,23 @@ simData <- function(Sgenes = 5, Egenes = 1,
     index <- NULL
     theta <- list()
     for (i in seq_len(Nems)) {
-      if (i == 1 | !evolution) {
-            adj <- matrix(sample(c(0,1), Sgenes^2, replace = TRUE,
-                                 prob = c(1-edgeprob, edgeprob)),
-                          Sgenes, Sgenes)
-            adj <- adj[order(apply(adj, 1, sum), decreasing = TRUE),
-                       order(apply(adj, 2, sum), decreasing = FALSE)]
-            adj[lower.tri(adj)] <- 0
-            diag(adj) <- 1
-            adj <- mytc(adj)
-            colnames(adj) <- rownames(adj) <- sample(seq_len(Sgenes), Sgenes)
-            adj <- adj[order(as.numeric(rownames(adj))),
-                       order(as.numeric(colnames(adj)))]
+        if (i == 1 | !evolution) {
+            if (scalefree) {
+                adj <- sampleRndNetwork(Sgenes, DAG = TRUE, ...)
+            } else {
+                adj <- matrix(sample(c(0,1), Sgenes^2, replace = TRUE,
+                                     prob = c(1-edgeprob, edgeprob)),
+                              Sgenes, Sgenes)
+                adj <- adj[order(apply(adj, 1, sum), decreasing = TRUE),
+                           order(apply(adj, 2, sum), decreasing = FALSE)]
+                adj[lower.tri(adj)] <- 0
+                diag(adj) <- 1
+                adj <- mytc(adj)
+                colnames(adj) <- rownames(adj) <- sample(seq_len(Sgenes),
+                                                         Sgenes)
+                adj <- adj[order(as.numeric(rownames(adj))),
+                           order(as.numeric(colnames(adj)))]
+            }
         } else {
             children <- which(apply(Nem[[(i-1)]], 1, sum) == 0)
             parents <- which(apply(Nem[[(i-1)]], 2, sum) == 0)

@@ -6,7 +6,8 @@
 \usage{
 simData(Sgenes = 5, Egenes = 1, Nems = 2, reps = NULL, mw = NULL,
   evolution = FALSE, nCells = 1000, uninform = 0, unitheta = FALSE,
-  edgeprob = 0.25, multi = NULL, subsample = 1)
+  edgeprob = 0.25, multi = NULL, subsample = 1, scalefree = FALSE,
+  ...)
 }
 \arguments{
 \item{Sgenes}{number of Sgenes}
@@ -36,6 +37,11 @@ no quadruple knock-downs}
 
 \item{subsample}{range to subsample data. 1 means the full simulated data is
 used}
+
+\item{scalefree}{if TRUE, graph is scale free}
+
+\item{...}{additional parameters for the scale free network
+sampler (see 'nem' package)}
 }
 \value{
 simulation object with meta information and data

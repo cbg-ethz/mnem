@@ -1,16 +1,17 @@
 #' @noRd
+#' @importFrom methods is
 bigphi <- function(x) {
-    if (class(x) == "mnemsim") {
+    if (is(x, "mnemsim")) {
         resfull <- NULL
-        for (l in 1:length(x$Nem)) {
+        for (l in seq_len(length(x$Nem))) {
             tmp <- transitive.closure(x$Nem[[l]], mat = TRUE)
             resfull <- cbind(resfull, t(tmp))
         }
     } else {
         resfull <- NULL
-        for (l in 1:length(x$comp)) {
+        for (l in seq_len(length(x$comp))) {
             tmp <- transitive.closure(x$comp[[l]]$phi, mat = TRUE)
-            colnames(tmp) <- rownames(tmp) <- 1:nrow(tmp)
+            colnames(tmp) <- rownames(tmp) <- seq_len(nrow(tmp))
             resfull <- cbind(resfull, t(tmp))
         }
     }
@@ -894,7 +895,7 @@ get.rev.tc <-function (Phi) {
     models = list()
     nn <- dim(Phi)
     if (NROW(idx) > 0) {
-        for (i in 1:NROW(idx)) {
+        for (i in seq_len(NROW(idx))) {
             Phinew = Phi
             Phinew[idx[i, 1], idx[i, 2]] = 1 - Phinew[idx[i, 1], idx[i, 2]]
             Phinew[idx[i, 2], idx[i, 1]] = 1 - Phinew[idx[i, 2], idx[i, 1]]
@@ -916,7 +917,7 @@ get.ins.fast <- function (Phi, trans.close = TRUE) {
     models = list()
     nn <- dim(Phi)
     if (length(idx) > 0) {
-        for (i in 1:length(idx)) {
+        for (i in seq_len(length(idx))) {
             uv <- arrayInd(idx[i], nn)
             Phinew = Phi
             Phinew[idx[i]] = 1
@@ -935,7 +936,7 @@ get.del.tc <- function (Phi) {
     models = list()
     nn <- dim(Phi)
     if (length(idx) > 0) {
-        for (i in 1:length(idx)) {
+        for (i in seq_len(length(idx))) {
             uv <- arrayInd(i, nn)
             Phinew = Phi
             Phinew[idx[i]] = 0
@@ -1284,7 +1285,6 @@ graph2adj <- function(gR) {
 #' @noRd
 #' @importFrom flexclust dist2
 #' @import Rcpp
-#' @import RcppArmadillo
 #' @import RcppEigen
 llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
     if (is.null(weights)) {
@@ -1381,6 +1381,7 @@ adj2dnf <- function(A) {
 }
 #' @noRd
 #' @useDynLib mnem
+#' @importFrom Rcpp sourceCpp
 mytc <- function(x, u = NULL, v = NULL) {
     diag(x) <- 1
     if (is.null(u) | is.null(v)) {
