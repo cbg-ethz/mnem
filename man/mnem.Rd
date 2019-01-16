@@ -4,13 +4,13 @@
 \alias{mnem}
 \title{Mixture NEMs - main function.}
 \usage{
-mnem(D, inference = "em", search = "greedy", start = NULL,
-  method = "llr", parallel = NULL, reduce = FALSE, runs = 1,
-  starts = 3, type = "random", p = NULL, k = NULL, kmax = 10,
-  verbose = FALSE, max_iter = 100, parallel2 = NULL,
-  converged = 10^-1, redSpace = NULL, affinity = 0,
-  evolution = FALSE, lambda = 1, subtopoX = NULL, ratio = TRUE,
-  logtype = 2, initnets = FALSE, domean = TRUE, modulesize = 5,
+mnem(D, inference = "em", search = "greedy", phi = NULL,
+  theta = NULL, mw = NULL, method = "llr", parallel = NULL,
+  reduce = FALSE, runs = 1, starts = 3, type = "random",
+  p = NULL, k = NULL, kmax = 10, verbose = FALSE, max_iter = 100,
+  parallel2 = NULL, converged = 10^-1, redSpace = NULL,
+  affinity = 0, evolution = FALSE, lambda = 1, subtopoX = NULL,
+  ratio = TRUE, logtype = 2, domean = TRUE, modulesize = 5,
   compress = FALSE, increase = TRUE, fpfn = c(0.1, 0.1),
   multi = FALSE, ksel = c("kmeans", "silhouette", "cor"))
 }
@@ -24,8 +24,13 @@ indexing the rows}
 "exhaustive" or "modules" (also possible: "small", which is greedy with
 only one edge change per M-step to make for a smooth convergence)}
 
-\item{start}{a list of n lists of k networks for n starts of the EM and
+\item{phi}{a list of n lists of k networks for n starts of the EM and
 k components}
+
+\item{theta}{a list of n lists of k attachment vector for the E-genes
+for n starts of the EM and k components}
+
+\item{mw}{mixture weights; if NULL estimated or uniform}
 
 \item{method}{"llr" for log ratios or foldchanges as input (see ratio)}
 
@@ -39,7 +44,11 @@ unique networks}
 
 \item{starts}{number of starts for the em}
 
-\item{type}{initialize with "random" probabilities or "cluster" the data}
+\item{type}{initialize with responsibilities either by "random",
+"cluster" (each S-gene is clustered and the different S-gene clustered
+differently combined for several starts),
+"cluster2" (clustNEM is used to infer reasonable phis, which are then
+used as a start for one EM run) or "networks" (initialize with random phis)}
 
 \item{p}{initial probabilities as a k (components) times l (cells) matrix}
 
@@ -55,7 +64,8 @@ unique networks}
 optimization}
 
 \item{converged}{absolute distance for convergence between new and old log
-likelihood}
+likelihood; if set to -Inf, the EM stops if neither the phis nor thetas were
+changed in the most recent iteration}
 
 \item{redSpace}{space for "exhaustive" search}
 
@@ -73,9 +83,6 @@ evolution set to TRUE}
 
 \item{logtype}{logarithm type of the data (e.g. 2 for log2 data or exp(1)
 for natural)}
-
-\item{initnets}{if TRUE initialize with random phis instead of
-responsibilities}
 
 \item{domean}{average the data, when calculating a single NEM (speed
 improvment)}

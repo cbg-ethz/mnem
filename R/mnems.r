@@ -20,15 +20,15 @@
 #' plotConvergence(result)
 plotConvergence <- function(x, col = NULL, type = "b",
                             convergence = 0.1, ...) {
+    runs <- length(x$limits)
+    if (is.null(col)) {
+        col <- rgb(runif(runs),runif(runs),runif(runs),0.75)
+    }
     ymin <- Inf
     xmax <- 0
     maxll <- -Inf
     maxllcount <- 0
     minlen <- 0
-    runs <- length(x$limits)
-    if (is.null(col)) {
-        col <- rgb(runif(runs),runif(runs),runif(runs),0.75)
-    }
     for (i in seq_len(runs)) {
         if (max(x$limits[[i]]$ll) - maxll > convergence) {
             maxll <- max(x$limits[[i]]$ll)
@@ -58,6 +58,107 @@ plotConvergence <- function(x, col = NULL, type = "b",
                  ...)
         } else {
             lines(x$limits[[i]]$ll, col = col[i], type = type, ...)
+        }
+    }
+    if (!is.null(x$limits[[1]]$phievo)) {
+        ymin <- Inf
+        ymax <- -Inf
+        xmax <- 0
+        maxll <- -Inf
+        maxllcount <- 0
+        minlen <- 0
+        for (i in seq_len(runs)) {
+            if (max(x$limits[[i]]$phievo) - maxll > convergence) {
+                maxll <- max(x$limits[[i]]$phievo)
+                maxllcount <- 0
+            }
+            if (abs(max(x$limits[[i]]$phievo) - maxll) <= convergence) {
+                maxllcount <- maxllcount + 1
+            }
+            if (length(x$limits[[i]]$phievo) == 2) {
+                minlen <- minlen + 1
+            }
+            ymin <- min(c(ymin, x$limits[[i]]$phievo))
+            ymax <- max(c(ymax, x$limits[[i]]$phievo))
+            xmax <- max(c(xmax, length(x$limits[[i]]$phievo)))
+        }
+        for (i in seq_len(runs)) {
+            if (i == 1) {
+                plot(x$limits[[i]]$phievo, col = col[i], ylim = c(ymin, ymax),
+                     xlim = c(1, xmax), xlab = "EM iterations",
+                     main = expression(evolution ~ of ~ phi),
+                     ylab = "edge changes",
+                     type = type,
+                     ...)
+            } else {
+                lines(x$limits[[i]]$phievo, col = col[i], type = type, ...)
+            }
+        }
+        ymin <- Inf
+        ymax <- -Inf
+        xmax <- 0
+        maxll <- -Inf
+        maxllcount <- 0
+        minlen <- 0
+        for (i in seq_len(runs)) {
+            if (max(x$limits[[i]]$thetaevo) - maxll > convergence) {
+                maxll <- max(x$limits[[i]]$thetaevo)
+                maxllcount <- 0
+            }
+            if (abs(max(x$limits[[i]]$thetaevo) - maxll) <= convergence) {
+                maxllcount <- maxllcount + 1
+            }
+            if (length(x$limits[[i]]$thetaevo) == 2) {
+                minlen <- minlen + 1
+            }
+            ymin <- min(c(ymin, x$limits[[i]]$thetaevo))
+            ymax <- max(c(ymax, x$limits[[i]]$thetaevo))
+            xmax <- max(c(xmax, length(x$limits[[i]]$thetaevo)))
+        }
+        for (i in seq_len(runs)) {
+            if (i == 1) {
+                plot(x$limits[[i]]$thetaevo, col = col[i], ylim = c(ymin, ymax),
+                     xlim = c(1, xmax), xlab = "EM iterations",
+                     main = expression(evolution ~ of ~ theta),
+                     ylab = "edge changes",
+                     type = type,
+                     ...)
+            } else {
+                lines(x$limits[[i]]$thetaevo, col = col[i], type = type, ...)
+            }
+        }
+        ymin <- Inf
+        ymax <- -Inf
+        xmax <- 0
+        maxll <- -Inf
+        maxllcount <- 0
+        minlen <- 0
+        for (i in seq_len(runs)) {
+            if (max(x$limits[[i]]$mwevo) - maxll > convergence) {
+                maxll <- max(x$limits[[i]]$mwevo)
+                maxllcount <- 0
+            }
+            if (abs(max(x$limits[[i]]$mwevo) - maxll) <= convergence) {
+                maxllcount <- maxllcount + 1
+            }
+            if (length(x$limits[[i]]$mwevo) == 2) {
+                minlen <- minlen + 1
+            }
+            ymin <- min(c(ymin, x$limits[[i]]$mwevo))
+            ymax <- max(c(ymax, x$limits[[i]]$mwevo))
+            xmax <- max(c(xmax, length(x$limits[[i]]$mwevo)))
+        }
+        for (i in seq_len(runs)) {
+            if (i == 1) {
+                plot(x$limits[[i]]$mwevo, col = col[i], ylim = c(ymin, ymax),
+                     xlim = c(1, xmax), xlab = "EM iterations",
+                     main = expression(evolution ~ of ~ pi),
+                     ylab = "sum of absolute distances",
+                     type = type,
+                     ...)
+            } else {
+                lines(x$limits[[i]]$mwevo, col = col[i], type = type, ...)
+            }
         }
     }
 }
@@ -388,7 +489,7 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
-#' result <- mnemh(data, starts = 1)
+#' result <- mnemh(data, starts = 1, k = 1)
 mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(),
                   getaffinitypars = list(), ...) {
     D <- data
@@ -396,17 +497,17 @@ mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(),
     n <- getSgeneN(data)
     Sgenes <- naturalsort(getSgenes(data))
     tmp <- mnemh.rec(data, k=k, logtype=logtype, ...)
-    K <- length(tmp)/7
+    K <- length(tmp)/10
     comp <- res <- limits <- list()
     lls <- numeric(K)
     for (i in seq_len(K)) {
-        lls[i] <- tmp[[(7+7*(i-1))]]
+        lls[i] <- tmp[[(10+10*(i-1))]]
         comp[[i]] <- res[[i]] <- list()
-        tmp2 <- tmp[[(2+7*(i-1))]]
+        tmp2 <- tmp[[(2+10*(i-1))]]
         tmp3 <- tmp2[[1]]$phi
-        thetatmp <- tmp[[(2+7*(i-1))]][[1]]$theta
+        thetatmp <- tmp[[(2+10*(i-1))]][[1]]$theta
         if (nrow(tmp2[[1]]$phi) < n) {
-            tmpdata <- tmp[[(3+7*(i-1))]]
+            tmpdata <- tmp[[(3+10*(i-1))]]
             inGenes <- naturalsort(getSgenes(tmpdata))
             tmpidx <- which(Sgenes %in% inGenes)
             if (max(thetatmp) > length(tmpidx)) {
@@ -427,9 +528,9 @@ mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(),
                          naturalorder(colnames(tmp3))]
         }
         res[[i]]$adj <- comp[[i]]$phi <- tmp3
-        comp[[i]]$theta <- tmp[[(2+7*(i-1))]][[1]]$theta
+        comp[[i]]$theta <- tmp[[(2+10*(i-1))]][[1]]$theta
         limits[[i]] <- list()
-        limits[[i]]$ll <- tmp[[(6+7*(i-1))]]
+        limits[[i]]$ll <- tmp[[(6+10*(i-1))]]
     }
     probs <- matrix(0, K, ncol(data))
     probs <- do.call(getProbs, c(list(probs=probs, k=K, data=data,
@@ -689,8 +790,11 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' @param search search method for single network inference "greedy",
 #' "exhaustive" or "modules" (also possible: "small", which is greedy with
 #' only one edge change per M-step to make for a smooth convergence)
-#' @param start a list of n lists of k networks for n starts of the EM and
+#' @param phi a list of n lists of k networks for n starts of the EM and
 #' k components
+#' @param theta a list of n lists of k attachment vector for the E-genes
+#' for n starts of the EM and k components
+#' @param mw mixture weights; if NULL estimated or uniform
 #' @param method "llr" for log ratios or foldchanges as input (see ratio)
 #' @param parallel number of threads for parallelization of the number of
 #' em runs
@@ -698,7 +802,11 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' unique networks
 #' @param runs number of runs for greedy search
 #' @param starts number of starts for the em
-#' @param type initialize with "random" probabilities or "cluster" the data
+#' @param type initialize with responsibilities either by "random",
+#' "cluster" (each S-gene is clustered and the different S-gene clustered
+#' differently combined for several starts),
+#' "cluster2" (clustNEM is used to infer reasonable phis, which are then
+#' used as a start for one EM run) or "networks" (initialize with random phis)
 #' @param p initial probabilities as a k (components) times l (cells) matrix
 #' @param k number of components
 #' @param kmax maximum number of components when k=NULL is inferred
@@ -707,7 +815,8 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' @param parallel2 if parallel=NULL, number of threads for single component
 #' optimization
 #' @param converged absolute distance for convergence between new and old log
-#' likelihood
+#' likelihood; if set to -Inf, the EM stops if neither the phis nor thetas were
+#' changed in the most recent iteration
 #' @param redSpace space for "exhaustive" search
 #' @param affinity 0 is default for soft clustering, 1 is for hard clustering
 #' @param evolution logical. If TRUE components are penelized for being
@@ -718,8 +827,6 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' @param ratio logical, if true data is log ratios, if false foldchanges
 #' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
 #' for natural)
-#' @param initnets if TRUE initialize with random phis instead of
-#' responsibilities
 #' @param domean average the data, when calculating a single NEM (speed
 #' improvment)
 #' @param modulesize max number of S-genes per module in module search
@@ -763,14 +870,14 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 1)
-mnem <- function(D, inference = "em", search = "greedy", start = NULL,
-                 method = "llr",
+mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
+                 theta = NULL, mw = NULL, method = "llr",
                  parallel = NULL, reduce = FALSE, runs = 1, starts = 3,
                  type = "random",
                  p = NULL, k = NULL, kmax = 10, verbose = FALSE,
                  max_iter = 100, parallel2 = NULL, converged = 10^-1,
                  redSpace = NULL, affinity = 0, evolution = FALSE, lambda = 1,
-                 subtopoX = NULL, ratio = TRUE, logtype = 2, initnets = FALSE,
+                 subtopoX = NULL, ratio = TRUE, logtype = 2,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE,
                  ksel = c("kmeans", "silhouette", "cor")) {
@@ -806,7 +913,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
         Rho <- NULL
     }
     ## learn k:
-    if (is.null(k) & is.null(start) & is.null(p) & !initnets) {
+    if (is.null(k) & is.null(phi) & is.null(p)) {
         tmp <- learnk(data, kmax = kmax, ksel = ksel, starts = starts,
                       verbose = verbose)
         k <- tmp$k
@@ -815,19 +922,23 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
         }
         ks <- tmp$ks
     } else {
-        if (is.null(k) & !is.null(p)) {
+        if (!is.null(p)) {
             k <- nrow(p)
-        } else if (is.null(k) & is.null(p)) {
-            k <- 2
+        } else if (!is.null(phi)) {
+            k <- length(phi[[1]])
+            starts <- length(phi)
         }
         ks <- rep(k, length(Sgenes))
+    }
+    if (is.null(mw)) {
+        mw <- rep(1, k)/k
     }
     if (is.null(subtopoX)) {
         subtopoX <- estimateSubtopo(data)
     }
     if (!is.null(k)) {
-        if (initnets & is.null(start)) {
-            meanet <- mynem(D = data, search = search, start = start,
+        if (type %in% "networks" & is.null(phi)) {
+            meanet <- mynem(D = data, search = search, start = phi,
                             method = method,
                             parallel = parallel2, reduce = reduce,
                             runs = runs,
@@ -837,29 +948,40 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                             logtype = logtype, modified = TRUE, Sgenes = Sgenes)
             init <- initComps(data, k, starts, verbose, meanet)
             probscl <- 0
+        } else if (!is.null(phi)) {
+            init <- phi
         } else {
             if (type %in% "cluster") {
                 probscl <- initps(data, ks, k, starts = starts)
+                init <- NULL
+            } else if (type %in% "cluster2") {
+                init <- clustNEM(data, k = k, starts = starts, search = search,
+                                 method = method, parallel = parallel,
+                                 runs = runs, verbose = verbose, ratio = ratio,
+                                 domean = domean, modulesize = modulesize,
+                                 Rho = Rho, logtype = logtype, modified = TRUE)
+                mw <- init$mw
+                init <- list(A = unlist(init$comp, recursive = FALSE))
+                starts <- 1
             } else {
                 probscl <- 0
+                init <- NULL
             }
         }
     } else {
         probscl <- 0
+        mw <- 1
     }
     if (!is.null(parallel)) { parallel2 <- NULL }
-    if (!is.null(start) | !is.null(p)) {
-        starts <- max(c(length(start),1)); k <- max(c(nrow(p),
-                                                      length(start[[1]])))
-    }
-    init <- start
     res1 <- NULL
-    mw <- rep(1, k)/k
     if (starts <= 1) { parallel2 <- parallel; parallel <- NULL }
     if (!is.null(parallel)) { parallel2 <- NULL }
     if (k == 1) {
         if (!is.null(init)) {
-            start <- start[[1]][[1]]
+            start <- phi[[1]][[1]]
+        }
+        if (!is.null(theta)) {
+            subtopoX <- theta[[1]][[1]]
         }
         if (!is.null(parallel) & is.null(parallel2)) { parallel2 <- parallel }
         if (verbose) {
@@ -876,7 +998,7 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                                       ratio = ratio, domean = domean,
                                       modulesize = modulesize, Rho = Rho,
                                       logtype = logtype, modified = TRUE,
-                                      Sgenes = Sgenes)
+                                      Sgenes = Sgenes, subtopo = subtopoX)
         limits[[1]]$res[[1]]$D <- NULL
         res <- list()
         res[[1]] <- list()
@@ -920,7 +1042,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                          "mytc", "get.deletions",
                          "get.reversions", "nemEst", "rowRanges",
                          "eigenMapMatMult", "get.ins.fast",
-                         "get.rev.tc", "get.del.tc")
+                         "get.rev.tc", "get.del.tc",
+                         "transClose_W")
             }
             do_inits <- function(s) {
                 if (!is.null(init)) {
@@ -982,176 +1105,195 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                 ll <- getLL(probs, logtype = logtype, mw = mw, data = data)
                 llold <- bestll <- -Inf
                 bestmw <- mw
-                lls <- NULL
+                lls <- phievo <- thetaevo <- mwevo <- NULL
                 count <- 0
                 time0 <- TRUE
                 probsold <- probs
-                while ((((ll - llold > converged & increase) |
-                         (abs(ll - llold) > converged & !increase) &
-                         count < max_iter)) | time0) {
-                             if (!time0) {
-                                 if (ll - bestll > 0) {
-                                     bestll <- ll; bestres <- res1
-                                     bestprobs <- probs; bestmw <- mw
-                                 }
-                                 llold <- ll
-                                 probsold <- probs
-                             }
-                             time0 <- FALSE
-                             res <- list()
-                             postprobs <- getAffinity(probs, affinity =
-                                                                 affinity,
-                                                      norm = TRUE, logtype =
-                                                                       logtype,
-                                                      mw = mw, data = data)
-                             edgechange <- 0
-                             thetachange <- 0
-                             for (i in seq_len(k)) {
-                                 if (!is.null(res1) &
-                                     !("modules" %in% search)) {
-                                     start0 <- res1[[i]]$adj
-                                 } else {
-                                     start0 <- NULL
-                                 }
-                                 n <- getSgeneN(data)
-                                 dataF <- matrix(0, nrow(data), n)
-                                 colnames(dataF) <- seq_len(n)
-                                 nozero <- which(postprobs[i, ] != 0)
-                                 if (length(nozero) != 0) {
-                                     if (length(nozero) == ncol(data)) {
-                                         dataR <- data
-                                         postprobsR <- postprobs[i, ]
-                                     } else {
-                                         dataR <- cbind(data[, nozero,
-                                                             drop = FALSE],
-                                                        dataF)
-                                         postprobsR <- c(postprobs[i, nozero],
-                                                         rep(0, n))
-                                     }
-                                 } else {
-                                     dataR <- dataF
-                                     postprobsR <- rep(0, n)
-                                 }
-                                 if (!is.null(Rho)) {
-                                     RhoR <- getRho(dataR)
-                                 } else {
-                                     RhoR <- Rho
-                                 }
-                                 if (is.null(start0)) {
-                                     res[[i]] <- mynem(D = dataR,
-                                                       weights = postprobsR,
-                                                       search = search,
-                                                       start = start0,
-                                                       method = method,
-                                                       parallel = parallel2,
-                                                       reduce = reduce,
-                                                       runs = runs,
-                                                       verbose = verbose,
-                                                       redSpace = redSpace,
-                                                       ratio = ratio,
-                                                       domean = domean,
-                                                       modulesize = modulesize,
-                                                       Rho = RhoR,
-                                                       logtype = logtype,
-                                                       modified = TRUE,
-                                                       Sgenes = Sgenes)
-                                 } else {
-                                     test01 <- list()
-                                     test01scores <- numeric(3)
-                                     for (j in seq_len(3)) {
-                                         if (j == 3) {
-                                             start1 <- start0
-                                         } else {
-                                             start1 <- start0*0 + (j - 1)
-                                         }
-                                         test01[[j]] <- mynem(D = dataR,
-                                                              weights =
-                                                                  postprobsR,
-                                                              search = search,
-                                                              start = start1,
-                                                              method = method,
-                                                              parallel =
-                                                                  parallel2,
-                                                              reduce = reduce,
-                                                              runs = runs,
-                                                              verbose = verbose,
-                                                              redSpace =
-                                                                  redSpace,
-                                                              ratio = ratio,
-                                                              domean = domean,
-                                                              odulesize =
-                                                                  modulesize,
-                                                              Rho = RhoR,
-                                                              logtype = logtype,
-                                                              modified = TRUE,
-                                                              Sgenes = Sgenes)
-                                         test01scores[j] <-
-                                             max(test01[[j]]$scores)
-                                     }
-                                     res[[i]] <-
-                                         test01[[which.max(test01scores)]]
-                                 }
-                                 edgechange <- edgechange +
-                                     sum(abs(res[[i]]$adj - res1[[i]]$adj))
-                                 thetachange <- thetachange +
-                                     sum(res[[i]]$subtopo != res1[[i]]$subtopo)
-                                 res[[i]]$D <- NULL
-                                 res[[i]]$subweights <- NULL
+                stop <- FALSE
+                while (((((ll - llold > converged & increase) |
+                          (abs(ll - llold) > converged & !increase) &
+                          count < max_iter)) | time0) & !stop) {
+                              if (!time0) {
+                                  if (ll - bestll > 0) {
+                                      bestll <- ll; bestres <- res1
+                                      bestprobs <- probs; bestmw <- mw
+                                  }
+                                  llold <- ll
+                                  probsold <- probs
+                              }
+                              res <- list()
+                              postprobs <- getAffinity(probs, affinity =
+                                                                  affinity,
+                                                       norm = TRUE, logtype =
+                                                                        logtype,
+                                                       mw = mw, data = data)
+                              edgechange <- 0
+                              thetachange <- 0
+                              for (i in seq_len(k)) {
+                                  if (!is.null(res1) &
+                                      !("modules" %in% search)) {
+                                      start0 <- res1[[i]]$adj
+                                  } else {
+                                      start0 <- NULL
+                                  }
+                                  n <- getSgeneN(data)
+                                  dataF <- matrix(0, nrow(data), n)
+                                  colnames(dataF) <- seq_len(n)
+                                  nozero <- which(postprobs[i, ] != 0)
+                                  if (length(nozero) != 0) {
+                                      if (length(nozero) == ncol(data)) {
+                                          dataR <- data
+                                          postprobsR <- postprobs[i, ]
+                                      } else {
+                                          dataR <- cbind(data[, nozero,
+                                                              drop = FALSE],
+                                                         dataF)
+                                          postprobsR <- c(postprobs[i, nozero],
+                                                          rep(0, n))
+                                      }
+                                  } else {
+                                      dataR <- dataF
+                                      postprobsR <- rep(0, n)
+                                  }
+                                  if (!is.null(Rho)) {
+                                      RhoR <- getRho(dataR)
+                                  } else {
+                                      RhoR <- Rho
+                                  }
+                                  if (!is.null(theta)) {
+                                      thetaX <- theta[[s]][[i]]
+                                  } else {
+                                      thetaX <- NULL
+                                  }
+                                  if (is.null(start0)) {
+                                      res[[i]] <- mynem(D = dataR,
+                                                        weights = postprobsR,
+                                                        search = search,
+                                                        start = start0,
+                                                        method = method,
+                                                        parallel = parallel2,
+                                                        reduce = reduce,
+                                                        runs = runs,
+                                                        verbose = verbose,
+                                                        redSpace = redSpace,
+                                                        ratio = ratio,
+                                                        domean = domean,
+                                                        modulesize = modulesize,
+                                                        Rho = RhoR,
+                                                        logtype = logtype,
+                                                        modified = TRUE,
+                                                        Sgenes = Sgenes,
+                                                        subtopo = thetaX)
+                                  } else {
+                                      test01 <- list()
+                                      test01scores <- numeric(2)
+                                      for (j in seq_len(2)) {
+                                      ## for (j in 2) {
+                                          if (j == 2) {
+                                              start1 <- start0
+                                          } else {
+                                              start1 <- start0*0
+                                          }
+                                          test01[[j]] <-
+                                              mynem(D = dataR,
+                                                    weights =
+                                                        postprobsR,
+                                                    search = search,
+                                                    start = start1,
+                                                    method = method,
+                                                    parallel =
+                                                        parallel2,
+                                                    reduce = reduce,
+                                                    runs = runs,
+                                                    verbose = verbose,
+                                                    redSpace =
+                                                        redSpace,
+                                                    ratio = ratio,
+                                                    domean = domean,
+                                                    odulesize =
+                                                        modulesize,
+                                                    Rho = RhoR,
+                                                    logtype = logtype,
+                                                    modified = TRUE,
+                                                    Sgenes = Sgenes,
+                                                    subtopo = thetaX)
+                                          test01scores[j] <-
+                                              max(test01[[j]]$scores)
+                                      }
+                                      res[[i]] <-
+                                          test01[[which.max(test01scores)]]
+                                  }
+                                  edgechange <- edgechange +
+                                      sum(abs(res[[i]]$adj - res1[[i]]$adj))
+                                  thetachange <- thetachange +
+                                      sum(res[[i]]$subtopo != res1[[i]]$subtopo)
+                                  res[[i]]$D <- NULL
+                                  res[[i]]$subweights <- NULL
 
-                             }
-                             evopen <- 0
-                             if (evolution) {
-                                 res <- sortAdj(res)$res
-                                 evopen <- calcEvopen(res)
-                             }
-                             res1 <- res
-                             ## E-step:
-                             n <- ncol(res[[1]]$adj)
-                             probs0 <- list()
-                             probs0$probs <- probsold
-                             probs <- probsold
-                             probs <- getProbs(probs, k, data, res, method,
-                                               n,
-                                               affinity, converged,
-                                               subtopoX, ratio,
-                                               mw = mw, fpfn = fpfn,
-                                               Rho = Rho)
-                             if (getLL(probs$probs, logtype = logtype,
-                                       mw = mw,
-                                       data = data) > getLL(probs0$probs,
-                                                            logtype =
-                                                                logtype,
-                                                            mw = mw,
-                                                            data = data)) {
-                                 probs0 <- probs
-                             }
-                             subtopoX <- probs0$subtopoX
-                             probs <- probs0$probs
-                             modelsize <- n*n*k
-                             datasize <- nrow(data)*ncol(data)*k
-                             ll <- getLL(probs, logtype = logtype, mw = mw,
-                                         data = data) +
-                                 evopen*datasize*(modelsize^-1)
-                             mw <- apply(getAffinity(probs, affinity = affinity,
-                                                     norm = TRUE,
-                                                     logtype = logtype,
-                                                     mw = mw,
-                                                     data = data), 1, sum)
-                             mw <- mw/sum(mw)
-                             if(verbose) {
-                                 print(paste("ll: ", ll, sep = ""))
-                                 print(paste("changes in phi(s): ",
-                                             edgechange, sep = ""))
-                                 print(paste("changes in theta(s): ",
-                                             thetachange, sep = ""))
-                                 if (evolution) {
-                                     print(paste("evolution penalty: ",
-                                                 evopen, sep = ""))
-                                 }
-                             }
-                             lls <- c(lls, ll)
-                             count <- count + 1
-                         }
+                              }
+                              evopen <- 0
+                              if (evolution) {
+                                  res <- sortAdj(res)$res
+                                  evopen <- calcEvopen(res)
+                              }
+                              res1 <- res
+                              ## E-step:
+                              n <- ncol(res[[1]]$adj)
+                              probs0 <- list()
+                              probs0$probs <- probsold
+                              probs <- probsold
+                              probs <- getProbs(probs, k, data, res, method,
+                                                n,
+                                                affinity, converged,
+                                                subtopoX, ratio,
+                                                mw = mw, fpfn = fpfn,
+                                                Rho = Rho)
+                              if (getLL(probs$probs, logtype = logtype,
+                                        mw = mw,
+                                        data = data) > getLL(probs0$probs,
+                                                             logtype =
+                                                                 logtype,
+                                                             mw = mw,
+                                                             data = data)) {
+                                  probs0 <- probs
+                              }
+                              subtopoX <- probs0$subtopoX
+                              probs <- probs0$probs
+                              modelsize <- n*n*k
+                              datasize <- nrow(data)*ncol(data)*k
+                              ll <- getLL(probs, logtype = logtype, mw = mw,
+                                          data = data) +
+                                  evopen*datasize*(modelsize^-1)
+                              mwold <- mw
+                              mw <- apply(getAffinity(probs,
+                                                      affinity = affinity,
+                                                      norm = TRUE,
+                                                      logtype = logtype,
+                                                      mw = mw,
+                                                      data = data), 1, sum)
+                              mw <- mw/sum(mw)
+                              if(verbose) {
+                                  print(paste("ll: ", ll, sep = ""))
+                                  print(paste("changes in phi(s): ",
+                                              edgechange, sep = ""))
+                                  print(paste("changes in theta(s): ",
+                                              thetachange, sep = ""))
+                                  if (evolution) {
+                                      print(paste("evolution penalty: ",
+                                                  evopen, sep = ""))
+                                  }
+                              }
+                              lls <- c(lls, ll)
+                              phievo <- c(phievo, edgechange)
+                              thetaevo <- c(thetaevo, thetachange)
+                              mwevo <- c(mwevo, sum(abs(mw-mwold)))
+                              count <- count + 1
+                              if (is.infinite(converged) & phievo[count] == 0
+                                  & thetaevo[count] == 0 & !time0) {
+                                  stop <- TRUE
+                              }
+                              time0 <- FALSE
+                          }
                 if (ll - bestll > 0) {
                     bestll <- ll; bestres <- res1
                     bestprobs <- probs; bestmw <- mw
@@ -1168,6 +1310,9 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                 limits$k <- k
                 limits$subtopo <- subtopoX
                 limits$mw <- bestmw
+                limits$phievo <- phievo
+                limits$thetaevo <- thetaevo
+                limits$mwevo <- mwevo
                 return(limits)
             }
             if (!is.null(parallel)) {
@@ -1179,6 +1324,40 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
                 sfStop()
             }
         }
+        ## if (inference %in% "greedy") {
+        ##     lls <- NULL
+        ##     stop <- FALSE
+        ##     probsold <- matrix(0, k, ncol(data))
+        ##     while(!stop) {
+        ##         for (i in seq_len(k)) {
+        ##             probs0 <- list()
+        ##             probs0$probs <- probsold
+        ##             probs <- probsold
+        ##             probs <- getProbs(probs, k, data, res, method,
+        ##                               n,
+        ##                               affinity, converged,
+        ##                               subtopoX, ratio,
+        ##                               mw = mw, fpfn = fpfn,
+        ##                               Rho = Rho)
+        ##             if (getLL(probs$probs, logtype = logtype,
+        ##                       mw = mw,
+        ##                       data = data) > getLL(probs0$probs,
+        ##                                            logtype =
+        ##                                                logtype,
+        ##                                            mw = mw,
+        ##                                            data = data)) {
+        ##                 probs0 <- probs
+        ##             }
+        ##             subtopoX <- probs0$subtopoX
+        ##             probs <- probs0$probs
+        ##             modelsize <- n*n*k
+        ##             datasize <- nrow(data)*ncol(data)*k
+        ##             ll <- getLL(probs, logtype = logtype, mw = mw,
+        ##                         data = data) +
+        ##                 evopen*datasize*(modelsize^-1)
+        ##         }
+        ##     }
+        ## }
     }
     best <- limits[[1]]
     if (length(limits) > 1) {
@@ -1274,7 +1453,8 @@ mnem <- function(D, inference = "em", search = "greedy", start = NULL,
         }
     }
     res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda,
-                probs = probs, lls = best$ll,
+                probs = probs, lls = best$ll, phievo = best$phievo,
+                thetaevo = best$thetaevo, mwevo = best$mwevo,
                 ll = getLL(probs, logtype = logtype, mw = lambda, data = data))
     class(res) <- "mnem"
     return(res)
@@ -1736,6 +1916,9 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' @param k number of clusters to check
 #' @param cluster given clustering has to correspond to the columns of data
 #' @param starts number of random starts for the kmeans algorithm
+#' @param logtype logarithm type of the data
+#' @param getprobspars list of parameters for the getProbs function
+#' @param getaffinitypars list of parameters for the getAffinity function
 #' @param ... additional arguments for standard nem function
 #' @author Martin Pirkl
 #' @return family of nems; the first k list entries hold full information of
@@ -1752,7 +1935,8 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' resulst <- clustNEM(data, k = 2:3)
-clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, ...) {
+clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
+                     getprobspars = list(), getaffinitypars = list(), ...) {
     data <- modData(data)
     if (is.null(cluster)) {
         smax <- 0
@@ -1761,14 +1945,14 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, ...) {
         for (i in k) {
             d <- (1 - cor(data))/2
             d <- as.dist(d)
-            kres <- kmeans(d, i)
-            sres <- silhouette(kres$cluster, d, nstart = starts)
+            kres <- kmeans(d, i, nstart = starts)
+            sres <- silhouette(kres$cluster, d)
             if (mean(sres[, 3]) > smax) {
                 Kres <- kres
                 K <- i
                 smax <- mean(sres[, 3])
             } else {
-                ##break()
+                break()
             }
         }
     } else {
@@ -1808,9 +1992,23 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, ...) {
         }
         res$comp[[i]]$phi <- tmp
         res$mw[i] <- sum(Kres$cluster == i)/ncol(data)
+        res[[i]]$adj <- tmp
     }
-    res$probs <- matrix(res$mw, K, ncol(data))
+    n <- getSgeneN(data)
+    probs <- matrix(0, K, ncol(data))
+    probs <- do.call(getProbs, c(list(probs=probs, k=K, data=data,
+                                      res=res, n=n, mw=res$mw), getprobspars))
+    colnames(probs$probs) <- colnames(data)
+    probs2 <- do.call(getAffinity, c(list(x=probs$probs,logtype=logtype,
+                                          data=data, mw=res$mw),
+                                     getaffinitypars))
+    mw <- apply(probs2, 1, sum)
+    mw <- mw/sum(mw)
+    ll <- getLL(probs$probs, logtype = logtype, mw = mw, data = data)
+    res$ll <- ll
+    res$probs <- probs$probs
     res$cluster <- Kres$cluster
+    res$mw <- mw
     return(res)
 }
 #' Simulate data.
@@ -1879,7 +2077,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
     for (i in seq_len(Nems)) {
         if (i == 1 | !evolution) {
             if (scalefree) {
-                adj <- sampleRndNetwork(Sgenes, DAG = TRUE, ...)
+                adj <- sampleRndNetwork(seq_len(Sgenes), DAG = TRUE, ...)
             } else {
                 adj <- matrix(sample(c(0,1), Sgenes^2, replace = TRUE,
                                      prob = c(1-edgeprob, edgeprob)),
@@ -1889,11 +2087,11 @@ simData <- function(Sgenes = 5, Egenes = 1,
                 adj[lower.tri(adj)] <- 0
                 diag(adj) <- 1
                 adj <- mytc(adj)
-                colnames(adj) <- rownames(adj) <- sample(seq_len(Sgenes),
-                                                         Sgenes)
-                adj <- adj[order(as.numeric(rownames(adj))),
-                           order(as.numeric(colnames(adj)))]
             }
+            colnames(adj) <- rownames(adj) <- sample(seq_len(Sgenes),
+                                                     Sgenes)
+            adj <- adj[order(as.numeric(rownames(adj))),
+                       order(as.numeric(colnames(adj)))]
         } else {
             children <- which(apply(Nem[[(i-1)]], 1, sum) == 0)
             parents <- which(apply(Nem[[(i-1)]], 2, sum) == 0)
@@ -1964,7 +2162,8 @@ simData <- function(Sgenes = 5, Egenes = 1,
         if (!unitheta) {
             eorder <- sample(seq_len(nrow(data_tmp)), nrow(data_tmp))
             data_tmp <- data_tmp[eorder, ]
-            theta[[i]] <- rownames(data_tmp)[eorder]
+            theta[[i]] <- as.numeric(c(rownames(data_tmp)[eorder],
+                                       rep(0, uninform)))
         }
         data <- cbind(data, data_tmp)
     }
@@ -2061,13 +2260,11 @@ plot.mnemsim <- function(x, data = NULL, logtype = 2, fuzzypars = list(), ...) {
 fuzzyindex <- function(x, data, logtype = 2, ...) {
     data <- modData(data)
     k <- length(x$Nem)
-    probs <- matrix(0, length(x$mw), ncol(x$data))
     res <- list()
     for (i in seq_len(k)) {
         res[[i]] <- list()
         res[[i]]$adj <- x$Nem[[i]]
         res[[i]]$subtopo <- x$theta[[i]]
-        probs[i, which(x$index == i)] <- 1
     }
     if (length(grep("_", colnames(data))) > 0) {
         Rho <- getRho(data)
@@ -2075,11 +2272,13 @@ fuzzyindex <- function(x, data, logtype = 2, ...) {
         Rho <- NULL
     }
     n <- getSgeneN(data)
-    probs <- log(probs)/log(logtype)
+    probs <- matrix(0, k, ncol(x$data))
     probs <- getProbs(probs, k, data, res, n = n, mw = x$mw, logtype = logtype,
                       Rho=Rho)
     ll <- probs$ll
-    probs2 <- do.call(getAffinity, c(list(x=probs$probs, mw=probs$mw), ...))
+    colnames(probs$probs) <- colnames(data)
+    probs2 <- do.call(getAffinity, c(list(x=probs$probs, logtype=logtype,
+                                          mw=probs$mw), ...))
     mw <- apply(probs2, 1, sum)
     mw <- mw/sum(mw)
     return(list(probs = probs2, mw = mw, ll = ll))

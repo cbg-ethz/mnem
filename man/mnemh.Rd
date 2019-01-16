@@ -32,7 +32,7 @@ recursively splits the data if there is evidence for k > 1 components.
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 data <- (sim$data - 0.5)/0.5
 data <- data + rnorm(length(data), 0, 1)
-result <- mnemh(data, starts = 1)
+result <- mnemh(data, starts = 1, k = 1)
 }
 \author{
 Martin Pirkl
