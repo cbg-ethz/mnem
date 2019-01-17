@@ -29,73 +29,6 @@ Kratio <- function(x, y) {
     return(z)
 }
 #' @noRd
-fitacc <- function(x, y, strict = FALSE, unique = TRUE) {
-    for (i in seq_len(length(x$comp))) {
-        x$comp[[i]]$theta <- NULL
-    }
-    if (unique) {
-        x <- unique(x$comp)
-        y <- unique(y$Nem)
-    } else {
-        x <- x$comp
-        y <- y$Nem
-    }
-    xn <- length(x)
-    yn <- length(y)
-    n <- nrow(x[[1]]$phi)
-    if (strict) {
-        score <- 0
-        while(length(x) > 0 & length(y) > 0) {
-            couple <- numeric(2)
-            best <- 0
-            for (i in seq_len(length(x))) {
-                for (j in seq_len(length(y))) {
-                    A <- mytc(x[[i]]$phi)
-                    B <- mytc(y[[j]])
-                    tmp <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
-                    if (tmp >= best) {
-                        couple <- c(i,j)
-                        best <- tmp
-                    }
-                }
-            }
-            score <- best + score
-            x[[couple[1]]] <- NULL
-            y[[couple[2]]] <- NULL
-        }
-        if (length(x) != 0) {
-            for (i in seq_len(length(x))) {
-                A <- mytc(x[[i]]$phi)
-                score <- score + (n*(n-1) - sum(abs(A - diag(n)*0)))/(n*(n-1))
-            }
-        }
-        if (length(y) != 0) {
-            for (i in seq_len(length(y))) {
-                A <- mytc(y[[i]])
-                score <- score + (n*(n-1) - sum(abs(A - diag(n)*0)))/(n*(n-1))
-            }
-        }
-        score <- score/max(c(xn,yn))
-    } else {
-        xmax <- numeric(xn)
-        ymax <- numeric(yn)
-        for (i in seq_len(xn)) {
-            for (j in seq_len(yn)) {
-                A <- mytc(x[[i]]$phi)
-                B <- mytc(y[[j]])
-                tmp <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
-                if (tmp > xmax[i]) {
-                    xmax[i] <- tmp
-                }
-                if (tmp > ymax[j]) {
-                    ymax[j] <- tmp
-                }
-            }
-        }
-        score <- sum(c(xmax,ymax))/(xn+yn)
-    }
-    return(score)
-}
 uniques <- function(x) {
     for (i in seq_len(length(x$comp))) {
         x$comp[[i]]$theta <- NULL
@@ -543,14 +476,13 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
     } else {
         max_count <- 1
     }
-    ll0 <- -Inf
+    ll0 <- llold <- -Inf
     stop <- FALSE
     mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE,
                             mw = mw, logtype = logtype, data = data), 1, sum)
     mw <- mw/sum(mw)
     if (any(is.na(mw))) { mw <- rep(1, k)/k }
     while((!stop | time0) & count < max_count) {
-        llold <- max(ll0)
         time0 <- FALSE
         probsold <- probs
         subtopo0 <- matrix(0, k, nrow(data))
@@ -568,10 +500,10 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
             }
             adj1 <- cbind(adj1, "0" = 0)
             if (is.null(res[[i]]$subtopo)) {
-                subtopo <- maxCol_row(data%*%adj1)
+                subtopo <- maxCol_row(t(t(data)*postprobsold[i, ])%*%adj1)
             } else {
                 subtopo <- res[[i]]$subtopo
-                subtopo[which(subtopo == 0)] <- max(subtopo) + 1
+                subtopo[which(subtopo == 0)] <- ncol(adj1)
             }
             adj2 <- adj1[, subtopo]
             if (method %in% "llr") {
@@ -592,6 +524,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                                 logtype = logtype, mw = mw, data = data), 1,
                     sum)
         mw <- mw/sum(mw)
+        llold <- max(ll0)
         count <- count + 1
     }
     return(list(probs = bestprobs, subtopoX = subtopoX,

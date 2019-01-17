@@ -195,8 +195,8 @@ plot(bestk$ics, col = "red", main = "penalized log likelihood", type = "b",
 
 We compare the actual log likelihood shown in figure 4 (left, blue)
 to the penalized log likelihood
-(right, red). Notice that the raw log likelihood of $k=4$ is higher than
-for the $k=3$ component model. However, if we penalize complexity
+(right, red). Notice that the raw log likelihood of $k=4$ is the same
+as for the $k=3$ component model. However, if we penalize complexity
 the three component model gives us the best score (minimum).
 The penalized like the raw log likelihood is not guaranteed to have
 only one global optimum, but can have several local ones. Hence, in practice
@@ -207,8 +207,9 @@ We can also look at the convergence of the expectation maximization
 algorithm. Since we started the EM `r starts` times, we have as many
 convergences.
 
-```{r, fig.height=4, fig.width=6, fig.cap=fig.cap0em}
-plotConvergence(bestk$best)
+```{r, fig.height=6.5, fig.width=6, fig.cap=fig.cap0em}
+par(mfrow=c(2,2))
+plotConvergence(bestk$best, cex.main = 0.7, cex.lab = 0.7)
 ```
 
 ## Cell responsibilities

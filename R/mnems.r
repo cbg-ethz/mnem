@@ -1,3 +1,151 @@
+#' Simulation accuracy.
+#'
+#' Computes the accuracy of the fit between simulated and
+#' inferred mixture.
+#' @param x mnem object
+#' @param y simulation object
+#' @param strict if TRUE, accounts for over/underfitting, i.e.
+#' the number of components
+#' @param unique if TRUE, phis of x and y are made unique each
+#' @param type type of accuracy. "ham" for hamming, sens for
+#' "sensitivity" and "spec for Specificity"
+#' @return plot of EM convergence
+#' @author Martin Pirkl
+#' @export
+#' @examples
+#' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+#' data <- (sim$data - 0.5)/0.5
+#' data <- data + rnorm(length(data), 0, 1)
+#' result <- mnem(data, k = 2, starts = 1)
+#' fitacc(result, sim)
+#' fitacc(result, sim, type = "sens")
+#' fitacc(result, sim, type = "spec")
+#' fitacc(result, sim, strict = TRUE, type = "sens")
+#' fitacc(result, sim, strict = TRUE, type = "spec")
+fitacc <- function(x, y, strict = FALSE, unique = TRUE,
+                   type = "ham") {
+    for (i in seq_len(length(x$comp))) {
+        x$comp[[i]]$theta <- NULL
+    }
+    if (strict) {
+        unique <- FALSE
+    }
+    if (unique) {
+        x <- unique(x$comp)
+        y <- unique(y$Nem)
+    } else {
+        x <- x$comp
+        y <- y$Nem
+    }
+    xn <- length(x)
+    yn <- length(y)
+    n <- nrow(x[[1]]$phi)
+    if (strict) {
+        score <- 0
+        while(length(x) > 0 & length(y) > 0) {
+            couple <- numeric(2)
+            best <- 0
+            for (i in seq_len(length(x))) {
+                for (j in seq_len(length(y))) {
+                    A <- mytc(x[[i]]$phi)
+                    B <- mytc(y[[j]])
+                    tmp <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
+                    comp <- tmp > best
+                    comp2 <- TRUE
+                    if (type %in% "sens") {
+                        tp <- sum(A == 1 & B == 1)
+                        fn <- sum(A == 0 & B == 1)
+                        tmp <- tp/(tp+fn)
+                        comp2 <- tmp > best
+                    } else if (type %in% "spec") {
+                        tn <- sum(A == 0 & B == 0)
+                        fp <- sum(A == 1 & B == 0)
+                        tmp <- tn/(tn+fp)
+                        comp2 <- tmp > best
+                    }
+                    if (comp & comp2) {
+                        couple <- c(i,j)
+                        best <- tmp
+                    }
+                }
+            }
+            score <- best + score
+            x[[couple[1]]] <- NULL
+            y[[couple[2]]] <- NULL
+        }
+        if (length(x) != 0) {
+            for (i in seq_len(length(x))) {
+                A <- mytc(x[[i]]$phi)
+                B <- diag(n)*0
+                if (type %in% "ham") {
+                    tmp <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
+                } else if (type %in% "sens") {
+                    tp <- sum(A == 1 & B == 1)
+                    fn <- sum(A == 0 & B == 1)
+                    tmp <- tp/(tp+fn)
+                    tmp <- 0
+                } else if (type %in% "spec") {
+                    tn <- sum(A == 0 & B == 0)
+                    fp <- sum(A == 1 & B == 0)
+                    tmp <- tn/(tn+fp)
+                }
+                score <- score + tmp
+            }
+        }
+        if (length(y) != 0) {
+            for (i in seq_len(length(y))) {
+                A <- diag(n)*0
+                B <- mytc(y[[i]])
+                if (type %in% "ham") {
+                    tmp <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
+                } else if (type %in% "sens") {
+                    tp <- sum(A == 1 & B == 1)
+                    fn <- sum(A == 0 & B == 1)
+                    tmp <- tp/(tp+fn)
+                } else if (type %in% "spec") {
+                    tn <- sum(A == 0 & B == 0)
+                    fp <- sum(A == 1 & B == 0)
+                    tmp <- tn/(tn+fp)
+                }
+                score <- score + tmp
+            }
+        }
+        score <- score/max(c(xn,yn))
+    } else {
+        xmax <- numeric(xn)
+        ymax <- numeric(yn)
+        best <- 0
+        for (i in seq_len(xn)) {
+            for (j in seq_len(yn)) {
+                A <- mytc(x[[i]]$phi)
+                B <- mytc(y[[j]])
+                if (type %in% "ham") {
+                    tmp <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
+                } else if (type %in% "sens") {
+                    tp <- sum(A == 1 & B == 1)
+                    fn <- sum(A == 0 & B == 1)
+                    tmp <- tp/(tp+fn)
+                } else if (type %in% "spec") {
+                    tn <- sum(A == 0 & B == 0)
+                    fp <- sum(A == 1 & B == 0)
+                    tmp <- tn/(tn+fp)
+                }
+                if (tmp >= best) {
+                    couple <- c(i,j)
+                    best <- tmp
+                }
+                if (tmp > xmax[i]) {
+                    xmax[i] <- tmp
+                }
+                if (tmp > ymax[j]) {
+                    ymax[j] <- tmp
+                }
+            }
+        }
+        score <- sum(c(xmax,ymax))/(xn+yn)
+    }
+    return(score)
+}
 #' Plot convergence of EM
 #'
 #' This function plots the converbence of the different EM iterations.
@@ -1051,6 +1199,9 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                     for (i in seq_len(length(init[[s]]))) {
                         res1[[i]] <- list()
                         res1[[i]][["adj"]] <- init[[s]][[i]]
+                        if (!is.null(theta)) {
+                            res1[[i]][["subtopo"]] <- theta[[s]][[i]]
+                        }
                     }
                     if (is.list(subtopoX)) {
                         subtopoX <- estimateSubtopo(data)
@@ -1058,21 +1209,14 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                     k <- length(res1)
                     n <- ncol(res1[[1]]$adj)
                     if (is.null(p)) {
-                        probs0 <- list()
-                        probs0$probs <- matrix(-Inf, k, ncol(data))
                         probs <- matrix(0, k, ncol(data))
-                        probs <- getProbs(probs, k, data, res1, method, n,
+                        probs0 <- getProbs(probs, k, data, res1, method, n,
                                           affinity, converged, subtopoX,
                                           ratio, mw = mw, fpfn = fpfn,
                                           Rho = Rho)
-                        if (getLL(probs$probs, logtype = logtype, mw = mw,
-                                  data = data) > getLL(probs0$probs,
-                                                       logtype = logtype,
-                                                       mw = mw,
-                                                       data = data)) {
-                            probs0 <- probs
-                        }
                         subtopoX <- probs0$subtopoX
+                        mw <- probs0$mw
+                        ll <- probs0$ll
                         probs <- probs0$probs
                     } else {
                         p <- p*t(t(p)*apply(abs(data), 2, sum))
@@ -1999,16 +2143,10 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
     probs <- do.call(getProbs, c(list(probs=probs, k=K, data=data,
                                       res=res, n=n, mw=res$mw), getprobspars))
     colnames(probs$probs) <- colnames(data)
-    probs2 <- do.call(getAffinity, c(list(x=probs$probs,logtype=logtype,
-                                          data=data, mw=res$mw),
-                                     getaffinitypars))
-    mw <- apply(probs2, 1, sum)
-    mw <- mw/sum(mw)
-    ll <- getLL(probs$probs, logtype = logtype, mw = mw, data = data)
-    res$ll <- ll
+    res$ll <- probs$ll
     res$probs <- probs$probs
     res$cluster <- Kres$cluster
-    res$mw <- mw
+    res$mw <- probs$mw
     return(res)
 }
 #' Simulate data.
@@ -2162,8 +2300,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
         if (!unitheta) {
             eorder <- sample(seq_len(nrow(data_tmp)), nrow(data_tmp))
             data_tmp <- data_tmp[eorder, ]
-            theta[[i]] <- as.numeric(c(rownames(data_tmp)[eorder],
-                                       rep(0, uninform)))
+            theta[[i]] <- as.numeric(c(rownames(data_tmp), rep(0, uninform)))
         }
         data <- cbind(data, data_tmp)
     }
@@ -2276,11 +2413,10 @@ fuzzyindex <- function(x, data, logtype = 2, ...) {
     probs <- getProbs(probs, k, data, res, n = n, mw = x$mw, logtype = logtype,
                       Rho=Rho)
     ll <- probs$ll
+    mw <- probs$mw
     colnames(probs$probs) <- colnames(data)
     probs2 <- do.call(getAffinity, c(list(x=probs$probs, logtype=logtype,
-                                          mw=probs$mw), ...))
-    mw <- apply(probs2, 1, sum)
-    mw <- mw/sum(mw)
+                                          mw=mw), ...))
     return(list(probs = probs2, mw = mw, ll = ll))
 }
 #' Accuracy for two phis.
