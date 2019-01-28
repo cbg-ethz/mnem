@@ -44,24 +44,24 @@ fitacc <- function(x, y, strict = FALSE, unique = TRUE,
         score <- 0
         while(length(x) > 0 & length(y) > 0) {
             couple <- numeric(2)
-            best <- 0
+            best <- -Inf
             for (i in seq_len(length(x))) {
                 for (j in seq_len(length(y))) {
                     A <- mytc(x[[i]]$phi)
                     B <- mytc(y[[j]])
                     tmp <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
-                    comp <- tmp > best
+                    comp <- tmp >= best
                     comp2 <- TRUE
                     if (type %in% "sens") {
                         tp <- sum(A == 1 & B == 1)
                         fn <- sum(A == 0 & B == 1)
                         tmp <- tp/(tp+fn)
-                        comp2 <- tmp > best
+                        comp2 <- tmp >= best
                     } else if (type %in% "spec") {
                         tn <- sum(A == 0 & B == 0)
                         fp <- sum(A == 1 & B == 0)
                         tmp <- tn/(tn+fp)
-                        comp2 <- tmp > best
+                        comp2 <- tmp >= best
                     }
                     if (comp & comp2) {
                         couple <- c(i,j)
@@ -114,7 +114,7 @@ fitacc <- function(x, y, strict = FALSE, unique = TRUE,
     } else {
         xmax <- numeric(xn)
         ymax <- numeric(yn)
-        best <- 0
+        best <- -Inf
         for (i in seq_len(xn)) {
             for (j in seq_len(yn)) {
                 A <- mytc(x[[i]]$phi)
@@ -200,7 +200,7 @@ plotConvergence <- function(x, col = NULL, type = "b",
                                " (",
                                round(maxllcount/runs*100, 2),
                                "%) run(s) with maximum log odds at ",
-                               convergence, " accuracy\n",
+                               convergence, " distance\n",
                                minlen, " (", round(minlen/runs*100, 2),
                                "%) run(s) started in local optimum"),
                  ...)
@@ -954,7 +954,8 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' "cluster" (each S-gene is clustered and the different S-gene clustered
 #' differently combined for several starts),
 #' "cluster2" (clustNEM is used to infer reasonable phis, which are then
-#' used as a start for one EM run) or "networks" (initialize with random phis)
+#' used as a start for one EM run), "cluster3" (global clustering as a start),
+#' or "networks" (initialize with random phis)
 #' @param p initial probabilities as a k (components) times l (cells) matrix
 #' @param k number of components
 #' @param kmax maximum number of components when k=NULL is inferred
@@ -1023,7 +1024,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  parallel = NULL, reduce = FALSE, runs = 1, starts = 3,
                  type = "random",
                  p = NULL, k = NULL, kmax = 10, verbose = FALSE,
-                 max_iter = 100, parallel2 = NULL, converged = 10^-1,
+                 max_iter = 100, parallel2 = NULL, converged = -Inf,
                  redSpace = NULL, affinity = 0, evolution = FALSE, lambda = 1,
                  subtopoX = NULL, ratio = TRUE, logtype = 2,
                  domean = TRUE, modulesize = 5, compress = FALSE,
@@ -1081,9 +1082,6 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
     if (is.null(mw)) {
         mw <- rep(1, k)/k
     }
-    if (is.null(subtopoX)) {
-        subtopoX <- estimateSubtopo(data)
-    }
     if (!is.null(k)) {
         if (type %in% "networks" & is.null(phi)) {
             meanet <- mynem(D = data, search = search, start = phi,
@@ -1102,14 +1100,25 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
             if (type %in% "cluster") {
                 probscl <- initps(data, ks, k, starts = starts)
                 init <- NULL
-            } else if (type %in% "cluster2") {
-                init <- clustNEM(data, k = k, starts = starts, search = search,
-                                 method = method, parallel = parallel,
+            } else if (type %in% c("cluster2", "cluster3")) {
+                nem <- TRUE
+                if (type %in% "cluster3") { nem <- FALSE }
+                init <- clustNEM(data, nem = nem, k = k, starts = starts,
+                                 search = search, method = method,
+                                 parallel = parallel,
                                  runs = runs, verbose = verbose, ratio = ratio,
                                  domean = domean, modulesize = modulesize,
                                  Rho = Rho, logtype = logtype, modified = TRUE)
-                mw <- init$mw
-                init <- list(A = unlist(init$comp, recursive = FALSE))
+                if (type %in% "cluster2") {
+                    mw <- init$mw
+                    init <- list(A = unlist(init$comp, recursive = FALSE))
+                } else {
+                    p <- matrix(0, k, ncol(data))
+                    for (i in seq_len(k)) {
+                        p[i, which(init$cluster == i)] <- 1
+                    }
+                    init <- NULL
+                }
                 starts <- 1
             } else {
                 probscl <- 0
@@ -1151,22 +1160,17 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         res <- list()
         res[[1]] <- list()
         res[[1]]$adj <- limits[[1]]$res[[1]]$adj
+        res[[1]]$subtopo <- limits[[1]]$res[[1]]$subtopo
         n <- ncol(res[[1]]$adj)
         mw <- 1
-        probs0 <- list()
-        probs0$probs <- matrix(-Inf, k, ncol(data))
         probs <- matrix(0, k, ncol(data))
         probs <- getProbs(probs, k, data, res, method, n, affinity,
                           converged, subtopoX, ratio, mw = mw, fpfn = fpfn,
                           Rho = Rho)
-        if (getLL(probs$probs, logtype = logtype, mw = mw, data = data) >
-            getLL(probs0$probs, logtype = logtype, mw = mw, data = data)) {
-            probs0 <- probs
-        }
-        subtopoX <- probs0$subtopoX
-        probs <- probs0$probs
-        limits[[1]]$ll <- getLL(probs, logtype = logtype, mw = mw, data = data)
-        limits[[1]]$probs <- probs
+        subtopoX <- probs$subtopoX
+        limits[[1]]$ll <- probs$ll
+        limits[[1]]$probs <- probs$probs
+        limits[[1]]$mw <- 1
     } else {
         if (inference %in% "em") {
             if (!is.null(parallel)) {
@@ -1232,8 +1236,6 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                         }
                     } else {
                         k <- nrow(p)
-                        pdata <- data
-                        p <- p*t(t(p)*apply(abs(data), 2, sum))
                         probs <- log(p)/log(logtype)
                     }
                 }
@@ -2061,6 +2063,7 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' @param cluster given clustering has to correspond to the columns of data
 #' @param starts number of random starts for the kmeans algorithm
 #' @param logtype logarithm type of the data
+#' @param nem if FALSE only clusters the data
 #' @param getprobspars list of parameters for the getProbs function
 #' @param getaffinitypars list of parameters for the getAffinity function
 #' @param ... additional arguments for standard nem function
@@ -2080,7 +2083,8 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' data <- data + rnorm(length(data), 0, 1)
 #' resulst <- clustNEM(data, k = 2:3)
 clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
-                     getprobspars = list(), getaffinitypars = list(), ...) {
+                     nem = TRUE, getprobspars = list(),
+                     getaffinitypars = list(), ...) {
     data <- modData(data)
     if (is.null(cluster)) {
         smax <- 0
@@ -2105,48 +2109,53 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
         K <- max(cluster)
     }
     res <- list()
-    for (i in seq_len(K)) {
-        if (sum(Kres$cluster == i) > 1 &
-            length(unique(colnames(data[, which(Kres$cluster == i)]))) > 1) {
-            res[[i]] <- mynem(data[, which(Kres$cluster == i)], ...)
-        } else {
-            res[[i]] <- list()
-            res[[i]]$adj <- matrix(1, 1, 1)
-            rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <-
-                unique(colnames(data[, which(Kres$cluster == i), drop = FALSE]))
+    if (nem) {
+        for (i in seq_len(K)) {
+            if (sum(Kres$cluster == i) > 1 &
+                length(unique(
+                    colnames(data[,which(Kres$cluster == i)]))) > 1) {
+                res[[i]] <- mynem(data[, which(Kres$cluster == i)], ...)
+            } else {
+                res[[i]] <- list()
+                res[[i]]$adj <- matrix(1, 1, 1)
+                rownames(res[[i]]$adj) <- colnames(res[[i]]$adj) <-
+                    unique(colnames(data[, which(Kres$cluster == i),
+                                         drop = FALSE]))
+            }
         }
-    }
-    res$comp <- list()
-    res$mw <- numeric(K)
-    Sgenes <- getSgeneN(data)
-    for (i in seq_len(K)) {
-        res$comp[[i]] <- list()
-        tmp <- res[[i]]$adj
-        if (nrow(tmp) < Sgenes) {
-            smiss <- unique(colnames(data)[-which(colnames(data)
-                                                  %in% colnames(tmp))])
-            tmp <-
-                rbind(cbind(tmp, matrix(0, nrow = nrow(tmp),
-                                        ncol = length(smiss))),
-                      matrix(0, nrow = length(smiss),
-                             ncol =ncol(tmp) + length(smiss)))
-            colnames(tmp)[(dim(res[[i]]$adj)[1]+1):nrow(tmp)] <-
-                rownames(tmp)[(dim(res[[i]]$adj)[1]+1):nrow(tmp)] <- smiss
-            tmp <- tmp[order(rownames(tmp)), order(colnames(tmp))]
+        res$comp <- list()
+        res$mw <- numeric(K)
+        Sgenes <- getSgeneN(data)
+        for (i in seq_len(K)) {
+            res$comp[[i]] <- list()
+            tmp <- res[[i]]$adj
+            if (nrow(tmp) < Sgenes) {
+                smiss <- unique(colnames(data)[-which(colnames(data)
+                                                      %in% colnames(tmp))])
+                tmp <-
+                    rbind(cbind(tmp, matrix(0, nrow = nrow(tmp),
+                                            ncol = length(smiss))),
+                          matrix(0, nrow = length(smiss),
+                                 ncol =ncol(tmp) + length(smiss)))
+                colnames(tmp)[(dim(res[[i]]$adj)[1]+1):nrow(tmp)] <-
+                    rownames(tmp)[(dim(res[[i]]$adj)[1]+1):nrow(tmp)] <- smiss
+                tmp <- tmp[order(rownames(tmp)), order(colnames(tmp))]
+            }
+            res$comp[[i]]$phi <- tmp
+            res$mw[i] <- sum(Kres$cluster == i)/ncol(data)
+            res[[i]]$adj <- tmp
         }
-        res$comp[[i]]$phi <- tmp
-        res$mw[i] <- sum(Kres$cluster == i)/ncol(data)
-        res[[i]]$adj <- tmp
+        n <- getSgeneN(data)
+        probs <- matrix(0, K, ncol(data))
+        probs <- do.call(getProbs, c(list(probs=probs, k=K, data=data,
+                                          res=res, n=n, mw=res$mw),
+                                     getprobspars))
+        colnames(probs$probs) <- colnames(data)
+        res$ll <- probs$ll
+        res$probs <- probs$probs
+        res$mw <- probs$mw
     }
-    n <- getSgeneN(data)
-    probs <- matrix(0, K, ncol(data))
-    probs <- do.call(getProbs, c(list(probs=probs, k=K, data=data,
-                                      res=res, n=n, mw=res$mw), getprobspars))
-    colnames(probs$probs) <- colnames(data)
-    res$ll <- probs$ll
-    res$probs <- probs$probs
     res$cluster <- Kres$cluster
-    res$mw <- probs$mw
     return(res)
 }
 #' Simulate data.

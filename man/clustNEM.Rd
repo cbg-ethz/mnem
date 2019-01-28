@@ -5,7 +5,7 @@
 \title{Cluster NEM.}
 \usage{
 clustNEM(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
-  getprobspars = list(), getaffinitypars = list(), ...)
+  nem = TRUE, getprobspars = list(), getaffinitypars = list(), ...)
 }
 \arguments{
 \item{data}{data of log ratios with cells in columns and features in rows}
@@ -17,6 +17,8 @@ clustNEM(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 \item{starts}{number of random starts for the kmeans algorithm}
 
 \item{logtype}{logarithm type of the data}
+
+\item{nem}{if FALSE only clusters the data}
 
 \item{getprobspars}{list of parameters for the getProbs function}
 

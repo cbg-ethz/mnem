@@ -8,7 +8,7 @@ mnem(D, inference = "em", search = "greedy", phi = NULL,
   theta = NULL, mw = NULL, method = "llr", parallel = NULL,
   reduce = FALSE, runs = 1, starts = 3, type = "random",
   p = NULL, k = NULL, kmax = 10, verbose = FALSE, max_iter = 100,
-  parallel2 = NULL, converged = 10^-1, redSpace = NULL,
+  parallel2 = NULL, converged = -Inf, redSpace = NULL,
   affinity = 0, evolution = FALSE, lambda = 1, subtopoX = NULL,
   ratio = TRUE, logtype = 2, domean = TRUE, modulesize = 5,
   compress = FALSE, increase = TRUE, fpfn = c(0.1, 0.1),
@@ -48,7 +48,8 @@ unique networks}
 "cluster" (each S-gene is clustered and the different S-gene clustered
 differently combined for several starts),
 "cluster2" (clustNEM is used to infer reasonable phis, which are then
-used as a start for one EM run) or "networks" (initialize with random phis)}
+used as a start for one EM run), "cluster3" (global clustering as a start),
+or "networks" (initialize with random phis)}
 
 \item{p}{initial probabilities as a k (components) times l (cells) matrix}
 
