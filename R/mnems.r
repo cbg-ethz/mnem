@@ -3,12 +3,13 @@
 #' Computes the accuracy of the fit between simulated and
 #' inferred mixture.
 #' @param x mnem object
-#' @param y simulation object
+#' @param y simulation object or another mnem object
 #' @param strict if TRUE, accounts for over/underfitting, i.e.
 #' the number of components
 #' @param unique if TRUE, phis of x and y are made unique each
-#' @param type type of accuracy. "ham" for hamming, sens for
-#' "sensitivity" and "spec for Specificity"
+#' (FALSE if strict is TRUE)
+#' @param type type of accuracy. "ham" for hamming, "sens" for
+#' sensitivity and "spec for Specificity"
 #' @return plot of EM convergence
 #' @author Martin Pirkl
 #' @export
@@ -29,6 +30,13 @@ fitacc <- function(x, y, strict = FALSE, unique = TRUE,
     }
     if (strict) {
         unique <- FALSE
+    }
+    if (is.null(y$Nem)) {
+        y2 <- y
+        y$Nem <- list()
+        for (i in seq_len(length(y$comp))) {
+            y$Nem[[i]] <- y2$comp[[i]]$phi
+        }
     }
     if (unique) {
         x <- unique(x$comp)
@@ -972,7 +980,8 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' different from each other.
 #' @param lambda smoothness value for the prior put on the components, if
 #' evolution set to TRUE
-#' @param subtopoX hard prior on theta as a vector of S-genes for all E-genes
+#' @param subtopoX hard prior on theta as a vector with entry i equal to j,
+#' if E-gene i is attached to S-gene j
 #' @param ratio logical, if true data is log ratios, if false foldchanges
 #' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
 #' for natural)
@@ -1184,7 +1193,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                 sfInit(parallel = TRUE, cpus = parallel)
                 sfExport("modules", "mw", "ratio", "getSgeneN", "modData",
                          "sortAdj", "calcEvopen", "evolution",
-                         "getSgenes", "estimateSubtopo",
+                         "getSgenes",
                          "getLL", "getAffinity", "D", "mynem",
                          "scoreAdj", "max_iter", "random_probs",
                          "verbose", "llrScore", "search", "redSpace",
@@ -1206,9 +1215,6 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                         if (!is.null(theta)) {
                             res1[[i]][["subtopo"]] <- theta[[s]][[i]]
                         }
-                    }
-                    if (is.list(subtopoX)) {
-                        subtopoX <- estimateSubtopo(data)
                     }
                     k <- length(res1)
                     n <- ncol(res1[[1]]$adj)

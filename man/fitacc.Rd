@@ -9,15 +9,16 @@ fitacc(x, y, strict = FALSE, unique = TRUE, type = "ham")
 \arguments{
 \item{x}{mnem object}
 
-\item{y}{simulation object}
+\item{y}{simulation object or another mnem object}
 
 \item{strict}{if TRUE, accounts for over/underfitting, i.e.
 the number of components}
 
-\item{unique}{if TRUE, phis of x and y are made unique each}
+\item{unique}{if TRUE, phis of x and y are made unique each
+(FALSE if strict is TRUE)}
 
-\item{type}{type of accuracy. "ham" for hamming, sens for
-"sensitivity" and "spec for Specificity"}
+\item{type}{type of accuracy. "ham" for hamming, "sens" for
+sensitivity and "spec for Specificity"}
 }
 \value{
 plot of EM convergence

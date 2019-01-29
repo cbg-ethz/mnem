@@ -78,7 +78,8 @@ different from each other.}
 \item{lambda}{smoothness value for the prior put on the components, if
 evolution set to TRUE}
 
-\item{subtopoX}{hard prior on theta as a vector of S-genes for all E-genes}
+\item{subtopoX}{hard prior on theta as a vector with entry i equal to j,
+if E-gene i is attached to S-gene j}
 
 \item{ratio}{logical, if true data is log ratios, if false foldchanges}
 

@@ -316,7 +316,7 @@ modData <- function(D) {
     if (!all(is.numeric(Sgenes))) {
         colnamesD <- colnames(D)
         for (i in seq_len(SgeneN)) {
-            colnamesD <- gsub(Sgenes[i], i, colnamesD)
+            colnamesD <- gsub(paste0("^", Sgenes[i], "$"), i, colnamesD)
         }
         colnames(D) <- colnamesD
     }
@@ -448,10 +448,11 @@ estimateSubtopo <- function(data, fun = which.max) {
                                       length(unique(colnames(data))))
     n <- getSgeneN(data)
     for (i in seq_len(n)) {
-        if (length(grep(i, colnames(data))) > 1) {
+        ilen <- length(grep(i, colnames(data)))
+        if (ilen > 1) {
             effectsds[, i] <- apply(data[, grep(i, colnames(data))], 1, sd)
             effectsums[, i] <- apply(data[, grep(i, colnames(data))], 1, sum)
-        } else {
+        } else if (ilen == 1) {
             effectsds[, i] <- 1
             effectsums[, i] <- data[, grep(i, colnames(data))]
         }
@@ -464,10 +465,6 @@ estimateSubtopo <- function(data, fun = which.max) {
 getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                      converged = 10^-2, subtopoX = NULL, ratio = TRUE,
                      logtype = 2, mw = NULL, fpfn = fpfn, Rho = NULL) {
-    if (is.null(subtopoX)) {
-        subtopoX <- estimateSubtopo(data)
-    }
-    subtopoY <- bestsubtopoY <- subtopoX
     bestprobs <- probsold <- probs
     time0 <- TRUE
     count <- 0
