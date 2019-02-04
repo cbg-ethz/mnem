@@ -4,7 +4,8 @@
 \alias{bootstrap}
 \title{Bootstrap.}
 \usage{
-bootstrap(x, size = 1000, p = 1, logtype = 2, ...)
+bootstrap(x, size = 1000, p = 1, logtype = 2, complete = FALSE,
+  ...)
 }
 \arguments{
 \item{x}{mnem object}
@@ -16,6 +17,9 @@ sampling 50)}
 
 \item{logtype}{logarithm type of the data (e.g. 2 for log2 data or exp(1)
 for natural)}
+
+\item{complete}{if TRUE, complete data log likelihood is considered (for
+very large data sets, e.g. 1000 cells and 1000 E-genes)}
 
 \item{...}{additional parameters for hte nem function}
 }

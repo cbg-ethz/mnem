@@ -61,7 +61,7 @@ mnemh.rec <- function(data, k = 2, logtype = 2, ...) {
 #' @noRd
 random_probs <- function(k, data, full = FALSE, logtype = 2) {
     samplefun <- function(n,p) {
-        x <- sample(c(0,1), n,
+        x <- sample(c(0.5,1.5), n,
                replace = TRUE,
                prob = p)
 
@@ -124,7 +124,7 @@ random_probs <- function(k, data, full = FALSE, logtype = 2) {
 #' @noRd
 random_probs2 <- function(k, data, full = FALSE, logtype = 2) {
     samplefun <- function(n,p) {
-        x <- sample(c(0,1), n,
+        x <- sample(c(0.5,1.5), n,
                     replace = TRUE,
                     prob = p)
 
@@ -281,7 +281,7 @@ initps <- function(data, ks, k, starts = 3, ksel = "dist") {
     takesdone <- NULL
     while(count < starts & counter < prod(ks)) {
         counter <- counter + 1
-        tmp <- matrix(0, k, ncol(data))
+        tmp <- matrix(0.5, k, ncol(data))
         if (ks[1] < k) {
             takes <- as.matrix(sample(seq_len(ks[1]), k, replace = TRUE), k, 1)
         } else {
@@ -297,7 +297,7 @@ initps <- function(data, ks, k, starts = 3, ksel = "dist") {
         for (i in seq_len(k)) {
             for (j in seq_len(n)) {
                 tmp[i, which(colnames(data) == j)[
-                           which(clusters[[j]] == takes[i, j])]] <- 1
+                           which(clusters[[j]] == takes[i, j])]] <- 1.5
             }
         }
         takestmp <- paste(takes, collapse = "")
@@ -317,6 +317,12 @@ modData <- function(D) {
         colnamesD <- colnames(D)
         for (i in seq_len(SgeneN)) {
             colnamesD <- gsub(paste0("^", Sgenes[i], "$"), i, colnamesD)
+            colnamesD <- gsub(paste0("_", Sgenes[i], "$"),
+                              paste0("_", i), colnamesD)
+            colnamesD <- gsub(paste0("^", Sgenes[i], "_"),
+                              paste0(i, "_"), colnamesD)
+            colnamesD <- gsub(paste0("_", Sgenes[i], "_"),
+                              paste0("_", i, "_"), colnamesD)
         }
         colnames(D) <- colnamesD
     }
@@ -426,11 +432,11 @@ learnk <- function(data, kmax = 10, ksel = c("hc", "silhouette", "cor"),
     return(list(ks = ks, k = k, lab = lab, cluster = index))
 }
 #' @noRd
-getLL <- function(x, logtype = 2, mw = NULL, data = NULL) {
+getLL <- function(x, logtype = 2, mw = NULL, data = NULL, complete = FALSE) {
     if (is.null(mw)) { mw = rep(1, nrow(x))/nrow(x) }
-    complete <- FALSE
     if (complete) {
-        Z <- getAffinity(x, logtype = logtype, mw = mw, data = data)
+        Z <- getAffinity(x, logtype = logtype, mw = mw, data = data,
+                         complete = complete)
         l <- sum(apply(Z*(x + log(mw)/log(logtype)), 2, sum))
     } else {
         x <- logtype^x
@@ -464,7 +470,8 @@ estimateSubtopo <- function(data, fun = which.max) {
 #' @noRd
 getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
                      converged = 10^-2, subtopoX = NULL, ratio = TRUE,
-                     logtype = 2, mw = NULL, fpfn = fpfn, Rho = NULL) {
+                     logtype = 2, mw = NULL, fpfn = fpfn, Rho = NULL,
+                     complete = FALSE) {
     bestprobs <- probsold <- probs
     time0 <- TRUE
     count <- 0
@@ -476,7 +483,8 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
     ll0 <- llold <- -Inf
     stop <- FALSE
     mw <- apply(getAffinity(probsold, affinity = affinity, norm = TRUE,
-                            mw = mw, logtype = logtype, data = data), 1, sum)
+                            mw = mw, logtype = logtype, data = data,
+                            complete = complete), 1, sum)
     mw <- mw/sum(mw)
     if (any(is.na(mw))) { mw <- rep(1, k)/k }
     while((!stop | time0) & count < max_count) {
@@ -485,7 +493,8 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
         subtopo0 <- matrix(0, k, nrow(data))
         subweights0 <- matrix(0, nrow(data), n+1)
         postprobsold <- getAffinity(probsold, affinity = affinity, norm = TRUE,
-                                    logtype = logtype, mw = mw, data = data)
+                                    logtype = logtype, mw = mw, data = data,
+                                    complete = complete)
         probs0 <- probsold*0
         for (i in seq_len(k)) {
             adj1 <- mytc(res[[i]]$adj)
@@ -509,7 +518,7 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
             probs0[i, ] <- tmp
         }
         ll0 <- getLL(probs0, logtype = logtype, mw = mw,
-                     data = data)
+                     data = data, complete = complete)
         if (max(ll0) - llold > 0) {
             bestprobs <- probs0
         }
@@ -518,7 +527,8 @@ getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
             stop <- TRUE
         }
         mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE,
-                                logtype = logtype, mw = mw, data = data), 1,
+                                logtype = logtype, mw = mw, data = data,
+                                complete = complete), 1,
                     sum)
         mw <- mw/sum(mw)
         llold <- max(ll0)

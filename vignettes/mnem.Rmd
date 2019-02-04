@@ -495,6 +495,105 @@ If cells exist, which have been perturbed by a knock-down of more than
 one S-gene, values greater than $1$ in $F_k$ have to be normalized to
 $1$. This is independent of discrete or continuous data.
 
+# Expectation of the complete data log likelihood for large data sets
+
+The standard mixture NEM uses the EM algorithm to optimize the
+observed data log odds \eqref{eq:olo} of the model compared to the
+null model $N$ (no effects).
+
+\begin{equation}\label{eq:olo}
+\mathbf{\mathcal{L}} = \sum\limits_{i=1}^l \mathrm{log}
+\sum\limits_{k=1}^K \pi_k
+\prod\limits_{j=1}^m \frac{P\left(d_{ji} \mid
+f_{k,ij}
+\right)}{P\left(d_{ji} \mid N \right)}.
+\end{equation}
+
+However, our data $R = \left( r_{ji} \right)$ is already in log odds
+to make computation more efficient.
+
+\begin{equation*}
+r_{ji} = \mathrm{log} \frac{P\left(d_{ji} \mid
+1
+\right)}{P\left(d_{ji} \mid N \right)}.
+\end{equation*}
+
+Hence, we need to apply the exponential function $\mathrm{exp}$ for
+the sum of fractions in the observed log
+odds \eqref{eq:olo}.
+
+\begin{equation*}
+\mathbf{\mathcal{L}} = \sum\limits_{i=1}^l \mathrm{log}
+\sum\limits_{k=1}^K \pi_k
+\mathrm{exp} \sum\limits_{j=1}^m \mathrm{log} \frac{P\left(d_{ji} \mid
+f_{k,ij}
+\right)}{P\left(d_{ji} \mid N \right)} = \sum\limits_{i=1}^l
+\mathrm{log}
+\sum\limits_{k=1}^K \pi_k
+\mathrm{exp} \sum\limits_{j=1}^m f_{ij,k} r_{ji}.
+\end{equation*}
+
+However, the summation of the log odds can lead
+to such large numbers, that using $\mathrm{exp}$ on them returns
+infinity in practical applications. This is mostly the case for 
+data sets with many E-genes
+and/or large effect sizes. To avoid that problem, we optimize the 
+expectation of the complete data log
+odds \eqref{eq:eclo} instead.
+
+\begin{align}\label{eq:eclo}
+\mathbf{\mathcal{L}} =& \sum\limits_{i=1}^l \sum\limits_{k=1}^K
+\gamma_{ik} \left( \mathrm{log} \pi_k + \sum\limits_{j=1}^m
+\mathrm{log}
+\frac{P\left(d_{ji} \mid
+f_{k,ij}
+\right)}{P\left(d_{ji} \mid N \right)} \right)\nonumber\\=&
+\sum\limits_{i=1}^l
+\sum\limits_{k=1}^K
+\gamma_{ik} \left( \mathrm{log} \pi_k + \sum\limits_{j=1}^m
+f_{ij,k} r_{ji}
+\right).
+\end{align}
+
+This way we never have to use $\mathrm{exp}$ on the sum of log
+odds. However, to get $\gamma_{ik}$ we do still have to apply
+$\mathrm{exp}$, since
+
+\begin{equation*}
+\gamma_{ki} = \frac{\pi_k \mathrm{exp} \overbrace{\left(
+\sum\limits_{j=1}^m f_{ij,k} r_{ji} \right)}^{=l_{ii,k}}}{
+\sum\limits_{s=1}^K \pi_s \mathrm{exp} \underbrace{\left(
+\sum\limits_{j=1}^m f_{ij,s} r_{ji} \right)}_{=l_{ii,s}}}.
+\end{equation*}
+
+To solve that problem, we use the properties of $\mathrm{exp}$.
+
+\begin{equation*}
+\gamma_{ki} = \frac{\pi_k \mathrm{exp} \left( l_{ii,k} \right)}{
+\sum\limits_{s=1}^K \pi_s \mathrm{exp} \left( l_{ii,s} \right)} =
+\frac{C_i \pi_k \mathrm{exp} \left( l_{ii,k} \right)}{C_i \left(
+\sum\limits_{s=1}^K \pi_s \mathrm{exp} \left( l_{ii,s} \right)
+\right)} = \frac{\pi_k \mathrm{exp} \left( l_{ii,k} + \mathrm{log} C_i \right)}{
+\sum\limits_{s=1}^K \pi_s \mathrm{exp} \left( l_{ii,s} + \mathrm{log}
+C_i \right)}.
+\end{equation*}
+
+$C_i$ should be chosen as such, that any $\mathrm{exp}
+\left( l_{ii,t} + \mathrm{log} C_i \right)$ returns a finite real number. In
+practice we do this by normalising, such that
+
+\begin{equation*}
+\max_s \left\{ \mathrm{exp} \left( l_{ii,s} + \mathrm{log} C_i \right)
+\right\} \approx 10^{308}.
+\end{equation*}
+
+In theory this 
+could lead to very small numbers and push several of the
+responsibilities to $0$. However, in practice we don't consider this a
+problem. We reason, that if the cell log odds for one component $k$ 
+are very large, then they should either be large for all components or 
+already close to $0$ before normalisation.
+
 # References:
 
 Datlinger, P., Rendeiro, A., Schmidl, C., Krausgruber, T., Traxler, P.,

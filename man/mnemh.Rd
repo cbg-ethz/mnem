@@ -4,8 +4,7 @@
 \alias{mnemh}
 \title{Hierarchical mixture.}
 \usage{
-mnemh(data, k = 2, logtype = 2, getprobspars = list(),
-  getaffinitypars = list(), ...)
+mnemh(data, k = 2, logtype = 2, getprobspars = list(), ...)
 }
 \arguments{
 \item{data}{data matrix either binary or log odds}
@@ -15,8 +14,6 @@ mnemh(data, k = 2, logtype = 2, getprobspars = list(),
 \item{logtype}{log type of the data}
 
 \item{getprobspars}{list of parameters for the getProbs function}
-
-\item{getaffinitypars}{list of parameters for the getAffinity function}
 
 \item{...}{additional parameters for the mnem function}
 }

@@ -5,7 +5,7 @@
 \title{Calculate responsibilities.}
 \usage{
 getAffinity(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
-  data = matrix(0, 2, ncol(x)))
+  data = matrix(0, 2, ncol(x)), complete = FALSE)
 }
 \arguments{
 \item{x}{log odds for l cells and k components as a kxl matrix}
@@ -21,6 +21,9 @@ for natural)}
 \item{mw}{mixture weights of the components}
 
 \item{data}{data in log odds}
+
+\item{complete}{if TRUE, complete data log likelihood is considered (for
+very large data sets, e.g. 1000 cells and 1000 E-genes)}
 }
 \value{
 responsibilities as a kxl matrix (k components, l cells)

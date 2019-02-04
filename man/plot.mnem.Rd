@@ -10,7 +10,7 @@
   logtype = 2, cells = TRUE, pch = ".", legend = FALSE,
   showdata = FALSE, bestCell = TRUE, showprobs = FALSE,
   shownull = TRUE, ratio = TRUE, method = "llr",
-  showweights = TRUE, ...)
+  showweights = TRUE, complete = FALSE, ...)
 }
 \arguments{
 \item{x}{mnem object}
@@ -61,6 +61,9 @@ to each S-gene}
 \item{method}{"llr" for ratios}
 
 \item{showweights}{if TRUE, shows mixture weights for all components}
+
+\item{complete}{if TRUE, complete data log likelihood is considered (for
+very large data sets, e.g. 1000 cells and 1000 E-genes)}
 
 \item{...}{additional parameters}
 }

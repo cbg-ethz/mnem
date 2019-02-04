@@ -636,7 +636,6 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
 #' @param k number of maximal components for each hierarchy leaf
 #' @param logtype log type of the data
 #' @param getprobspars list of parameters for the getProbs function
-#' @param getaffinitypars list of parameters for the getAffinity function
 #' @param ... additional parameters for the mnem function
 #' @return object of class mnem
 #' @author Martin Pirkl
@@ -646,8 +645,7 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnemh(data, starts = 1, k = 1)
-mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(),
-                  getaffinitypars = list(), ...) {
+mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(), ...) {
     D <- data
     data <- modData(data)
     n <- getSgeneN(data)
@@ -692,13 +690,8 @@ mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(),
     probs <- do.call(getProbs, c(list(probs=probs, k=K, data=data,
                                       res=res, n=n), getprobspars))
     colnames(probs$probs) <- colnames(D)
-    probs2 <- do.call(getAffinity, c(list(x=probs$probs, logtype=logtype,
-                                          data=data), getaffinitypars))
-    mw <- apply(probs2, 1, sum)
-    mw <- mw/sum(mw)
-    ll <- getLL(probs$probs, logtype = logtype, mw = mw, data = data)
-    res <- list(limits = limits, comp = comp, data = D, mw = mw,
-                probs = probs$probs, lls = lls, ll = ll)
+    res <- list(limits = limits, comp = comp, data = D, mw = probs$mw,
+                probs = probs$probs, lls = lls, ll = probs$ll)
     class(res) <- "mnem"
     return(res)
 }
@@ -736,6 +729,8 @@ NA
 #' for natural)
 #' @param mw mixture weights of the components
 #' @param data data in log odds
+#' @param complete if TRUE, complete data log likelihood is considered (for
+#' very large data sets, e.g. 1000 cells and 1000 E-genes)
 #' @return responsibilities as a kxl matrix (k components, l cells)
 #' @author Martin Pirkl
 #' @export
@@ -746,8 +741,7 @@ NA
 #' result <- mnem(data, k = 2, starts = 1)
 #' resp <- getAffinity(result$probs, mw = result$mw, data = data)
 getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
-                        data = matrix(0, 2, ncol(x))) {
-    complete <- FALSE
+                        data = matrix(0, 2, ncol(x)), complete = FALSE) {
     if (is.null(mw)) { mw <- rep(1, nrow(x))/nrow(x) }
     if (affinity == 1) {
         if (complete) {
@@ -778,7 +772,7 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
         if (nrow(x) > 1) {
             y <- x
             if (norm) {
-                if (complete) {
+                if (complete & any(y > 0)) {
                     y <- apply(y, 2, function(x) {
                         xmax <- max(x)
                         maxnum <- 2^1023
@@ -790,7 +784,6 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
                 y <- logtype^y
                 y <- y*mw
                 y <- y/colSums(y)[col(y)]
-                ## apply(y, 2, function(x) return(x/sum(x)))
             }
         } else {
             y <- matrix(1, nrow(x), ncol(x))
@@ -964,6 +957,8 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' "cluster2" (clustNEM is used to infer reasonable phis, which are then
 #' used as a start for one EM run), "cluster3" (global clustering as a start),
 #' or "networks" (initialize with random phis)
+#' @param complete if TRUE, optimizes the expected complete log likelihood
+#' of the model, otherwise the log likelihood of the observed data
 #' @param p initial probabilities as a k (components) times l (cells) matrix
 #' @param k number of components
 #' @param kmax maximum number of components when k=NULL is inferred
@@ -1031,7 +1026,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  theta = NULL, mw = NULL, method = "llr",
                  parallel = NULL, reduce = FALSE, runs = 1, starts = 3,
-                 type = "random",
+                 type = "random", complete = FALSE,
                  p = NULL, k = NULL, kmax = 10, verbose = FALSE,
                  max_iter = 100, parallel2 = NULL, converged = -Inf,
                  redSpace = NULL, affinity = 0, evolution = FALSE, lambda = 1,
@@ -1039,6 +1034,12 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE,
                  ksel = c("kmeans", "silhouette", "cor")) {
+    if (nrow(D) > 10^3 & !complete) {
+        print(paste0("The input data set consists of ", nrow(D), " E-genes ",
+                     "and overall ", length(D), " data points. ",
+                     "Consider option 'complete = TRUE', if the",
+                     "observed log-likelihood reaches infinity, i.e. error."))
+    }
     if (all(D %in% c(0,1))) { method <- "disc" }
     if (method %in% "disc") {
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
@@ -1122,9 +1123,9 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                     mw <- init$mw
                     init <- list(A = unlist(init$comp, recursive = FALSE))
                 } else {
-                    p <- matrix(0, k, ncol(data))
+                    p <- matrix(0.5, k, ncol(data))
                     for (i in seq_len(k)) {
-                        p[i, which(init$cluster == i)] <- 1
+                        p[i, which(init$cluster == i)] <- 1.5
                     }
                     init <- NULL
                 }
@@ -1175,7 +1176,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         probs <- matrix(0, k, ncol(data))
         probs <- getProbs(probs, k, data, res, method, n, affinity,
                           converged, subtopoX, ratio, mw = mw, fpfn = fpfn,
-                          Rho = Rho)
+                          Rho = Rho, complete = complete)
         subtopoX <- probs$subtopoX
         limits[[1]]$ll <- probs$ll
         limits[[1]]$probs <- probs$probs
@@ -1223,7 +1224,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                         probs0 <- getProbs(probs, k, data, res1, method, n,
                                           affinity, converged, subtopoX,
                                           ratio, mw = mw, fpfn = fpfn,
-                                          Rho = Rho)
+                                          Rho = Rho, complete = complete)
                         subtopoX <- probs0$subtopoX
                         mw <- probs0$mw
                         ll <- probs0$ll
@@ -1246,15 +1247,16 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                     }
                 }
                 mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE,
-                                        logtype = logtype, mw = mw,
-                                        data = data), 1, sum)
+                                        logtype = logtype, mw = mw, data = data,
+                                        complete = complete), 1,sum)
                 mw <- mw/sum(mw)
                 if (any(is.na(mw))) { mw <- rep(1, k)/k }
                 if (verbose) {
                     print(paste("start...", s))
                 }
                 limits <- list()
-                ll <- getLL(probs, logtype = logtype, mw = mw, data = data)
+                ll <- getLL(probs, logtype = logtype, mw = mw, data = data,
+                            complete = complete)
                 llold <- bestll <- -Inf
                 bestmw <- mw
                 lls <- phievo <- thetaevo <- mwevo <- NULL
@@ -1278,7 +1280,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                                   affinity,
                                                        norm = TRUE, logtype =
                                                                         logtype,
-                                                       mw = mw, data = data)
+                                                       mw = mw, data = data,
+                                                       complete = complete)
                               edgechange <- 0
                               thetachange <- 0
                               for (i in seq_len(k)) {
@@ -1399,14 +1402,13 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                 affinity, converged,
                                                 subtopoX, ratio,
                                                 mw = mw, fpfn = fpfn,
-                                                Rho = Rho)
+                                                Rho = Rho, complete = complete)
                               if (getLL(probs$probs, logtype = logtype,
-                                        mw = mw,
-                                        data = data) > getLL(probs0$probs,
-                                                             logtype =
-                                                                 logtype,
-                                                             mw = mw,
-                                                             data = data)) {
+                                        mw = mw, data = data,
+                                        complete = complete) >
+                                  getLL(probs0$probs, logtype = logtype,
+                                        mw = mw, data = data,
+                                        complete = complete)) {
                                   probs0 <- probs
                               }
                               subtopoX <- probs0$subtopoX
@@ -1414,7 +1416,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                               modelsize <- n*n*k
                               datasize <- nrow(data)*ncol(data)*k
                               ll <- getLL(probs, logtype = logtype, mw = mw,
-                                          data = data) +
+                                          data = data, complete = complete) +
                                   evopen*datasize*(modelsize^-1)
                               mwold <- mw
                               mw <- apply(getAffinity(probs,
@@ -1422,7 +1424,9 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                       norm = TRUE,
                                                       logtype = logtype,
                                                       mw = mw,
-                                                      data = data), 1, sum)
+                                                      data = data,
+                                                      complete = complete),
+                                          1, sum)
                               mw <- mw/sum(mw)
                               if(verbose) {
                                   print(paste("ll: ", ll, sep = ""))
@@ -1481,6 +1485,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         ##     stop <- FALSE
         ##     probsold <- matrix(0, k, ncol(data))
         ##     while(!stop) {
+        ##         evopen <- 0
         ##         for (i in seq_len(k)) {
         ##             probs0 <- list()
         ##             probs0$probs <- probsold
@@ -1490,14 +1495,11 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         ##                               affinity, converged,
         ##                               subtopoX, ratio,
         ##                               mw = mw, fpfn = fpfn,
-        ##                               Rho = Rho)
+        ##                               Rho = Rho, complete = complete)
         ##             if (getLL(probs$probs, logtype = logtype,
-        ##                       mw = mw,
-        ##                       data = data) > getLL(probs0$probs,
-        ##                                            logtype =
-        ##                                                logtype,
-        ##                                            mw = mw,
-        ##                                            data = data)) {
+        ##                       mw = mw, data = data, complete = complete) >
+        ##                 getLL(probs0$probs, logtype = logtype, mw = mw,
+        ##                       data = data, complete = complete)) {
         ##                 probs0 <- probs
         ##             }
         ##             subtopoX <- probs0$subtopoX
@@ -1505,7 +1507,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         ##             modelsize <- n*n*k
         ##             datasize <- nrow(data)*ncol(data)*k
         ##             ll <- getLL(probs, logtype = logtype, mw = mw,
-        ##                         data = data) +
+        ##                         data = data, complete = complete) +
         ##                 evopen*datasize*(modelsize^-1)
         ##         }
         ##     }
@@ -1568,12 +1570,12 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         probs <- best$probs[added, , drop = FALSE]
         colnames(probs) <- colnames(D.backup)
         postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE,
-                                 logtype = logtype, mw = mw, data = data)
+                                 logtype = logtype, mw = mw, data = data,
+                                 complete = complete)
         if (!is.null(dim(postprobs))) {
             lambda <- apply(postprobs, 1, sum)
             lambda0 <- lambda/sum(lambda)
             lambda <- best$mw
-            if (verbose) { print(all(lambda == lambda0)) }
         } else {
             lambda <- 1
         }
@@ -1587,13 +1589,13 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         probs <- best$probs[, , drop = FALSE]
         colnames(probs) <- colnames(D.backup)
         postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE,
-                                 logtype = logtype, mw = best$mw, data = data)
+                                 logtype = logtype, mw = best$mw, data = data,
+                                 complete = complete)
         if (!is.null(dim(postprobs))) {
             lambda <- apply(postprobs, 1, sum)
             lambda0 <- lambda/sum(lambda)
             lambda <- best$mw
             if (k == 1) { lambda <- 1 }
-            if (verbose) { print(all(lambda == lambda0)) }
         } else {
             lambda <- 1
         }
@@ -1607,7 +1609,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
     res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda,
                 probs = probs, lls = best$ll, phievo = best$phievo,
                 thetaevo = best$thetaevo, mwevo = best$mwevo,
-                ll = getLL(probs, logtype = logtype, mw = lambda, data = data))
+                ll = getLL(probs, logtype = logtype, mw = lambda, data = data,
+                           complete = complete))
     class(res) <- "mnem"
     return(res)
 }
@@ -1621,6 +1624,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
 #' sampling 50)
 #' @param logtype logarithm type of the data (e.g. 2 for log2 data or exp(1)
 #' for natural)
+#' @param complete if TRUE, complete data log likelihood is considered (for
+#' very large data sets, e.g. 1000 cells and 1000 E-genes)
 #' @param ... additional parameters for hte nem function
 #' @author Martin Pirkl
 #' @return returns bootstrap support for each edge in each component (phi); list
@@ -1632,9 +1637,11 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 1)
 #' boot <- bootstrap(result, size = 2)
-bootstrap <- function(x, size = 1000, p = 1, logtype = 2, ...) {
+bootstrap <- function(x, size = 1000, p = 1, logtype = 2, complete = FALSE,
+                      ...) {
     data <- x$data
-    post <- getAffinity(x$probs, logtype = logtype, mw = x$mw, data = data)
+    post <- getAffinity(x$probs, logtype = logtype, mw = x$mw, data = data,
+                        complete = complete)
     bootres <- list()
     for (i in seq_len(length(x$comp))) {
         dataR <- t(t(data)*post[i, ])
@@ -1723,6 +1730,8 @@ plot.bootmnem <- function(x, reduce = TRUE, ...) {
 #' @param ratio use log ratios (TRUE) or foldchanges (FALSE)
 #' @param method "llr" for ratios
 #' @param showweights if TRUE, shows mixture weights for all components
+#' @param complete if TRUE, complete data log likelihood is considered (for
+#' very large data sets, e.g. 1000 cells and 1000 E-genes)
 #' @param ... additional parameters
 #' @author Martin Pirkl
 #' @return visualization of mnem result with Rgraphviz
@@ -1744,12 +1753,12 @@ plot.bootmnem <- function(x, reduce = TRUE, ...) {
 #' result <- mnem(data, k = 2, starts = 1)
 #' plot(result)
 plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
-                                        # import deleted graphics
                       cexAnno = 1, scale = NULL, global = TRUE, egenes = TRUE,
                       sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2,
                       cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE,
                       bestCell = TRUE, showprobs = FALSE, shownull = TRUE,
-                      ratio = TRUE, method = "llr", showweights = TRUE, ...) {
+                      ratio = TRUE, method = "llr", showweights = TRUE,
+                      complete = FALSE, ...) {
 
     x2 <- x
 
@@ -1790,7 +1799,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
     }
     full <- x$comp[[1]]$phi
     mixnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE,
-                           logtype = logtype, mw = x$mw, data = data)
+                           logtype = logtype, mw = x$mw, data = data,
+                           complete = complete)
     mixnorm <- apply(mixnorm, 2, function(x) {
         xmax <- max(x)
         x[which(x != xmax)] <- 0
@@ -1829,7 +1839,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
             if (is.null(x$comp[[i]]$theta)) {
                 weights <- getAffinity(x$probs, affinity = affinity,
                                        norm = TRUE, logtype = logtype,
-                                       mw = x$mw, data = data)
+                                       mw = x$mw, data = data,
+                                       complete = complete)
                 subtopo <- scoreAdj(modData(data), x$comp[[i]]$phi,
                                     method = method, weights = weights[i, ],
                                     ratio = ratio, ...)$subtopo
@@ -1846,6 +1857,23 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                     graph <- c(graph, paste(Sgenes[j], tmpN, sep = "="))
                 }
             }
+            if (shownull) {
+                enull <- sum(subtopo == 0)
+                enodes[["_9247Null"]] <- "NULL"
+                enodeshape[["_9247Null"]] <- "circle"
+                enodewidth[["_9247Null"]] <- 1
+                enodeheight[["_9247Null"]] <- 1
+                if (enull > 0) {
+                    nulltargets <- enull
+                } else {
+                    nulltargets <- sum(subtopo == (SgeneN+1))
+                }
+                enodes[["_9247Nulltargets"]] <- nulltargets
+                enodeshape[["_9247Nulltargets"]] <- "box"
+                enodewidth[["_9247Nulltargets"]] <- 0.5
+                enodeheight[["_9247Nulltargets"]] <- 0.5
+                graph <- c(graph, "_9247Null=_9247Nulltargets")
+            }
         } else {
             enodes <- NULL
             enodeshape <- NULL
@@ -1855,7 +1883,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
         if (cells) {
             datanorm <- modData(data)
             pnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE,
-                                 logtype = logtype, mw = x$mw, data = data)
+                                 logtype = logtype, mw = x$mw, data = data,
+                                 complete = complete)
             pnorm <- apply(pnorm, 2, function(x) {
                 xmax <- max(x)
                 x[which(x != xmax)] <- 0
@@ -1872,7 +1901,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
             for (j in seq_len(SgeneN)) {
                 tmpN <- paste("__9247C", j, sep = "_")
                 cnodes[[tmpN]] <-
-                    sum(colnames(datanorm)[which(pnorm[i, ] == 1)] == j)
+                    ##sum(colnames(datanorm)[which(pnorm[i, ] == 1)] == j)
+                    length(grep(j, colnames(datanorm)[which(pnorm[i, ] == 1)]))
                 cnodeshape[[tmpN]] <- "diamond"
                 cnodewidth[[tmpN]] <- 0.5
                 cnodeheight[[tmpN]] <- 0.5
@@ -1890,7 +1920,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
             bnodes <- bnodeshape <- bnodeheight <- bnodewidth <- list()
             if (nrow(x$probs) > 1) {
                 gam <- getAffinity(x$probs, affinity = affinity, norm = TRUE,
-                                   logtype = logtype, mw = x$mw, data = data)
+                                   logtype = logtype, mw = x$mw, data = data,
+                                   complete = complete)
             } else {
                 gam <- (logtype^x$probs)*x$mw
                 gam <- gam/gam
@@ -1907,20 +1938,6 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
             }
         } else {
             bnodes <- bnodeshape <- bnodeheight <- bnodewidth <- NULL
-        }
-        edgecol <- c(rep("black", pathedges),
-                     rep("grey", length(graph) - pathedges))
-        if (egenes) {
-            enodes[["_9247Null"]] <- "NULL"
-            enodeshape[["_9247Null"]] <- "circle"
-            enodewidth[["_9247Null"]] <- 1
-            enodeheight[["_9247Null"]] <- 1
-            nulltargets <- sum(subtopo == (SgeneN+1))
-            enodes[["_9247Nulltargets"]] <- nulltargets
-            enodeshape[["_9247Nulltargets"]] <- "box"
-            enodewidth[["_9247Nulltargets"]] <- 0.5
-            enodeheight[["_9247Nulltargets"]] <- 0.5
-            graph <- c(graph, "_9247Null=_9247Nulltargets")
         }
         edgecol <- c(rep("black", pathedges),
                      rep("grey", length(graph) - pathedges))
@@ -2399,6 +2416,8 @@ plot.mnemsim <- function(x, data = NULL, logtype = 2, fuzzypars = list(), ...) {
 #' @param x mnemsim object
 #' @param data noisy data matrix
 #' @param logtype logarithm type of the data
+#' @param complete if TRUE, complete data log likelihood is considered (for
+#' very large data sets, e.g. 1000 cells and 1000 E-genes)
 #' @param ... additional parameters for the function getAffinity
 #' @author Martin Pirkl
 #' @return list with cell log odds mixture weights and log likelihood
@@ -2409,7 +2428,7 @@ plot.mnemsim <- function(x, data = NULL, logtype = 2, fuzzypars = list(), ...) {
 #' data[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 1)
 #' data[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 1)
 #' fuzzy <- fuzzyindex(sim, data)
-fuzzyindex <- function(x, data, logtype = 2, ...) {
+fuzzyindex <- function(x, data, logtype = 2, complete = FALSE, ...) {
     data <- modData(data)
     k <- length(x$Nem)
     res <- list()
@@ -2426,7 +2445,7 @@ fuzzyindex <- function(x, data, logtype = 2, ...) {
     n <- getSgeneN(data)
     probs <- matrix(0, k, ncol(x$data))
     probs <- getProbs(probs, k, data, res, n = n, mw = x$mw, logtype = logtype,
-                      Rho=Rho)
+                      Rho=Rho, complete = complete)
     ll <- probs$ll
     mw <- probs$mw
     colnames(probs$probs) <- colnames(data)

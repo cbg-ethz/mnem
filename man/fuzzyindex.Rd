@@ -4,7 +4,7 @@
 \alias{fuzzyindex}
 \title{Calculate fuzzy ground truth.}
 \usage{
-fuzzyindex(x, data, logtype = 2, ...)
+fuzzyindex(x, data, logtype = 2, complete = FALSE, ...)
 }
 \arguments{
 \item{x}{mnemsim object}
@@ -12,6 +12,9 @@ fuzzyindex(x, data, logtype = 2, ...)
 \item{data}{noisy data matrix}
 
 \item{logtype}{logarithm type of the data}
+
+\item{complete}{if TRUE, complete data log likelihood is considered (for
+very large data sets, e.g. 1000 cells and 1000 E-genes)}
 
 \item{...}{additional parameters for the function getAffinity}
 }
