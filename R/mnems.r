@@ -156,7 +156,8 @@ fitacc <- function(x, y, strict = FALSE, unique = TRUE,
 }
 #' Plot convergence of EM
 #'
-#' This function plots the converbence of the different EM iterations.
+#' This function plots the convergence of the different EM iterations (four
+#' figures, e.g. par(mfrow=(2,2))).
 #' @param x mnem object
 #' @param col vector of colors for the iterations
 #' @param type see ?plot.default
@@ -164,8 +165,8 @@ fitacc <- function(x, y, strict = FALSE, unique = TRUE,
 #' are considered equal; see also convergence for the function
 #' mnem()
 #' @param ... additional parameters ofr the plots/lines functions
-#' @return plot of EM convergence
 #' @author Martin Pirkl
+#' @return plot of EM convergence
 #' @export
 #' @importFrom grDevices rgb
 #' @examples
@@ -173,9 +174,10 @@ fitacc <- function(x, y, strict = FALSE, unique = TRUE,
 #' data <- (sim$data - 0.5)/0.5
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 1)
+#' par(mfrow=c(2,2))
 #' plotConvergence(result)
 plotConvergence <- function(x, col = NULL, type = "b",
-                            convergence = 0.1, ...) {
+                                 convergence = 0.1, ...) {
     runs <- length(x$limits)
     if (is.null(col)) {
         col <- rgb(runif(runs),runif(runs),runif(runs),0.75)
@@ -651,17 +653,17 @@ mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(), ...) {
     n <- getSgeneN(data)
     Sgenes <- naturalsort(getSgenes(data))
     tmp <- mnemh.rec(data, k=k, logtype=logtype, ...)
-    K <- length(tmp)/10
+    K <- length(tmp)/11
     comp <- res <- limits <- list()
     lls <- numeric(K)
     for (i in seq_len(K)) {
-        lls[i] <- tmp[[(10+10*(i-1))]]
+        lls[i] <- tmp[[(11+11*(i-1))]]
         comp[[i]] <- res[[i]] <- list()
-        tmp2 <- tmp[[(2+10*(i-1))]]
+        tmp2 <- tmp[[(2+11*(i-1))]]
         tmp3 <- tmp2[[1]]$phi
-        thetatmp <- tmp[[(2+10*(i-1))]][[1]]$theta
+        thetatmp <- tmp[[(2+11*(i-1))]][[1]]$theta
         if (nrow(tmp2[[1]]$phi) < n) {
-            tmpdata <- tmp[[(3+10*(i-1))]]
+            tmpdata <- tmp[[(3+11*(i-1))]]
             inGenes <- naturalsort(getSgenes(tmpdata))
             tmpidx <- which(Sgenes %in% inGenes)
             if (max(thetatmp) > length(tmpidx)) {
@@ -682,9 +684,9 @@ mnemh <- function(data, k = 2, logtype = 2, getprobspars = list(), ...) {
                          naturalorder(colnames(tmp3))]
         }
         res[[i]]$adj <- comp[[i]]$phi <- tmp3
-        comp[[i]]$theta <- tmp[[(2+10*(i-1))]][[1]]$theta
+        comp[[i]]$theta <- tmp[[(2+11*(i-1))]][[1]]$theta
         limits[[i]] <- list()
-        limits[[i]]$ll <- tmp[[(6+10*(i-1))]]
+        limits[[i]]$ll <- tmp[[(6+11*(i-1))]]
     }
     probs <- matrix(0, K, ncol(data))
     probs <- do.call(getProbs, c(list(probs=probs, k=K, data=data,
@@ -1034,6 +1036,11 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE,
                  ksel = c("kmeans", "silhouette", "cor")) {
+    if (!is.null(k)) {
+        if (k == 1) {
+            type <- "random"
+        }
+    }
     if (nrow(D) > 10^3 & !complete) {
         print(paste0("The input data set consists of ", nrow(D), " E-genes ",
                      "and overall ", length(D), " data points. ",
@@ -1067,13 +1074,19 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
     D <- NULL
     if (multi) {
         Rho <- getRho(data)
-        type <- "random"
     } else {
         Rho <- NULL
     }
     ## learn k:
     if (is.null(k) & is.null(phi) & is.null(p)) {
-        tmp <- learnk(data, kmax = kmax, ksel = ksel, starts = starts,
+        if (length(grep("_", colnames(data))) > 0) {
+            datak <- data
+            colnames(datak) <- gsub("_", "", colnames(datak))
+            datak <- modData(datak)
+        } else {
+            datak <- data
+        }
+        tmp <- learnk(datak, kmax = kmax, ksel = ksel, starts = starts,
                       verbose = verbose)
         k <- tmp$k
         if (verbose) {
@@ -1264,7 +1277,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                 time0 <- TRUE
                 probsold <- probs
                 stop <- FALSE
-                while (((((ll - llold > converged & increase) |
+                while (((((ll - llold > converged & abs(ll - llold) > 0 &
+                           increase) |
                           (abs(ll - llold) > converged & !increase) &
                           count < max_iter)) | time0) & !stop) {
                               if (!time0) {
@@ -1610,7 +1624,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                 probs = probs, lls = best$ll, phievo = best$phievo,
                 thetaevo = best$thetaevo, mwevo = best$mwevo,
                 ll = getLL(probs, logtype = logtype, mw = lambda, data = data,
-                           complete = complete))
+                           complete = complete), complete = complete)
     class(res) <- "mnem"
     return(res)
 }
@@ -1730,8 +1744,6 @@ plot.bootmnem <- function(x, reduce = TRUE, ...) {
 #' @param ratio use log ratios (TRUE) or foldchanges (FALSE)
 #' @param method "llr" for ratios
 #' @param showweights if TRUE, shows mixture weights for all components
-#' @param complete if TRUE, complete data log likelihood is considered (for
-#' very large data sets, e.g. 1000 cells and 1000 E-genes)
 #' @param ... additional parameters
 #' @author Martin Pirkl
 #' @return visualization of mnem result with Rgraphviz
@@ -1757,8 +1769,9 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                       sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2,
                       cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE,
                       bestCell = TRUE, showprobs = FALSE, shownull = TRUE,
-                      ratio = TRUE, method = "llr", showweights = TRUE,
-                      complete = FALSE, ...) {
+                      ratio = TRUE, method = "llr", showweights = TRUE, ...) {
+
+    complete <- x$complete
 
     x2 <- x
 
@@ -1931,7 +1944,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                 graph <- c(graph, paste0(bnode, "=_9247bnode", bnode))
                 bnodes[[tmpN]] <-
                     paste0(round(max(gam[
-                        i,which(colnames(gam) %in% bnode)]), 2)*100, "%")
+                        i, grep(bnode, colnames(gam))]), 2)*100, "%")
+                        ##i, which(colnames(gam) %in% bnode)]), 2)*100, "%")
                 bnodeheight[[tmpN]] <- 0.5
                 bnodewidth[[tmpN]] <- 0.5
                 bnodeshape[[tmpN]] <- "circle"
@@ -2227,7 +2241,7 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 simData <- function(Sgenes = 5, Egenes = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,
-                    edgeprob = 0.25, multi = NULL, subsample = 1,
+                    edgeprob = 0.25, multi = FALSE, subsample = 1,
                     scalefree = FALSE, ...) {
     if (!is.null(mw) & Nems != length(mw)) {
         print(paste0("Vector of mixture weights 'mw' must be the length of the",
@@ -2236,7 +2250,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
                      " of 'mw'."))
         Nems <- length(mw)
     }
-    if (is.null(multi)) { multi <- rep(0, Sgenes-1) }
+    if (multi[1] == FALSE) { multi <- rep(0, Sgenes-1) }
     if (length(multi) < Sgenes-1) {
         multi <- c(multi, rep(0, Sgenes - length(multi) - 1))
     }
@@ -2308,23 +2322,38 @@ simData <- function(Sgenes = 5, Egenes = 1,
                 data_tmp <- data_tmp[, seq_len(ceiling(nCells/Nems))]
             }
         }
-        for (j in which(multi != 0)) {
-            data_fake <- matrix(0, 1, choose(Sgenes, j+1))
-            colnames(data_fake) <- apply(combn(seq_len(Sgenes), j+1), 2,
-                                         paste, collapse = "_")
-            Rho <- getRho(data_fake)
-            adj1 <- t(adj)%*%Rho
-            adj1[which(adj1 > 1)] <- 1
-            colnames(adj1) <- colnames(data_fake)
-            cells <- sample(which(!(seq_len(ncol(data_tmp)) %in%
-                                    grep("_", colnames(data_tmp)))),
-                            ceiling(multi[j]*ncol(data_tmp)),
-                            replace = TRUE)
-            knockdowns <- sample(seq_len(ncol(adj1)),
-                                 ceiling(multi[j]*ncol(data_tmp)),
-                                 replace = TRUE)
-            data_tmp[, cells] <- adj1[, knockdowns]
-            colnames(data_tmp)[cells] <- colnames(adj1)[knockdowns]
+        if (multi[1] == TRUE) {
+            for (j in seq_len(Sgenes-1)) {
+                data_fake <- matrix(0, 1, choose(Sgenes, j+1))
+                colnames(data_fake) <- apply(combn(seq_len(Sgenes), j+1), 2,
+                                             paste, collapse = "_")
+                Rho <- getRho(data_fake)
+                adj1 <- t(adj)%*%Rho
+                adj1[which(adj1 > 1)] <- 1
+                colnames(adj1) <- colnames(data_fake)
+                data_tmp <- cbind(data_tmp, adj1)
+                colnames(data_tmp)[-seq_len(ncol(data_tmp)-ncol(adj1))] <-
+                    colnames(adj1)
+            }
+        } else {
+            for (j in which(multi != 0)) {
+                data_fake <- matrix(0, 1, choose(Sgenes, j+1))
+                colnames(data_fake) <- apply(combn(seq_len(Sgenes), j+1), 2,
+                                             paste, collapse = "_")
+                Rho <- getRho(data_fake)
+                adj1 <- t(adj)%*%Rho
+                adj1[which(adj1 > 1)] <- 1
+                colnames(adj1) <- colnames(data_fake)
+                cells <- sample(which(!(seq_len(ncol(data_tmp)) %in%
+                                        grep("_", colnames(data_tmp)))),
+                                ceiling(multi[j]*ncol(data_tmp)),
+                                replace = TRUE)
+                knockdowns <- sample(seq_len(ncol(adj1)),
+                                     ceiling(multi[j]*ncol(data_tmp)),
+                                     replace = TRUE)
+                data_tmp[, cells] <- adj1[, knockdowns]
+                colnames(data_tmp)[cells] <- colnames(adj1)[knockdowns]
+            }
         }
         index <- c(index, rep(i, ncol(data_tmp)))
         data_tmp <- data_tmp[rep(seq_len(Sgenes), each = Egenes), ,

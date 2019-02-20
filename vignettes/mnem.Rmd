@@ -181,9 +181,10 @@ We forget the solution stored in 'simmini$Nem' and use the 'mnem' function to
 
 ```{r, fig.height=6, fig.width=14, fig.cap=fig.cap01}
 starts <- 5
-bestk <- mnemk(data, ks = 1:4, search = "greedy", starts = starts,
+bestk <- mnemk(data, ks = 1:5, search = "greedy", starts = starts,
                        parallel = NULL)
 plot(bestk$best)
+print(fitacc(bestk$best, simmini, strict = TRUE))
 ```
 ```{r, fig.cap=fig.cap03}
 par(mfrow=c(1,2)) 
@@ -428,6 +429,7 @@ ll3 <- seq(min(bics), max(bics[!is.infinite(bics)]), length.out = 5)
 i <- which.min(bics)
 bics[i] <- bics[which.max(bics)]
 i2 <- which.min(bics)
+res[[i]]$complete <- res[[i2]]$complete <- FALSE
 plot(res[[i]])
 ```
 ```{r, fig.height = 10, fig.width = 25, fig.cap = fig.cap8, echo = FALSE}

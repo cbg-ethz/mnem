@@ -394,6 +394,7 @@ learnk <- function(data, kmax = 10, ksel = c("hc", "silhouette", "cor"),
             clusters <- list()
             for (j in seq_len(kmax)) {
                 if (j == 1) { next() }
+                if (ncol(as.matrix(d)) <= j) { next() }
                 kc <- kmeans(d, centers = j, nstart = starts)
                 if ("BIC" %in% ksel | "AIC" %in% ksel) {
                     m <- ncol(kc$centers)
@@ -575,10 +576,9 @@ nemEst <- function(data, maxiter = 100, start = "null",
     R <- data2[, naturalsort(colnames(data2))]
     R2 <- R
     if (!is.null(Rho)) {
-        combs <- which(apply(Rho, 2, sum) > 1)
-        if (length(combs) > 0) {
-            R <- R[, -combs]
-        }
+        R <- R%*%t(Rho)
+        weights <- as.vector(Rho%*%weights)
+        weights[which(weights > 1)] <- 1
     }
     n <- length(unique(colnames(R)))
     Cp <- 1
@@ -623,7 +623,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         P <- llrScore(R2, phi2, weights = weights)
         P[, grep("_", colnames(phi))] <- min(P)
         subtopo <- as.numeric(gsub(ncol(phi)+1, 0, maxCol_row(P)))
-        theta <- t(R2)*0
+        theta <- t(R)*0
         theta[cbind(subtopo, seq_len(ncol(theta)))] <- 1
         Oold <- O
         ll <- llrScore(theta, P)
@@ -647,20 +647,12 @@ nemEst <- function(data, maxiter = 100, start = "null",
         nozeros <- nozeros[which(nozeros[, 1] %in% nogenes), ]
         theta[nozeros] <- 1
         theta[grep("_", colnames(phi)), ] <- 0
-        if (is.null(Rho)) {
-            theta2 <- theta
-        } else {
-            theta2 <- t(Rho)%*%theta
-        }
         if (useF) {
-            O <- (t(R2)*weights)%*%t(mytc(phi2)%*%theta)
+            O <- (t(R)*weights)%*%t(mytc(phi2)%*%theta)
         } else {
-            O <- (t(R2)*weights)%*%t(theta2)
+            O <- (t(R)*weights)%*%t(theta)
         }
         cutoff <- cut*max(abs(O))
-        if (!is.null(Rho)) {
-            Rho%*%(O%*%t(Rho))
-        }
         phi[which(O > cutoff & E == 1)] <- 1
         phi[which(O <= cutoff | E == 0)] <- 0
         if (close) {
@@ -830,7 +822,8 @@ getSgenes <- function(data) {
 }
 #' @noRd
 get.rev.tc <-function (Phi) {
-    idx = which(Phi + t(Phi) == 1, arr.ind = TRUE)
+    Phitr <- transitive.reduction(Phi)
+    idx = which(Phitr + t(Phitr) == 1, arr.ind = TRUE)
     models = list()
     nn <- dim(Phi)
     if (NROW(idx) > 0) {
@@ -885,6 +878,18 @@ get.del.tc <- function (Phi) {
     models
 }
 #' @noRd
+theta2theta <- function(x, y) {
+    if (is.matrix(x)) {
+        z <- apply(x, 2, which.max)
+    } else {
+        z <- matrix(0, nrow(y), length(x))
+        z[cbind(x, seq_len(ncol(z)))] <- 1
+        rownames(z) <- seq_len(nrow(z))
+        colnames(z) <- seq_len(ncol(z))
+    }
+    return(z)
+}
+#' @noRd
 #' @importFrom nem enumerate.models transitive.reduction
 #' @importFrom utils getFromNamespace
 mynem <- function(D, search = "greedy", start = NULL, method = "llr",
@@ -926,22 +931,33 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         D <- modData(D)
         colnames(D) <- gsub("\\..*", "", colnames(D))
     }
-    if (!is.null(Rho)) { Rho <- getRho(D) }
     if (domean) {
+        if (!is.null(Rho)) {
+            colnames(D) <- apply(Rho, 2, function(x) {
+                y <- rownames(Rho)[which(x == 1)]
+                y <- naturalsort(y)
+                y <- paste(y, collapse = "_")
+                return(y)
+            })
+        }
         D <- doMean(D, weights = weights, Rho = Rho, logtype = logtype)
         weights <- NULL
         if (!is.null(Rho)) { Rho <- getRho(D) }
+        Sgenes <- getSgenes(D)
         domean <- FALSE
     }
-    if (!is.null(Rho)) {
-        colnames(D) <-
-            c(unique(unlist(strsplit(colnames(D), "_"))),
-              sample(seq_len(length(unique(unlist(strsplit(colnames(D),
-                                                           "_"))))),
-                     ncol(D) -
-                     length(unique(unlist(strsplit(colnames(D), "_")))),
-                     replace = TRUE))
-    }
+    ## print(Rho)
+    ## print(head(D))
+    ## if (!is.null(Rho)) {
+    ##     colnames(D) <-
+    ##         c(unique(unlist(strsplit(colnames(D), "_"))),
+    ##           sample(seq_len(length(unique(unlist(strsplit(colnames(D),
+    ##                                                        "_"))))),
+    ##                  ncol(D) -
+    ##                  length(unique(unlist(strsplit(colnames(D), "_")))),
+    ##                  replace = TRUE))
+    ## }
+    ## print(2)
     if (is.null(Sgenes)) {
         Sgenes <- getSgenes(D)
     }
@@ -1251,22 +1267,30 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     if (trans.close) {
         adj <- mytc(adj)
     }
+    addpi <- FALSE
     if (is.null(Rho)) {
         adj1 <- adj[colnames(D), ]
     } else {
         adj1 <- t(Rho)%*%adj
         adj1[which(adj1 > 1)] <- 1
+        if (length(table(Rho)) > 2) {
+            addpi <- FALSE
+            pi <- apply(Rho, 1, sum)
+            pi <- pi/sum(pi)
+            Pi <- matrix(log(pi), length(pi), 1)
+            Pi <- Pi[, rep(1, ncol(Rho))]
+            gp <- sum(diag(t(Rho)%*%Pi))
+        }
     }
     if (method %in% "llr") {
         ll <- "max"
         if (is.null(P) | is.null(oldadj)) {
             score <- llrScore(D, adj1, weights = weights, ratio = ratio)
         } else {
-            changeidx <- unique(floor(which(adj != oldadj)/nrow(adj)+0.99))
-            Q <- llrScore(D, adj1[, changeidx],
-                          weights = weights, ratio = ratio)
             score <- P
-            score[, changeidx] <- Q
+            changeidx <- unique(floor(which(adj != oldadj)/nrow(adj)+0.99))
+            score[, changeidx] <- llrScore(D, adj1[, changeidx],
+                                           weights = weights, ratio = ratio)
         }
     }
     if (is.null(subtopo) & dotopo) {
@@ -1276,7 +1300,7 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     subweights <- score
     if (ll %in% "max") {
         if (is.null(subtopo)) {
-            score <- sum(rowMaxs(score))
+            score <- sum(matrixStats::rowMaxs(score))
         } else {
             score <- sum(score[cbind(seq_len(nrow(score)),
                                      as.numeric(subtopo))])
@@ -1284,6 +1308,9 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     }
     if (ll %in% "marg") {
         score <- sum(score)
+    }
+    if (addpi) {
+        score <- score + gp
     }
     if (!is.null(prior)) {
         prior <- transitive.reduction(prior)
@@ -1442,4 +1469,70 @@ simulateDnf <- function(dnf, stimuli = NULL, inhibitors = NULL) {
     signalStates <- as.vector(signalStates)
     names(signalStates) <- namestmp
     return(signalStates = signalStates)
+}
+#' @noRd
+#' @importFrom graphics boxplot axis
+myboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
+                      polygon = TRUE, sd = 0.2, dcol = NULL,
+                      scol = NULL, dlty = 1,
+                      dlwd = 1, spch = 1, xaxt = "y", ...) {
+    paras <- list(...)
+    n <- ncol(x)
+    if (box) {
+        boxplot(x, xaxt = "n", ...)
+    }
+    if (dens) {
+        if (is.null(dcol) & !is.null(paras$col)) {
+            dcol <- paras$col
+        } else {
+            dcol <- rgb(0,0,0,0.5)
+        }
+        if (!box) {
+            if (is.null(paras$ylim)) {
+                yrange <- apply(x, 2, function(y) {
+                    d <- density(y, na.rm = TRUE)
+                    return(d$x)
+                })
+                plot(0, 0, xlim = c(0.5, n+0.5), ylim = c(min(yrange),
+                                                          max(yrange)),
+                     xaxt = "n", ...)
+            } else {
+                plot(0, 0, xlim = c(0.5, n+0.5), xaxt = "n", ...)
+            }
+        }
+        if (length(dcol) == 1) { dcol <- rep(dcol, n) }
+        for (i in seq_len(n)) {
+            if (any(x[, i] != x[1, i])) {
+                d <- density(x[, i], na.rm = TRUE)
+                dy <- d$y
+                dx <- d$x
+                dy <- dy/max(dy)*0.5
+                lines(c(dy+i,-dy+i), rep(dx, 2), lty = dlty, lwd = dlwd,
+                      col = dcol[i])
+                if (polygon) {
+                    polygon(c(dy+i,-dy+i), rep(dx, 2), col = dcol[i])
+                }
+            }
+        }
+    }
+    if ("random" %in% scatter) {
+        if (is.null(scol) & !is.null(paras$col)) {
+            scol <- paras$col
+        } else {
+            scol <- rgb(0,0,0,0.5)
+        }
+        lines(rep(seq_len(n), each = nrow(x))+rnorm(nrow(x)*n, 0, sd),
+              as.vector(x), type = "p",
+              pch = spch, col = rep(scol, each = nrow(x)))
+    }
+    if (xaxt != "n") {
+        axis(1, seq_len(n), seq_len(n))
+    }
+}
+#' @noRd
+#' @importFrom graphics abline
+addgrid <- function(x = c(0,1,0.1), y = c(0,1,0.1), lty = 2,
+                    col = rgb(0.5,0.5,0.5,0.5)) {
+    abline(h=seq(x[1], x[2], x[3]), col = col, lty = lty)
+    abline(v=seq(y[1], y[2], y[3]), col = col, lty = lty)
 }

@@ -6,7 +6,7 @@
 \usage{
 simData(Sgenes = 5, Egenes = 1, Nems = 2, reps = NULL, mw = NULL,
   evolution = FALSE, nCells = 1000, uninform = 0, unitheta = FALSE,
-  edgeprob = 0.25, multi = NULL, subsample = 1, scalefree = FALSE,
+  edgeprob = 0.25, multi = FALSE, subsample = 1, scalefree = FALSE,
   ...)
 }
 \arguments{

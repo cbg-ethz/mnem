@@ -23,13 +23,15 @@ mnem()}
 plot of EM convergence
 }
 \description{
-This function plots the converbence of the different EM iterations.
+This function plots the convergence of the different EM iterations (four
+figures, e.g. par(mfrow=(2,2))).
 }
 \examples{
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 data <- (sim$data - 0.5)/0.5
 data <- data + rnorm(length(data), 0, 1)
 result <- mnem(data, k = 2, starts = 1)
+par(mfrow=c(2,2))
 plotConvergence(result)
 }
 \author{
