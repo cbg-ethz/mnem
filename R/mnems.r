@@ -779,7 +779,7 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
                         xmax <- max(x)
                         maxnum <- 2^1023
                         shrinkfac <- log(maxnum)/log(logtype)
-                        x <- x - (xmax - shrinkfac)
+                        x <- x - (xmax - shrinkfac/length(x))
                         return(x)
                     })
                 }
@@ -2630,10 +2630,8 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         diag(dnf) <- 0
         if (all(dnf == 0)) {
             diag(dnf) <- 1
-            dnf <- adj2dnf(dnf)
-        } else {
-            dnf <- adj2dnf(transitive.reduction(dnf))
         }
+        dnf <- adj2dnf(dnf)
     }
 
     if (!bool & length(grep("\\+", dnf)) > 0) {

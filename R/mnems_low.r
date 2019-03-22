@@ -707,11 +707,19 @@ doMean <- function(D, weights = NULL, Rho = NULL, logtype = 2) {
         if (!is.null(weights)) {
             D <- D*rep(weights, rep(nrow(D), ncol(D)))
         }
-        global <- TRUE
-        if (global) {
-            mD <- t(rowsum(t(D), colnames(D)))/ncol(D)
+        if (!is.null(Rho)) {
+            Rho <- Rho[naturalorder(rownames(Rho)), ]
+            mD <- D%*%t(Rho)
+            colnames(mD) <- seq_len(ncol(mD))
         } else {
-            mD <- t(rowsum(t(D), colnames(D))/as.numeric(table(colnames(D))))
+            global <- TRUE
+            if (global) {
+                mD <- t(rowsum(t(D), colnames(D)))/
+                    (ncol(D)/length(unique(colnames(D))))
+            } else {
+                mD <- t(rowsum(t(D), colnames(D))/
+                        as.numeric(table(colnames(D))))
+            }
         }
     }
     mD <- mD[, naturalorder(colnames(mD))]
@@ -898,7 +906,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
                   ratio = TRUE, domean = TRUE, modulesize = 5,
                   fpfn = c(0.1, 0.1), Rho = NULL, logtype = 2,
-                  modified = FALSE, Sgenes = NULL, ...) {
+                  modified = FALSE, Sgenes = NULL, combi = 1, ...) {
     if (method %in% "disc") {
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
         D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
@@ -931,18 +939,25 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         D <- modData(D)
         colnames(D) <- gsub("\\..*", "", colnames(D))
     }
+    if (length(unique(colnames(D))) == ncol(D)) {
+        domean <- FALSE
+    }
     if (domean) {
         if (!is.null(Rho)) {
-            colnames(D) <- apply(Rho, 2, function(x) {
-                y <- rownames(Rho)[which(x == 1)]
-                y <- naturalsort(y)
-                y <- paste(y, collapse = "_")
-                return(y)
-            })
+            if (length(table(Rho)) == 2) {
+                colnames(D) <- apply(Rho, 2, function(x) {
+                    y <- rownames(Rho)[which(x == 1)]
+                    y <- naturalsort(y)
+                    y <- paste(y, collapse = "_")
+                    return(y)
+                })
+                D <- D[, which(!(colnames(D) %in% ""))]
+                Rho <- NULL
+            }
         }
         D <- doMean(D, weights = weights, Rho = Rho, logtype = logtype)
         weights <- NULL
-        if (!is.null(Rho)) { Rho <- getRho(D) }
+        Rho <- getRho(D)
         Sgenes <- getSgenes(D)
         domean <- FALSE
     }
@@ -988,7 +1003,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     score <- scoreAdj(D, better, method = method, weights = weights,
                       subtopo = subtopo,
                       prior = prior, ratio = ratio, fpfn = fpfn,
-                      Rho = Rho)
+                      Rho = Rho, combi = combi)
     score <- score$score
     oldscore <- score
     allscores <- score
@@ -1048,7 +1063,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                                   weights = weights,
                                   subtopo = subtopo, prior = prior,
                                   ratio = ratio, fpfn = fpfn,
-                                  Rho = Rho)
+                                  Rho = Rho, combi = combi)
                 P <- score$subweights
                 oldadj <- better
                 score <- score$score
@@ -1066,7 +1081,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                                       subtopo = subtopo, prior = prior,
                                       ratio = ratio, fpfn = fpfn,
                                       Rho = Rho, P = P, oldadj = oldadj,
-                                      trans.close = FALSE)
+                                      trans.close = FALSE, combi = combi)
                     P <- score$subweights
                     score <- score$score
                     return(list(score, P))
@@ -1125,7 +1140,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
             score <- scoreAdj(D, adj, method = method, weights = weights,
                               subtopo = subtopo, prior = prior,
                               ratio = ratio, fpfn = fpfn,
-                              Rho = Rho)
+                              Rho = Rho, combi = combi)
             score <- score$score
             return(score)
         }
@@ -1170,7 +1185,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         subtopo <- scoreAdj(D, better, method = method, weights = weights,
                             prior = prior,
                             ratio = ratio, fpfn = fpfn,
-                            Rho = Rho, dotopo = TRUE)
+                            Rho = Rho, dotopo = TRUE, combi = combi)
         subweights <- subtopo$subweights
         subtopo <- subtopo$subtopo
     } else {
@@ -1263,24 +1278,15 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
                      trans.close = TRUE, subtopo = NULL,
                      prior = NULL, ratio = TRUE, fpfn = c(0.1, 0.1),
                      Rho = NULL, dotopo = FALSE,
-                     P = NULL, oldadj = NULL) {
+                     P = NULL, oldadj = NULL, combi = 1) {
     if (trans.close) {
         adj <- mytc(adj)
     }
-    addpi <- FALSE
     if (is.null(Rho)) {
         adj1 <- adj[colnames(D), ]
     } else {
         adj1 <- t(Rho)%*%adj
         adj1[which(adj1 > 1)] <- 1
-        if (length(table(Rho)) > 2) {
-            addpi <- FALSE
-            pi <- apply(Rho, 1, sum)
-            pi <- pi/sum(pi)
-            Pi <- matrix(log(pi), length(pi), 1)
-            Pi <- Pi[, rep(1, ncol(Rho))]
-            gp <- sum(diag(t(Rho)%*%Pi))
-        }
     }
     if (method %in% "llr") {
         ll <- "max"
@@ -1300,6 +1306,7 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     subweights <- score
     if (ll %in% "max") {
         if (is.null(subtopo)) {
+            score[which(score < 0)] <- 0
             score <- sum(matrixStats::rowMaxs(score))
         } else {
             score <- sum(score[cbind(seq_len(nrow(score)),
@@ -1308,9 +1315,6 @@ scoreAdj <- function(D, adj, method = "llr", weights = NULL,
     }
     if (ll %in% "marg") {
         score <- sum(score)
-    }
-    if (addpi) {
-        score <- score + gp
     }
     if (!is.null(prior)) {
         prior <- transitive.reduction(prior)

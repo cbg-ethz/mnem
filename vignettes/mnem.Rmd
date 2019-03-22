@@ -196,7 +196,7 @@ plot(bestk$ics, col = "red", main = "penalized log likelihood", type = "b",
 
 We compare the actual log likelihood shown in figure 4 (left, blue)
 to the penalized log likelihood
-(right, red). Notice that the raw log likelihood of $k=4$ is the same
+(right, red). Notice that the raw log likelihood of $k=4,5$ is the same
 as for the $k=3$ component model. However, if we penalize complexity
 the three component model gives us the best score (minimum).
 The penalized like the raw log likelihood is not guaranteed to have
@@ -586,7 +586,7 @@ practice we do this by normalising, such that
 
 \begin{equation*}
 \max_s \left\{ \mathrm{exp} \left( l_{ii,s} + \mathrm{log} C_i \right)
-\right\} \approx 10^{308}.
+\right\} \approx \frac{10^308}{K}.
 \end{equation*}
 
 In theory this 
