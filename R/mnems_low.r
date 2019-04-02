@@ -708,8 +708,8 @@ doMean <- function(D, weights = NULL, Rho = NULL, logtype = 2) {
             D <- D*rep(weights, rep(nrow(D), ncol(D)))
         }
         if (!is.null(Rho)) {
-            Rho <- Rho[naturalorder(rownames(Rho)), ]
             mD <- D%*%t(Rho)
+            mD <- mD[, naturalorder(colnames(mD))]
             colnames(mD) <- seq_len(ncol(mD))
         } else {
             global <- TRUE
@@ -961,18 +961,6 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         Sgenes <- getSgenes(D)
         domean <- FALSE
     }
-    ## print(Rho)
-    ## print(head(D))
-    ## if (!is.null(Rho)) {
-    ##     colnames(D) <-
-    ##         c(unique(unlist(strsplit(colnames(D), "_"))),
-    ##           sample(seq_len(length(unique(unlist(strsplit(colnames(D),
-    ##                                                        "_"))))),
-    ##                  ncol(D) -
-    ##                  length(unique(unlist(strsplit(colnames(D), "_")))),
-    ##                  replace = TRUE))
-    ## }
-    ## print(2)
     if (is.null(Sgenes)) {
         Sgenes <- getSgenes(D)
     }

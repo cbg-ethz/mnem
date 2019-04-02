@@ -1357,7 +1357,6 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                       test01 <- list()
                                       test01scores <- numeric(2)
                                       for (j in seq_len(2)) {
-                                      ## for (j in 2) {
                                           if (j == 2) {
                                               start1 <- start0
                                           } else {
@@ -1914,7 +1913,6 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
             for (j in seq_len(SgeneN)) {
                 tmpN <- paste("__9247C", j, sep = "_")
                 cnodes[[tmpN]] <-
-                    ##sum(colnames(datanorm)[which(pnorm[i, ] == 1)] == j)
                     length(grep(j, colnames(datanorm)[which(pnorm[i, ] == 1)]))
                 cnodeshape[[tmpN]] <- "diamond"
                 cnodewidth[[tmpN]] <- 0.5
@@ -1945,7 +1943,6 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                 bnodes[[tmpN]] <-
                     paste0(round(max(gam[
                         i, grep(bnode, colnames(gam))]), 2)*100, "%")
-                        ##i, which(colnames(gam) %in% bnode)]), 2)*100, "%")
                 bnodeheight[[tmpN]] <- 0.5
                 bnodewidth[[tmpN]] <- 0.5
                 bnodeshape[[tmpN]] <- "circle"
