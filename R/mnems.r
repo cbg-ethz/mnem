@@ -336,11 +336,14 @@ plotConvergence <- function(x, col = NULL, type = "b",
 #' @param o number of samples per S-gene (for testing)
 #' @param maxk maximum number of component in mnem inference (default: 5)
 #' @param parallel number of threads for parallelisation
-#' @param path path to the data files path/file.csv
-#' @param dataonly if TRUE, only fetches and normalizes the data and
-#' computes the log odds
+#' @param path path to the data files path/file.csv: "path/"
+#' @param types types of data/analysis; "data" creates the gene expression
+#' matrix, "lods" includes the log odds, "mnem" additionally performes the
+#' mixture nem analysis; default c("data", "lods", "mnem")
 #' @param allcrop if TRUE, does not restrict and uses the full CROPseq dataset
 #' @param multi if TRUE, includes cells with more than one perturbed gene
+#' @param file path and filename of the rda file with the raw data from the
+#' command "data <- createApp(..., types = "data")"
 #' @param ... additional parameters for the mixture nem function
 #' @return app data object
 #' @author Martin Pirkl
@@ -355,276 +358,327 @@ plotConvergence <- function(x, col = NULL, type = "b",
 #' }
 #' data(app)
 createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
-                      maxk = 5, parallel = NULL, path = "", dataonly = FALSE,
-                      allcrop = FALSE, multi = FALSE, ...) {
+                      maxk = 5, parallel = NULL, path = "",
+                      types = c("data", "lods", "mnem"),
+                      allcrop = FALSE, multi = FALSE, file = NULL, ...) {
+    if ("mnem" %in% types) {
+        types <- c(types, "lods")
+    }
+    if ("lods" %in% types & is.null(file)) {
+        types <- c(types, "data")
+    }
+    data <- lods <- NULL
     ## load datasets
-    datas <- list()
-    if (1 %in% sets) {
-        datafile <- "GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv"
-        data <- fread(paste0(path, datafile), data.table = FALSE)
-        data.backup <- data
-        counts <- data[, grep("condition|^stim", colnames(data))]
-        counts <- counts[-(seq_len(5)), -1]
-        counts <- matrix(as.numeric(as.character(unlist(counts))), nrow(counts))
-        rownames(counts) <- data[6:nrow(data), 1]
-        colnames(counts) <- data[4, grep("^stim", colnames(data))]
-        colnames(counts)[which(colnames(counts) %in% "CTRL")] <- ""
-        counts <- counts[, -grep("DHODH|MVD|TUBB", colnames(counts))]
-        data <- counts
-        if (!is.null(n)) {
-            var <- apply(data, 1, var)
-            data <- data[order(var, decreasing = TRUE)[seq_len(n)], ,
-                         drop = FALSE]
-        }
-        if (!is.null(m)) {
-            Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
-            data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
-                         drop = FALSE]
-        }
-        if (!is.null(o)) {
-            Sgenes <- naturalsort(unique(colnames(data)))
-            idx <- NULL
-            for (i in Sgenes) {
-                idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+    barcodes <- list()
+    if ("data" %in% types) {
+        datas <- list()
+        if (1 %in% sets) {
+            datafile <- "GSE92872_CROP-seq_Jurkat_TCR.digital_expression.csv"
+            data <- fread(paste0(path, datafile), data.table = FALSE)
+            data.backup <- data
+            counts <- data[, grep("condition|^stim", colnames(data))]
+            counts <- counts[-(seq_len(5)), -1]
+            counts <- matrix(as.numeric(as.character(unlist(counts))), nrow(counts))
+            rownames(counts) <- data[6:nrow(data), 1]
+            colnames(counts) <- data[4, grep("^stim", colnames(data))]
+            colnames(counts)[which(colnames(counts) %in% "CTRL")] <- ""
+            counts <- counts[, -grep("DHODH|MVD|TUBB", colnames(counts))]
+            data <- counts
+            barcodes[[1]] <- colnames(data)
+            if (!is.null(n)) {
+                var <- apply(data, 1, var)
+                data <- data[order(var, decreasing = TRUE)[seq_len(n)], ,
+                             drop = FALSE]
             }
-            data <- data[, idx]
-        }
-        datas[[1]] <- data
-    }
-    if (2 %in% sets | 3 %in% sets) {
-        data <- fread(paste0(path, "k562_both_filt.txt"))
-        data.backup <- data
-        rownames(data) <- data.backup$GENE
-        if (!is.null(n)) {
-            var <- apply(data, 1, var)
-            data <- data[order(var, decreasing = TRUE)[seq_len(n)], ,
-                         drop = FALSE]
-        }
-        data <- data[, -1]
-        data <- as.matrix(data)
-        data1 <- data[, grep("cc7d", colnames(data)), drop = FALSE]
-        data2 <- data[, grep("p7d", colnames(data)), drop = FALSE]
-        data <- data1
-        datafile <- "GSM2396861_k562_ccycle_cbc_gbc_dict.csv"
-        c2g <- read.table(paste0(path, datafile), fill = TRUE, sep = ",")
-        cn <- character(ncol(data))
-        for (i in seq_len(length(c2g[[1]]))) {
-            cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
-            cn[which(colnames(data) %in% cells)] <- paste(cn[
-                which(colnames(data) %in% cells)],
-                gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
-                     as.character(c2g[[1]][[i]])), sep = "_")
-        }
-        colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
-        colnames(data)[grep("INTER", colnames(data))] <- ""
-        if (length(grep("_", colnames(data))) > 0 & !multi) {
-            data <- data[, -grep("_", colnames(data))]
-        }
-        if (!is.null(m)) {
-            Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
-            data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
-                         drop = FALSE]
-        }
-        if (!is.null(o)) {
-            Sgenes <- naturalsort(unique(colnames(data)))
-            idx <- NULL
-            for (i in Sgenes) {
-                idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+            if (!is.null(m)) {
+                Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
+                data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
+                             drop = FALSE]
             }
-            data <- data[, idx]
-        }
-        datas[[2]] <- data
-        data <- data2
-        datafile <- "GSM2396858_k562_tfs_7_cbc_gbc_dict.csv"
-        c2g <- read.table(paste0(path, datafile), fill = TRUE, sep = ",")
-        cn <- character(ncol(data))
-        for (i in seq_len(length(c2g[[1]]))) {
-            cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
-            cn[which(colnames(data) %in% cells)] <- paste(cn[
-                which(colnames(data) %in% cells)],
-                gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
-                     as.character(c2g[[1]][[i]])), sep = "_")
-        }
-        colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
-        colnames(data)[grep("INTER", colnames(data))] <- ""
-        if (length(grep("_", colnames(data))) > 0 & !multi) {
-            data <- data[, -grep("_", colnames(data))]
-        }
-        if (!is.null(m)) {
-            Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
-            data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
-                         drop = FALSE]
-        }
-        if (!is.null(o)) {
-            Sgenes <- naturalsort(unique(colnames(data)))
-            idx <- NULL
-            for (i in Sgenes) {
-                idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+            if (!is.null(o)) {
+                Sgenes <- naturalsort(unique(colnames(data)))
+                idx <- NULL
+                for (i in Sgenes) {
+                    idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+                }
+                data <- data[, idx]
             }
-            data <- data[, idx]
+            datas[[1]] <- data
         }
-        datas[[3]] <- data
-    }
-    if (4 %in% sets | i %in% 5) {
-        data <- fread(paste0(path, "dc_both_filt_fix_tp10k.txt"))
-        data.backup <- data
-        rownames(data) <- data.backup$GENE
-        if (!is.null(n)) {
-            var <- apply(data, 1, var)
-            data <- data[order(var, decreasing = TRUE)[seq_len(n)], ,
-                         drop = FALSE]
-        }
-        data <- data[, -1]
-        data <- as.matrix(data)
-        data1 <- data[, grep("0h", colnames(data))]
-        data2 <- data[, grep("3h", colnames(data))]
-        data <- data1
-        datafile <- "GSM2396857_dc_0hr_cbc_gbc_dict.csv"
-        c2g <- read.table(paste0(path, datafile), fill = TRUE, sep = ",")
-        cn <- character(ncol(data))
-        for (i in seq_len(length(c2g[[1]]))) {
-            cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
-            cn[which(colnames(data) %in% cells)] <- paste(cn[
-                which(colnames(data) %in% cells)],
-                gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
-                     as.character(c2g[[1]][[i]])), sep = "_")
-        }
-        colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
-        colnames(data)[grep("INTER", colnames(data))] <- ""
-        if (length(grep("_", colnames(data))) > 0 & !multi) {
-            data <- data[, -grep("_", colnames(data))]
-        }
-        if (!is.null(m)) {
-            Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
-            data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
-                         drop = FALSE]
-        }
-        if (!is.null(o)) {
-            Sgenes <- naturalsort(unique(colnames(data)))
-            idx <- NULL
-            for (i in Sgenes) {
-                idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+        if (2 %in% sets | 3 %in% sets) {
+            data <- fread(paste0(path, "k562_both_filt.txt"))
+            rns <- data$GENE
+            tmp <- grep("cc7d", colnames(data))
+            data1 <- data[, ..tmp]
+            tmp <- grep("p7d", colnames(data))
+            data2 <- data[, ..tmp]
+            ## alternative:
+            ## data <- read.table(paste0(path, "k562_both_filt.txt"), header = TRUE)
+            ## rns <- data$GENE
+            ## tmp <- grep("cc7d", colnames(data))
+            ## data1 <- data[, tmp]
+            ## tmp <- grep("p7d", colnames(data))
+            ## data2 <- data[, tmp]
+            rm(data)
+            gc()
+            data <- data1
+            rm(data1)
+            gc()
+            data <- as.matrix(data)
+            rownames(data) <- rns
+            if (!is.null(n)) {
+                var <- apply(data, 1, var)
+                data <- data[order(var, decreasing = TRUE)[seq_len(n)], ,
+                             drop = FALSE]
             }
-            data <- data[, idx]
-        }
-        datas[[4]] <- data
-        data <- data2
-        datafile <- "GSM2396856_dc_3hr_cbc_gbc_dict_strict.csv"
-        c2g <- read.table(paste0(path, datafile), fill = TRUE, sep = ",")
-        cn <- character(ncol(data))
-        for (i in seq_len(length(c2g[[1]]))) {
-            cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
-            cn[which(colnames(data) %in% cells)] <- paste(cn[
-                which(colnames(data) %in% cells)],
-                gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
-                     as.character(c2g[[1]][[i]])), sep = "_")
-        }
-        colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
-        colnames(data)[grep("INTER", colnames(data))] <- ""
-        if (length(grep("_", colnames(data))) > 0 & !multi) {
-            data <- data[, -grep("_", colnames(data))]
-        }
-        if (!is.null(m)) {
-            Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
-            data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
-                         drop = FALSE]
-        }
-        if (!is.null(o)) {
-            Sgenes <- naturalsort(unique(colnames(data)))
-            idx <- NULL
-            for (i in Sgenes) {
-                idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+            datafile <- "GSM2396861_k562_ccycle_cbc_gbc_dict.csv"
+            c2g <- read.table(paste0(path, datafile), fill = TRUE, sep = ",")
+            cn <- character(ncol(data))
+            for (i in seq_len(length(c2g[[1]]))) {
+                cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
+                cn[which(colnames(data) %in% cells)] <- paste(cn[
+                    which(colnames(data) %in% cells)],
+                    gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
+                         as.character(c2g[[1]][[i]])), sep = "_")
             }
-            data <- data[, idx]
+            barcodes[[2]] <- colnames(data)
+            colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
+            colnames(data)[grep("INTER", colnames(data))] <- ""
+            if (length(grep("_", colnames(data))) > 0 & !multi) {
+                data <- data[, -grep("_", colnames(data))]
+            }
+            if (!is.null(m)) {
+                Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
+                data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
+                             drop = FALSE]
+            }
+            if (!is.null(o)) {
+                Sgenes <- naturalsort(unique(colnames(data)))
+                idx <- NULL
+                for (i in Sgenes) {
+                    idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+                }
+                data <- data[, idx]
+            }
+            datas[[2]] <- data
+            rm(data)
+            gc()
+            data <- data2
+            rm(data2)
+            gc()
+            data <- as.matrix(data)
+            rownames(data) <- rns
+            if (!is.null(n)) {
+                var <- apply(data, 1, var)
+                data <- data[order(var, decreasing = TRUE)[seq_len(n)], ,
+                             drop = FALSE]
+            }
+            datafile <- "GSM2396858_k562_tfs_7_cbc_gbc_dict.csv"
+            c2g <- read.table(paste0(path, datafile), fill = TRUE, sep = ",")
+            cn <- character(ncol(data))
+            for (i in seq_len(length(c2g[[1]]))) {
+                cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
+                cn[which(colnames(data) %in% cells)] <- paste(cn[
+                    which(colnames(data) %in% cells)],
+                    gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
+                         as.character(c2g[[1]][[i]])), sep = "_")
+            }
+            barcodes[[3]] <- colnames(data)
+            colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
+            colnames(data)[grep("INTER", colnames(data))] <- ""
+            if (length(grep("_", colnames(data))) > 0 & !multi) {
+                data <- data[, -grep("_", colnames(data))]
+            }
+            if (!is.null(m)) {
+                Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
+                data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
+                             drop = FALSE]
+            }
+            if (!is.null(o)) {
+                Sgenes <- naturalsort(unique(colnames(data)))
+                idx <- NULL
+                for (i in Sgenes) {
+                    idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+                }
+                data <- data[, idx]
+            }
+            datas[[3]] <- data
         }
-        datas[[5]] <- data
-        data <- cbind(datas[[4]], datas[[5]])
-        data <- exp(data) - 1
-        exprslvl <- apply(data, 1, median)
-        data <- data[which(exprslvl > 0), ]
-        data <- Linnorm(data)
-        datas[[4]] <- data[, seq_len(ncol(datas[[4]]))]
-        datas[[5]] <- data[, -seq_len(ncol(datas[[4]]))]
-        print("data normalized")
+        if (4 %in% sets | 5 %in% sets) {
+            data <- fread(paste0(path, "dc_both_filt_fix_tp10k.txt"))
+            data.backup <- data
+            rownames(data) <- data.backup$GENE
+            if (!is.null(n)) {
+                var <- apply(data, 1, var)
+                data <- data[order(var, decreasing = TRUE)[seq_len(n)], ,
+                             drop = FALSE]
+            }
+            data <- data[, -1]
+            data <- as.matrix(data)
+            data1 <- data[, grep("0h", colnames(data))]
+            data2 <- data[, grep("3h", colnames(data))]
+            data <- data1
+            datafile <- "GSM2396857_dc_0hr_cbc_gbc_dict.csv"
+            c2g <- read.table(paste0(path, datafile), fill = TRUE, sep = ",")
+            cn <- character(ncol(data))
+            for (i in seq_len(length(c2g[[1]]))) {
+                cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
+                cn[which(colnames(data) %in% cells)] <- paste(cn[
+                    which(colnames(data) %in% cells)],
+                    gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
+                         as.character(c2g[[1]][[i]])), sep = "_")
+            }
+            barcodes[[4]] <- colnames(data)
+            colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
+            colnames(data)[grep("INTER", colnames(data))] <- ""
+            if (length(grep("_", colnames(data))) > 0 & !multi) {
+                data <- data[, -grep("_", colnames(data))]
+            }
+            if (!is.null(m)) {
+                Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
+                data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
+                             drop = FALSE]
+            }
+            if (!is.null(o)) {
+                Sgenes <- naturalsort(unique(colnames(data)))
+                idx <- NULL
+                for (i in Sgenes) {
+                    idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+                }
+                data <- data[, idx]
+            }
+            datas[[4]] <- data
+            data <- data2
+            datafile <- "GSM2396856_dc_3hr_cbc_gbc_dict_strict.csv"
+            c2g <- read.table(paste0(path, datafile), fill = TRUE, sep = ",")
+            cn <- character(ncol(data))
+            for (i in seq_len(length(c2g[[1]]))) {
+                cells <- unlist(strsplit(as.character(c2g[[2]][[i]]), ", "))
+                cn[which(colnames(data) %in% cells)] <- paste(cn[
+                    which(colnames(data) %in% cells)],
+                    gsub("^c_|^c_sg|^m_|_[0-9]$|_10$", "",
+                         as.character(c2g[[1]][[i]])), sep = "_")
+            }
+            barcodes[[5]] <- colnames(data)
+            colnames(data) <- gsub("^_|^_p_sg|^_p_", "", cn)
+            colnames(data)[grep("INTER", colnames(data))] <- ""
+            if (length(grep("_", colnames(data))) > 0 & !multi) {
+                data <- data[, -grep("_", colnames(data))]
+            }
+            if (!is.null(m)) {
+                Sgenes <- unique(c("", naturalsort(unique(colnames(data)))))
+                data <- data[, which(colnames(data) %in% Sgenes[seq_len(m+1)]),
+                             drop = FALSE]
+            }
+            if (!is.null(o)) {
+                Sgenes <- naturalsort(unique(colnames(data)))
+                idx <- NULL
+                for (i in Sgenes) {
+                    idx <- c(idx, which(colnames(data) %in% i)[seq_len(o)])
+                }
+                data <- data[, idx]
+            }
+            datas[[5]] <- data
+            data <- cbind(datas[[4]], datas[[5]])
+            data <- exp(data) - 1
+            exprslvl <- apply(data, 1, median)
+            data <- data[which(exprslvl > 0), ]
+            data <- Linnorm(data)
+            datas[[4]] <- data[, seq_len(ncol(datas[[4]]))]
+            datas[[5]] <- data[, -seq_len(ncol(datas[[4]]))]
+            print("data normalized")
+        }
+    } else {
+        load(file)
+        datas <- list()
+        for (i in sets) {
+            if (!is.null(data[[i]])) {
+                datas[[i]] <- data[[i]]$data
+            }
+        }
     }
     print("data loaded")
     ## dataset normalization, log odds computation and mnem inference
     app <- list()
     for (i in sets) {
-        print(paste0("dataset ", i))
         data <- datas[[i]]
-        ## data normalization
-        if (i == 1) {
-            exprslvl <- apply(data, 1, median)
-            data <- data[which(exprslvl > 0), ]
-            data <- t(t(data)/(colSums(data)/10000))
-            data <- Linnorm(data)
-            print("data normalized")
-        } else if (i %in% c(2,3)) {
-            data <- exp(data) - 1
-            exprslvl <- apply(data, 1, median)
-            data <- data[which(exprslvl > 0), ]
-            data <- Linnorm(data)
-            print("data normalized")
-        }
-        ## log ratio calculation
-        llr <- data*0
-        C <- which(colnames(data) %in% "")
-        distrPar <- function(i, data, C) {
-            cdistr <- ecdf(data[i, C])
-            llrcol <- numeric(ncol(data))
-            for (j in which(!(colnames(data) %in% ""))) {
-                gene <- colnames(data)[j]
-                D <- which(colnames(data) %in% gene)
-                ddistr <- ecdf(data[i, D])
-                llrcol[j] <-
-                    log2(min(ddistr(data[i, j]),
-                             1 - ddistr(data[i, j]))/min(cdistr(data[i,j]),
-                                                         1 - cdistr(data[i,j])))
+        if ("lods" %in% types) {
+            print(paste0("dataset ", i))
+            ## data normalization
+            if (i == 1) {
+                exprslvl <- apply(data, 1, median)
+                data <- data[which(exprslvl > 0), ]
+                data <- t(t(data)/(colSums(data)/10000))
+                data <- Linnorm(data)
+                print("data normalized")
+            } else if (i %in% c(2,3)) {
+                data <- exp(data) - 1
+                exprslvl <- apply(data, 1, median)
+                data <- data[which(exprslvl > 0), ]
+                data <- Linnorm(data)
+                print("data normalized")
             }
-            return(llrcol)
-        }
-        if (is.null(parallel)) {
-            llr <- lapply(seq_len(nrow(data)), distrPar, data, C)
-        } else {
-            sfInit(parallel = TRUE, cpus = parallel)
-            llr <- sfLapply(seq_len(nrow(data)), distrPar, data, C)
-            sfStop()
-        }
-        llr <- do.call("rbind", llr)
-        llr[is.na(llr)] <- 0
-        llr[is.infinite(llr)] <- max(llr[!is.infinite(llr)])
-        colnames(llr) <- colnames(data)
-        llr <- llr[, which(!(colnames(data) %in% ""))]
-        rownames(llr) <- rownames(data)
-        print("log ratios computed")
-        ## mixture nem
-        colnames(llr) <- toupper(colnames(llr))
-        if (i == 1 & !allcrop) {
-            cropgenes <- c("LCK", "ZAP70", "PTPN6", "DOK2", "PTPN11", "EGR3",
-                           "LAT")
-            lods <- llr[, which(colnames(llr) %in% cropgenes)]
-        } else {
-            lods <- llr
-        }
-        badgenes <- "Tcrlibrary"
-        badgenes <- grep(badgenes, rownames(lods))
-        if (length(badgenes) > 0) {
-            lods <- lods[-badgenes, ]
-        }
-        sdev <- apply(lods, 1, sd)
-        lods <- lods[which(sdev > sd(lods)), ]
-        n <- length(unique(colnames(lods)))
-        if (!dataonly) {
-            bics <- rep(Inf, maxk)
-            res <- list()
-            for (k in seq_len(maxk)) {
-                res[[k]] <- mnem(lods, k = k, parallel = parallel, ...)
+            ## log ratio calculation
+            llr <- data*0
+            C <- which(colnames(data) %in% "")
+            distrPar <- function(i, data, C) {
+                cdistr <- ecdf(data[i, C])
+                llrcol <- numeric(ncol(data))
+                for (j in which(!(colnames(data) %in% ""))) {
+                    gene <- colnames(data)[j]
+                    D <- which(colnames(data) %in% gene)
+                    ddistr <- ecdf(data[i, D])
+                    llrcol[j] <-
+                        log2(min(ddistr(data[i, j]),
+                                 1 - ddistr(data[i, j]))/min(cdistr(data[i,j]),
+                                                             1 - cdistr(data[i,j])))
+                }
+                return(llrcol)
             }
-            app[[i]] <- res
-            print("mixture nested effects model learned")
+            if (is.null(parallel)) {
+                llr <- lapply(seq_len(nrow(data)), distrPar, data, C)
+            } else {
+                sfInit(parallel = TRUE, cpus = parallel)
+                llr <- sfLapply(seq_len(nrow(data)), distrPar, data, C)
+                sfStop()
+            }
+            llr <- do.call("rbind", llr)
+            llr[is.na(llr)] <- 0
+            llr[is.infinite(llr)] <- max(llr[!is.infinite(llr)])
+            colnames(llr) <- colnames(data)
+            llr <- llr[, which(!(colnames(data) %in% ""))]
+            rownames(llr) <- rownames(data)
+            print("log ratios computed")
+            ## mixture nem
+            colnames(llr) <- toupper(colnames(llr))
+            if (i == 1 & !allcrop) {
+                cropgenes <- c("LCK", "ZAP70", "PTPN6", "DOK2", "PTPN11", "EGR3",
+                               "LAT")
+                lods <- llr[, which(colnames(llr) %in% cropgenes)]
+            } else {
+                lods <- llr
+            }
+            badgenes <- "Tcrlibrary"
+            badgenes <- grep(badgenes, rownames(lods))
+            if (length(badgenes) > 0) {
+                lods <- lods[-badgenes, ]
+            }
+            sdev <- apply(lods, 1, sd)
+            lods <- lods[which(sdev > sd(lods)), ]
+            n <- length(unique(colnames(lods)))
+            if ("mnem" %in% types) {
+                bics <- rep(Inf, maxk)
+                res <- list()
+                for (k in seq_len(maxk)) {
+                    res[[k]] <- mnem(lods, k = k, parallel = parallel, ...)
+                }
+                app[[i]] <- res
+                print("mixture nested effects model learned")
+            } else {
+                app[[i]] <- list(data = data, lods = lods, barcodes = barcodes[[i]])
+            }
         } else {
-            app[[i]] <- list(data = data, lods = lods)
+            app[[i]] <- list(data = data, barcodes = barcodes[[i]])
         }
     }
     return(app)

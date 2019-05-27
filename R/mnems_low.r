@@ -574,12 +574,12 @@ nemEst <- function(data, maxiter = 100, start = "null",
     }
     if (is.null(weights)) { weights <- rep(1, ncol(data2)) }
     R <- data2[, naturalsort(colnames(data2))]
-    R2 <- R
     if (!is.null(Rho)) {
         R <- R%*%t(Rho)
         weights <- as.vector(Rho%*%weights)
         weights[which(weights > 1)] <- 1
     }
+    R2 <- R
     n <- length(unique(colnames(R)))
     Cp <- 1
     Cz <- 0
@@ -621,6 +621,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
             phi2[which(phi2 > 1)] <- 1
         }
         P <- llrScore(R2, phi2, weights = weights)
+        P[which(P < 0)] <- 0
         P[, grep("_", colnames(phi))] <- min(P)
         subtopo <- as.numeric(gsub(ncol(phi)+1, 0, maxCol_row(P)))
         theta <- t(R)*0
@@ -673,8 +674,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         ncol(phibest2)+1, 0, apply(P, 1, which.max)))
     thetabest <- t(R)*0
     thetabest[cbind(subtopo, seq_len(ncol(thetabest)))] <- 1
-    llbest <- llrScore(thetabest, P)
-    llbest <- sum(diag(llbest))
+    llbest <- scoreAdj(data, phibest, Rho = Rho, weights = weights)$score
     nem <- list(phi = phibest, theta = thetabest, iter = iter,
                 ll = llbest, lls = lls, num = numbest, C = Cz,
                 O = Obest, E = E0, phintc = phintc)
