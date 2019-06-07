@@ -2267,6 +2267,8 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 #' @param subsample range to subsample data. 1 means the full simulated data is
 #' used
 #' @param scalefree if TRUE, graph is scale free
+#' @param badCells number of cells, which are just noise and not connected
+#' to the ground truth network
 #' @param ... additional parameters for the scale free network
 #' sampler (see 'nem' package)
 #' @author Martin Pirkl
@@ -2293,7 +2295,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,
                     edgeprob = 0.25, multi = FALSE, subsample = 1,
-                    scalefree = FALSE, ...) {
+                    scalefree = FALSE, badCells = 0, ...) {
     if (!is.null(mw) & Nems != length(mw)) {
         print(paste0("Vector of mixture weights 'mw' must be the length of the",
                      " number of komponents 'Nems'. Input 'Nems=", Nems,
@@ -2425,6 +2427,11 @@ simData <- function(Sgenes = 5, Egenes = 1,
         data <- rbind(data, matrix(sample(c(0,1),
                                           ncol(data)*uninform, replace = TRUE),
                                    uninform, ncol(data)))
+    }
+    if (badCells > 0) {
+        data <- cbind(data, matrix(sample(c(0,1),
+                                          nrow(data)*badCells, replace = TRUE),
+                                   nrow(data), badCells))
     }
     sim <- list(Nem = Nem, theta = theta, data = data, index = index, mw = mw)
     class(sim) <- "mnemsim"
