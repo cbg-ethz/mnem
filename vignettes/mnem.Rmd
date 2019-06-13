@@ -85,6 +85,7 @@ paltmp <- palette()
 paltmp[3] <- "blue"
 paltmp[4] <- "brown"
 palette(paltmp)
+options(tinytex.verbose = TRUE)
 ```
 Install the package with the bioconductor manager package.
 ```{r, eval=FALSE}
@@ -586,7 +587,7 @@ practice we do this by normalising, such that
 
 \begin{equation*}
 \max_s \left\{ \mathrm{exp} \left( l_{ii,s} + \mathrm{log} C_i \right)
-\right\} \approx \frac{10^308}{K}.
+\right\} \approx \frac{10^{308}}{K}.
 \end{equation*}
 
 In theory this 
