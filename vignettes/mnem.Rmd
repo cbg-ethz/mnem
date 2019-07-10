@@ -85,7 +85,6 @@ paltmp <- palette()
 paltmp[3] <- "blue"
 paltmp[4] <- "brown"
 palette(paltmp)
-options(tinytex.verbose = TRUE)
 ```
 Install the package with the bioconductor manager package.
 ```{r, eval=FALSE}

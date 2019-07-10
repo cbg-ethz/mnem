@@ -2689,7 +2689,11 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         if (all(dnf == 0)) {
             diag(dnf) <- 1
         }
-        dnf <- adj2dnf(dnf)
+        dnf <- dnf2 <- adj2dnf(dnf)
+        dnf <- dnf[grep("=", dnf)]
+        if (length(dnf) == 0) {
+            dnf <- dnf2
+        }
     }
 
     if (!bool & length(grep("\\+", dnf)) > 0) {
