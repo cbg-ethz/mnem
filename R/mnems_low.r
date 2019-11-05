@@ -19,13 +19,9 @@ bigphi <- function(x) {
 }
 #' @noRd
 Kratio <- function(x, y) {
-    xn <- uniques(x)
+    xn <- length(unlist(x$comp, recursive = FALSE))/2
     yn <- length(y$Nem)
-    if (xn >= yn) {
-        z <- yn/xn
-    } else {
-        z <- xn/yn
-    }
+    z <- xn/yn
     return(z)
 }
 #' @noRd
@@ -234,13 +230,23 @@ getRho <- function(data) {
 }
 #' @noRd
 #' @importFrom nem sampleRndNetwork
-initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL) {
+initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL,
+                      linets = TRUE) {
     n <- getSgeneN(data)
     init <- list()
     for (i in seq_len(starts)) {
         init[[i]] <- list()
         for (j in seq_len(k)) {
-            tmp <- sampleRndNetwork(seq_len(n), DAG = TRUE)
+            if (linets) {
+                tmp <- matrix(0, n, n)
+                tmp[upper.tri(tmp)] <- 1
+                diag(tmp) <- 1
+                rownames(tmp) <- colnames(tmp) <- sample(seq_len(n), n)
+                tmp <- tmp[naturalorder(rownames(tmp)),
+                           naturalorder(colnames(tmp))]
+            } else {
+                tmp <- sampleRndNetwork(seq_len(n), DAG = TRUE)
+            }
             init[[i]][[j]] <- tmp
         }
     }
@@ -424,9 +430,10 @@ learnk <- function(data, kmax = 10, ksel = c("hc", "silhouette", "cor"),
                 if (silavg < silavgs[j]) {
                     silavg <- silavgs[j]
                     ks[i] <- j
-                    lab[[i]] <- kc$clusters
+                    lab[[i]] <- kc$cluster
                 }
             }
+            index[which(colnames(data) %in% i)] <- lab[[i]]
         }
     }
     k <- min(kmax, max(ks))
@@ -708,6 +715,8 @@ doMean <- function(D, weights = NULL, Rho = NULL, logtype = 2) {
             D <- D*rep(weights, rep(nrow(D), ncol(D)))
         }
         if (!is.null(Rho)) {
+            Rho <- apply(Rho, 2, function(x) x/sum(x))
+            Rho[is.na(Rho)] <- 0
             mD <- D%*%t(Rho)
             mD <- mD[, naturalorder(colnames(mD))]
             colnames(mD) <- seq_len(ncol(mD))
@@ -943,18 +952,6 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         domean <- FALSE
     }
     if (domean) {
-        if (!is.null(Rho)) {
-            if (length(table(Rho)) == 2) {
-                colnames(D) <- apply(Rho, 2, function(x) {
-                    y <- rownames(Rho)[which(x == 1)]
-                    y <- naturalsort(y)
-                    y <- paste(y, collapse = "_")
-                    return(y)
-                })
-                D <- D[, which(!(colnames(D) %in% ""))]
-                Rho <- NULL
-            }
-        }
         D <- doMean(D, weights = weights, Rho = Rho, logtype = logtype)
         weights <- NULL
         Rho <- getRho(D)

@@ -296,8 +296,7 @@ epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
                   bordercol = "transparent", dendrogram = "both")
 ```
 ```{r, fig.height=6, fig.width=10, fig.cap=fig.cap62}
-result <- mnem(data, k = length(mw), search = "greedy", multi = TRUE,
-               starts = starts)
+result <- mnem(data, k = length(mw), search = "greedy", starts = starts)
 plot(result)
 ```
 

@@ -378,7 +378,8 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
             data.backup <- data
             counts <- data[, grep("condition|^stim", colnames(data))]
             counts <- counts[-(seq_len(5)), -1]
-            counts <- matrix(as.numeric(as.character(unlist(counts))), nrow(counts))
+            counts <- matrix(as.numeric(as.character(unlist(counts))),
+                             nrow(counts))
             rownames(counts) <- data[6:nrow(data), 1]
             colnames(counts) <- data[4, grep("^stim", colnames(data))]
             colnames(counts)[which(colnames(counts) %in% "CTRL")] <- ""
@@ -413,7 +414,8 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
             tmp <- grep("p7d", colnames(data))
             data2 <- data[, ..tmp]
             ## alternative:
-            ## data <- read.table(paste0(path, "k562_both_filt.txt"), header = TRUE)
+            ## data <- read.table(paste0(path, "k562_both_filt.txt"),
+            ## header = TRUE)
             ## rns <- data$GENE
             ## tmp <- grep("cc7d", colnames(data))
             ## data1 <- data[, tmp]
@@ -630,8 +632,10 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
                     ddistr <- ecdf(data[i, D])
                     llrcol[j] <-
                         log2(min(ddistr(data[i, j]),
-                                 1 - ddistr(data[i, j]))/min(cdistr(data[i,j]),
-                                                             1 - cdistr(data[i,j])))
+                                 1 -
+                                 ddistr(data[i, j]))/min(cdistr(data[i,j]),
+                                                         1 -
+                                                         cdistr(data[i,j])))
                 }
                 return(llrcol)
             }
@@ -652,8 +656,8 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
             ## mixture nem
             colnames(llr) <- toupper(colnames(llr))
             if (i == 1 & !allcrop) {
-                cropgenes <- c("LCK", "ZAP70", "PTPN6", "DOK2", "PTPN11", "EGR3",
-                               "LAT")
+                cropgenes <- c("LCK", "ZAP70", "PTPN6", "DOK2",
+                               "PTPN11", "EGR3", "LAT")
                 lods <- llr[, which(colnames(llr) %in% cropgenes)]
             } else {
                 lods <- llr
@@ -675,7 +679,8 @@ createApp <- function(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
                 app[[i]] <- res
                 print("mixture nested effects model learned")
             } else {
-                app[[i]] <- list(data = data, lods = lods, barcodes = barcodes[[i]])
+                app[[i]] <- list(data = data, lods = lods,
+                                 barcodes = barcodes[[i]])
             }
         } else {
             app[[i]] <- list(data = data, barcodes = barcodes[[i]])
@@ -1045,8 +1050,9 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' likelihood decreases
 #' @param fpfn numeric vector of length two with false positive and false
 #' negative rates for discrete data
-#' @param multi set to TRUE if the data contains multiple perturbation
-#' per sample; make sure the samples are reasonably named, e.g. "IRF1_CTNNB1"
+#' @param Rho perturbation matrix with dimensions nxl with n S-genes and
+#' l samples; either as probabilities with the sum of probabilities for a
+#' sample less or equal to 1 or discrete with 1s and 0s
 #' @param ksel character vector of methods for the inference of k; can combine
 #' "hc" (hierarchical clustering) or "kmeans" with "silhouette", "BIC" or "AIC";
 #' can also include "cor" for correlation distance (preferred)
@@ -1082,14 +1088,17 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  theta = NULL, mw = NULL, method = "llr",
                  parallel = NULL, reduce = FALSE, runs = 1, starts = 3,
-                 type = "random", complete = FALSE,
+                 type = "networks", complete = FALSE,
                  p = NULL, k = NULL, kmax = 10, verbose = FALSE,
                  max_iter = 100, parallel2 = NULL, converged = -Inf,
                  redSpace = NULL, affinity = 0, evolution = FALSE, lambda = 1,
                  subtopoX = NULL, ratio = TRUE, logtype = 2,
                  domean = TRUE, modulesize = 5, compress = FALSE,
-                 increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE,
+                 increase = TRUE, fpfn = c(0.1, 0.1), Rho = NULL,
                  ksel = c("kmeans", "silhouette", "cor")) {
+    if (length(grep("_", colnames(data))) > 0 & is.null(Rho)) {
+        Rho <- getRho(data)
+    }
     if (!is.null(k)) {
         if (k == 1) {
             type <- "random"
@@ -1126,11 +1135,6 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
     Sgenes <- getSgenes(D)
     data <- D
     D <- NULL
-    if (multi) {
-        Rho <- getRho(data)
-    } else {
-        Rho <- NULL
-    }
     ## learn k:
     if (is.null(k) & is.null(phi) & is.null(p)) {
         if (length(grep("_", colnames(data))) > 0) {
@@ -1160,7 +1164,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         mw <- rep(1, k)/k
     }
     if (!is.null(k)) {
-        if (type %in% "networks" & is.null(phi)) {
+        if ((type %in% "networks" | type %in% "networks2") & is.null(phi)) {
             meanet <- mynem(D = data, search = search, start = phi,
                             method = method,
                             parallel = parallel2, reduce = reduce,
@@ -1169,7 +1173,12 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                             ratio = ratio, domean = domean,
                             modulesize = modulesize, Rho = Rho,
                             logtype = logtype, modified = TRUE, Sgenes = Sgenes)
-            init <- initComps(data, k, starts, verbose, meanet)
+            if (type %in% "networks2") {
+                linets <- TRUE
+            } else {
+                linets <- FALSE
+            }
+            init <- initComps(data, k, starts, verbose, meanet, linets = linets)
             probscl <- 0
         } else if (!is.null(phi)) {
             init <- phi
@@ -1367,20 +1376,18 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                       if (length(nozero) == ncol(data)) {
                                           dataR <- data
                                           postprobsR <- postprobs[i, ]
+                                          RhoR <- Rho
                                       } else {
                                           dataR <- cbind(data[, nozero,
                                                               drop = FALSE],
                                                          dataF)
                                           postprobsR <- c(postprobs[i, nozero],
                                                           rep(0, n))
+                                          RhoR <- Rho[, nozero, drop = FALSE]
                                       }
                                   } else {
                                       dataR <- dataF
                                       postprobsR <- rep(0, n)
-                                  }
-                                  if (!is.null(Rho)) {
-                                      RhoR <- getRho(dataR)
-                                  } else {
                                       RhoR <- Rho
                                   }
                                   if (!is.null(theta)) {
@@ -1677,7 +1684,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                 probs = probs, lls = best$ll, phievo = best$phievo,
                 thetaevo = best$thetaevo, mwevo = best$mwevo,
                 ll = getLL(probs, logtype = logtype, mw = lambda, data = data,
-                           complete = complete), complete = complete)
+                           complete = complete), complete = complete, Rho = Rho)
     class(res) <- "mnem"
     return(res)
 }
@@ -1823,12 +1830,13 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                       cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE,
                       bestCell = TRUE, showprobs = FALSE, shownull = TRUE,
                       ratio = TRUE, method = "llr", showweights = TRUE, ...) {
-
     complete <- x$complete
-
     x2 <- x
-
     data <- x$data
+    Rho <- x$Rho
+    if (is.null(Rho)) {
+        Rho <- getRho(data)
+    }
 
     laymat <- rbind(seq_len(length(x$comp)+1),
                     c(length(x$comp)+2, rep(length(x$comp)+3,
@@ -1884,15 +1892,15 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
     Sgenes <- getSgenes(data)
     SgeneN <- getSgeneN(data)
     for (i in seq_len(length(x$comp))) {
-
-        shared <- unique(colnames(mixnorm)[
+        shared <- shared0 <- unique(colnames(mixnorm)[
             which(apply(mixnorm, 2,function(x)
                 return(sum(x != 0))) != 1 & mixnorm[i, ] != 0)])
         net <- x$comp[[i]]$phi
         for (j in seq_len(SgeneN)) {
-            colnames(net)[which(colnames(net) %in% j)] <-
-                rownames(net)[which(rownames(net) %in% j)] <- Sgenes[j]
-            shared[which(shared %in% j)] <- Sgenes[j]
+            colnames(net)[which(colnames(x$comp[[i]]$phi) %in% j)] <-
+                rownames(net)[which(rownames(x$comp[[i]]$phi) %in% j)] <-
+                Sgenes[j]
+            shared[which(shared0 %in% j)] <- Sgenes[j]
         }
         graph <- adj2dnf(net)
         pathedges <- length(graph)
@@ -1948,15 +1956,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
         }
         if (cells) {
             datanorm <- modData(data)
-            pnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE,
-                                 logtype = logtype, mw = x$mw, data = data,
-                                 complete = complete)
-            pnorm <- apply(pnorm, 2, function(x) {
-                xmax <- max(x)
-                x[which(x != xmax)] <- 0
-                x[which(x == xmax)] <- 1
-                return(x)
-            })
+            pnorm <- mixnorm
             if (is.null(dim(pnorm))) {
                 pnorm <- matrix(pnorm, 1, length(pnorm))
             }
@@ -1967,7 +1967,7 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
             for (j in seq_len(SgeneN)) {
                 tmpN <- paste("__9247C", j, sep = "_")
                 cnodes[[tmpN]] <-
-                    length(grep(j, colnames(datanorm)[which(pnorm[i, ] == 1)]))
+                    sum(Rho[j, which(pnorm[i, ] == 1)] > 0)
                 cnodeshape[[tmpN]] <- "diamond"
                 cnodewidth[[tmpN]] <- 0.5
                 cnodeheight[[tmpN]] <- 0.5
@@ -2022,14 +2022,15 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
                 edgecol = edgecol)
         full <- net + full
     }
-
     if (showdata) {
         full[which(full > 1)] <- 1
         if (length(x$comp) > 1) {
-            plot.adj(full)
+            plotDnf(full)
         }
-        if (nrow(pnorm) > 1) {
-            pnorm <- apply(logtype^x$probs, 2, function(x) return(x/sum(x)))
+        if (nrow(mixnorm) > 1) {
+            pnorm <- getAffinity(x$probs, affinity = affinity, norm = TRUE,
+                                 logtype = logtype, mw = x$mw, data = data,
+                                 complete = complete)
             if (is.null(dim(pnorm))) {
                 pnorm <- matrix(pnorm, 1, length(pnorm))
             }
@@ -2115,14 +2116,21 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
                 }
             }
             if (anno) {
-                plot(jittered, col = pcols, pch = "", main = main)
+                cellnames <- apply(Rho, 2, function(x) {
+                    y <- which(x > 0)
+                    y <- paste(Sgenes[y], collapse = "_")
+                    return(y)
+                })
+                plot(jittered, col = pcols, pch = "", main = main,
+                     xlab = "pca1", ylab = "pca2")
                 text(jittered[, 1],
                      jittered[, 2],
-                     labels = rownames(jittered),
+                     labels = cellnames,
                      srt = 45, pos = 1,
                      offset = 0, cex = cexAnno, col = pcols)
             } else {
-                plot(jittered, col = pcols, main = main, pch = pch)
+                plot(jittered, col = pcols, main = main, pch = pch,
+                     xlab = "pca1", ylab = "pca2")
             }
             unique <- unique(pres$rotation[which(pcols != 1), seq_len(2)])
             if (all(dim(unique) != 0) & !global) {
@@ -2172,7 +2180,7 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' resulst <- clustNEM(data, k = 2:3)
 clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
                      nem = TRUE, getprobspars = list(),
-                     getaffinitypars = list(), ...) {
+                     getaffinitypars = list(), Rho = NULL, ...) {
     data <- modData(data)
     if (is.null(cluster)) {
         smax <- 0
@@ -2202,7 +2210,9 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
             if (sum(Kres$cluster == i) > 1 &
                 length(unique(
                     colnames(data[,which(Kres$cluster == i)]))) > 1) {
-                res[[i]] <- mynem(data[, which(Kres$cluster == i)], ...)
+                datar <- data[, which(Kres$cluster == i)]
+                Rhor <- Rho[, which(Kres$cluster == i)]
+                res[[i]] <- mynem(datar, Rho = Rhor, ...)
             } else {
                 res[[i]] <- list()
                 res[[i]]$adj <- matrix(1, 1, 1)
@@ -2236,7 +2246,7 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
         n <- getSgeneN(data)
         probs <- matrix(0, K, ncol(data))
         probs <- do.call(getProbs, c(list(probs=probs, k=K, data=data,
-                                          res=res, n=n, mw=res$mw),
+                                          res=res, n=n, mw=res$mw, Rho=Rho),
                                      getprobspars))
         colnames(probs$probs) <- colnames(data)
         res$ll <- probs$ll

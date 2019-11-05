@@ -6,13 +6,13 @@
 \usage{
 mnem(D, inference = "em", search = "greedy", phi = NULL,
   theta = NULL, mw = NULL, method = "llr", parallel = NULL,
-  reduce = FALSE, runs = 1, starts = 3, type = "random",
+  reduce = FALSE, runs = 1, starts = 3, type = "networks",
   complete = FALSE, p = NULL, k = NULL, kmax = 10,
   verbose = FALSE, max_iter = 100, parallel2 = NULL,
   converged = -Inf, redSpace = NULL, affinity = 0,
   evolution = FALSE, lambda = 1, subtopoX = NULL, ratio = TRUE,
   logtype = 2, domean = TRUE, modulesize = 5, compress = FALSE,
-  increase = TRUE, fpfn = c(0.1, 0.1), multi = FALSE,
+  increase = TRUE, fpfn = c(0.1, 0.1), Rho = NULL,
   ksel = c("kmeans", "silhouette", "cor"))
 }
 \arguments{
@@ -104,8 +104,9 @@ likelihood decreases}
 \item{fpfn}{numeric vector of length two with false positive and false
 negative rates for discrete data}
 
-\item{multi}{set to TRUE if the data contains multiple perturbation
-per sample; make sure the samples are reasonably named, e.g. "IRF1_CTNNB1"}
+\item{Rho}{perturbation matrix with dimensions nxl with n S-genes and
+l samples; either as probabilities with the sum of probabilities for a
+sample less or equal to 1 or discrete with 1s and 0s}
 
 \item{ksel}{character vector of methods for the inference of k; can combine
 "hc" (hierarchical clustering) or "kmeans" with "silhouette", "BIC" or "AIC";
