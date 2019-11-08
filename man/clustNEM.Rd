@@ -25,6 +25,10 @@ clustNEM(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 
 \item{getaffinitypars}{list of parameters for the getAffinity function}
 
+\item{Rho}{perturbation matrix with dimensions nxl with n S-genes and
+l samples; either as probabilities with the sum of probabilities for a
+sample less or equal to 1 or discrete with 1s and 0s}
+
 \item{...}{additional arguments for standard nem function}
 }
 \value{

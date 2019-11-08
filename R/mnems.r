@@ -2162,6 +2162,9 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' @param nem if FALSE only clusters the data
 #' @param getprobspars list of parameters for the getProbs function
 #' @param getaffinitypars list of parameters for the getAffinity function
+#' @param Rho perturbation matrix with dimensions nxl with n S-genes and
+#' l samples; either as probabilities with the sum of probabilities for a
+#' sample less or equal to 1 or discrete with 1s and 0s
 #' @param ... additional arguments for standard nem function
 #' @author Martin Pirkl
 #' @return family of nems; the first k list entries hold full information of
