@@ -4,10 +4,23 @@
 \alias{simData}
 \title{Simulate data.}
 \usage{
-simData(Sgenes = 5, Egenes = 1, Nems = 2, reps = NULL, mw = NULL,
-  evolution = FALSE, nCells = 1000, uninform = 0, unitheta = FALSE,
-  edgeprob = 0.25, multi = FALSE, subsample = 1, scalefree = FALSE,
-  badCells = 0, ...)
+simData(
+  Sgenes = 5,
+  Egenes = 1,
+  Nems = 2,
+  reps = NULL,
+  mw = NULL,
+  evolution = FALSE,
+  nCells = 1000,
+  uninform = 0,
+  unitheta = FALSE,
+  edgeprob = 0.25,
+  multi = FALSE,
+  subsample = 1,
+  scalefree = FALSE,
+  badCells = 0,
+  ...
+)
 }
 \arguments{
 \item{Sgenes}{number of Sgenes}

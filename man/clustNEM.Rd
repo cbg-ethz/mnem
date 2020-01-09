@@ -4,9 +4,18 @@
 \alias{clustNEM}
 \title{Cluster NEM.}
 \usage{
-clustNEM(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
-  nem = TRUE, getprobspars = list(), getaffinitypars = list(),
-  Rho = NULL, ...)
+clustNEM(
+  data,
+  k = 2:10,
+  cluster = NULL,
+  starts = 1,
+  logtype = 2,
+  nem = TRUE,
+  getprobspars = list(),
+  getaffinitypars = list(),
+  Rho = NULL,
+  ...
+)
 }
 \arguments{
 \item{data}{data of log ratios with cells in columns and features in rows}

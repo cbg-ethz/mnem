@@ -10,8 +10,8 @@ License: GPL-3
 Encoding: UTF-8
 LazyData: true
 biocViews: Pathways, SystemsBiology, NetworkInference, Network, RNASeq, PooledScreens, SingleCell, CRISPR, ATACSeq, DNASeq, GeneExpression
-RoxygenNote: 6.1.1
-Imports: cluster, nem, epiNEM, graph, Rgraphviz, flexclust, lattice, naturalsort, snowfall, stats4, tsne, methods, graphics, stats, utils, Linnorm, data.table, Rcpp, RcppEigen, matrixStats, grDevices
+RoxygenNote: 7.0.2
+Imports: cluster, epiNEM, graph, Rgraphviz, flexclust, lattice, naturalsort, snowfall, stats4, tsne, methods, graphics, stats, utils, Linnorm, data.table, Rcpp, RcppEigen, matrixStats, grDevices
 LinkingTo: Rcpp, RcppEigen
 VignetteBuilder: knitr
 Suggests: knitr, devtools, rmarkdown, BiocGenerics, RUnit

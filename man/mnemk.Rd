@@ -4,8 +4,17 @@
 \alias{mnemk}
 \title{Learn the number of components K and optimize the mixture.}
 \usage{
-mnemk(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
-  pen = 2, useF = FALSE, Fnorm = FALSE, ...)
+mnemk(
+  D,
+  ks = seq_len(5),
+  man = FALSE,
+  degree = 4,
+  logtype = 2,
+  pen = 2,
+  useF = FALSE,
+  Fnorm = FALSE,
+  ...
+)
 }
 \arguments{
 \item{D}{data with cells indexing the columns and features (E-genes)

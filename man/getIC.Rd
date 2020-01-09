@@ -4,8 +4,15 @@
 \alias{getIC}
 \title{Calculate negative penalized log likelihood.}
 \usage{
-getIC(x, man = FALSE, degree = 4, logtype = 2, pen = 2,
-  useF = FALSE, Fnorm = FALSE)
+getIC(
+  x,
+  man = FALSE,
+  degree = 4,
+  logtype = 2,
+  pen = 2,
+  useF = FALSE,
+  Fnorm = FALSE
+)
 }
 \arguments{
 \item{x}{mnem object}

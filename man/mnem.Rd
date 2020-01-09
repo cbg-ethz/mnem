@@ -4,16 +4,42 @@
 \alias{mnem}
 \title{Mixture NEMs - main function.}
 \usage{
-mnem(D, inference = "em", search = "greedy", phi = NULL,
-  theta = NULL, mw = NULL, method = "llr", parallel = NULL,
-  reduce = FALSE, runs = 1, starts = 3, type = "networks",
-  complete = FALSE, p = NULL, k = NULL, kmax = 10,
-  verbose = FALSE, max_iter = 100, parallel2 = NULL,
-  converged = -Inf, redSpace = NULL, affinity = 0,
-  evolution = FALSE, lambda = 1, subtopoX = NULL, ratio = TRUE,
-  logtype = 2, domean = TRUE, modulesize = 5, compress = FALSE,
-  increase = TRUE, fpfn = c(0.1, 0.1), Rho = NULL,
-  ksel = c("kmeans", "silhouette", "cor"))
+mnem(
+  D,
+  inference = "em",
+  search = "greedy",
+  phi = NULL,
+  theta = NULL,
+  mw = NULL,
+  method = "llr",
+  parallel = NULL,
+  reduce = FALSE,
+  runs = 1,
+  starts = 3,
+  type = "networks",
+  complete = FALSE,
+  p = NULL,
+  k = NULL,
+  kmax = 10,
+  verbose = FALSE,
+  max_iter = 100,
+  parallel2 = NULL,
+  converged = -Inf,
+  redSpace = NULL,
+  affinity = 0,
+  evolution = FALSE,
+  lambda = 1,
+  subtopoX = NULL,
+  ratio = TRUE,
+  logtype = 2,
+  domean = TRUE,
+  modulesize = 5,
+  compress = FALSE,
+  increase = TRUE,
+  fpfn = c(0.1, 0.1),
+  Rho = NULL,
+  ksel = c("kmeans", "silhouette", "cor")
+)
 }
 \arguments{
 \item{D}{data with cells indexing the columns and features (E-genes)

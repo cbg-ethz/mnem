@@ -4,8 +4,15 @@
 \alias{getAffinity}
 \title{Calculate responsibilities.}
 \usage{
-getAffinity(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
-  data = matrix(0, 2, ncol(x)), complete = FALSE)
+getAffinity(
+  x,
+  affinity = 0,
+  norm = TRUE,
+  logtype = 2,
+  mw = NULL,
+  data = matrix(0, 2, ncol(x)),
+  complete = FALSE
+)
 }
 \arguments{
 \item{x}{log odds for l cells and k components as a kxl matrix}

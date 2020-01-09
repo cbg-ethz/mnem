@@ -877,7 +877,6 @@ getAffinity <- function(x, affinity = 0, norm = TRUE, logtype = 2, mw = NULL,
 #' @author Martin Pirkl
 #' @return penalized log likelihood
 #' @export
-#' @importFrom nem transitive.closure transitive.reduction
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' data <- (sim$data - 0.5)/0.5
@@ -1072,7 +1071,6 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' @import
 #' epiNEM
 #' cluster
-#' nem
 #' graph
 #' Rgraphviz
 #' naturalsort
@@ -1812,7 +1810,6 @@ plot.bootmnem <- function(x, reduce = TRUE, ...) {
 #' @import
 #' epiNEM
 #' cluster
-#' nem
 #' graph
 #' Rgraphviz
 #' tsne
@@ -2296,12 +2293,10 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 #' @import
 #' epiNEM
 #' cluster
-#' nem
 #' graph
 #' Rgraphviz
 #' tsne
 #' @importFrom utils combn
-#' @import nem
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 simData <- function(Sgenes = 5, Egenes = 1,
@@ -2568,7 +2563,6 @@ fuzzyindex <- function(x, data, logtype = 2, complete = FALSE, ...) {
 #' @import
 #' epiNEM
 #' cluster
-#' nem
 #' graph
 #' Rgraphviz
 #' tsne

@@ -4,13 +4,31 @@
 \alias{plot.mnem}
 \title{Plot mnem result.}
 \usage{
-\method{plot}{mnem}(x, oma = c(3, 1, 1, 3), main = "M&NEM",
-  anno = TRUE, cexAnno = 1, scale = NULL, global = TRUE,
-  egenes = TRUE, sep = FALSE, tsne = FALSE, affinity = 0,
-  logtype = 2, cells = TRUE, pch = ".", legend = FALSE,
-  showdata = FALSE, bestCell = TRUE, showprobs = FALSE,
-  shownull = TRUE, ratio = TRUE, method = "llr",
-  showweights = TRUE, ...)
+\method{plot}{mnem}(
+  x,
+  oma = c(3, 1, 1, 3),
+  main = "M&NEM",
+  anno = TRUE,
+  cexAnno = 1,
+  scale = NULL,
+  global = TRUE,
+  egenes = TRUE,
+  sep = FALSE,
+  tsne = FALSE,
+  affinity = 0,
+  logtype = 2,
+  cells = TRUE,
+  pch = ".",
+  legend = FALSE,
+  showdata = FALSE,
+  bestCell = TRUE,
+  showprobs = FALSE,
+  shownull = TRUE,
+  ratio = TRUE,
+  method = "llr",
+  showweights = TRUE,
+  ...
+)
 }
 \arguments{
 \item{x}{mnem object}

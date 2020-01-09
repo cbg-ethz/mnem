@@ -4,9 +4,20 @@
 \alias{createApp}
 \title{Creating app data.}
 \usage{
-createApp(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
-  maxk = 5, parallel = NULL, path = "", types = c("data", "lods",
-  "mnem"), allcrop = FALSE, multi = FALSE, file = NULL, ...)
+createApp(
+  sets = seq_len(3),
+  m = NULL,
+  n = NULL,
+  o = NULL,
+  maxk = 5,
+  parallel = NULL,
+  path = "",
+  types = c("data", "lods", "mnem"),
+  allcrop = FALSE,
+  multi = FALSE,
+  file = NULL,
+  ...
+)
 }
 \arguments{
 \item{sets}{numeric vector with the data sets: 1 (CROPseq),
