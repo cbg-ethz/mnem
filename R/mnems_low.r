@@ -315,7 +315,6 @@ getRho <- function(data) {
     return(Rho)
 }
 #' @noRd
-#' @importFrom nem sampleRndNetwork
 initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL,
                       linets = TRUE) {
     n <- getSgeneN(data)
@@ -993,7 +992,6 @@ theta2theta <- function(x, y) {
     return(z)
 }
 #' @noRd
-#' @importFrom nem enumerate.models transitive.reduction
 #' @importFrom utils getFromNamespace
 mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
