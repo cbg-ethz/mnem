@@ -1264,7 +1264,6 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                 get.insertions <- getFromNamespace("get.insertions", "nem")
                 get.reversions <- getFromNamespace("get.reversions", "nem")
                 naturalsort <- naturalsort::naturalsort
-                transitive.reduction <- nem::transitive.reduction
                 sfInit(parallel = TRUE, cpus = parallel)
                 sfExport("modules", "mw", "ratio", "getSgeneN", "modData",
                          "sortAdj", "calcEvopen", "evolution",
