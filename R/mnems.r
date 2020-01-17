@@ -1094,8 +1094,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), Rho = NULL,
                  ksel = c("kmeans", "silhouette", "cor")) {
-    if (length(grep("_", colnames(data))) > 0 & is.null(Rho)) {
-        Rho <- getRho(data)
+    if (length(grep("_", colnames(D))) > 0 & is.null(Rho)) {
+        Rho <- getRho(D)
     }
     if (!is.null(k)) {
         if (k == 1) {
@@ -1125,7 +1125,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                           verbose = verbose, parallel = c(parallel, parallel2),
                           subtopo = subtopoX, ratio = ratio, domean = FALSE,
                           modulesize = modulesize, logtype = logtype,
-                          modified = TRUE, Sgenes = Sgenes)$redSpace
+                          modified = TRUE, Sgenes = Sgenes, Rho = Rho)$redSpace
     }
     if (!is.null(parallel)) { if (parallel == 1) { parallel <- NULL } }
     D.backup <- D
