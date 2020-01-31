@@ -2962,7 +2962,6 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
     for (i in seq_len(length(edges))) {
         edges[[i]]@from <- gsub("!", "", edges[[i]]@from)
     }
-
     nodeshape2 <- nodeshape
     nodeshape <- list()
     if (length(nodeshape2) == 1 & !(is.list(nodeshape2))) {
@@ -3188,9 +3187,11 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
             } else {
                 tmp <- unlist(strsplit(names(edges)[i], "~"))
                 if (length(grep("!", names(edgesneg)[i])) == 0) {
-                    k2 <- grep(paste("^", tmp[1], "=", tmp[2], sep = ""), dnf)
+                    k2 <- grep(paste("^", tmp[1], "=", tmp[2], "$", sep = ""),
+                               dnf)
                 } else {
-                    k2 <- grep(paste("^!", tmp[1], "=", tmp[2], sep = ""), dnf)
+                    k2 <- grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""),
+                               dnf)
                 }
                 if (k2 == 1) {
                     edgecolindex <- k2
