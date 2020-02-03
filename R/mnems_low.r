@@ -46,9 +46,9 @@ enumerate.models <- function (x, name = NULL, trans.close = TRUE,
 #' @author Holger Froehlich
 #' @references R. Sedgewick, Algorithms, Pearson, 2002.
 transitive.reduction <- function (g) {
-    if (!(is(test, "matrix") | is(test, "graphNEL"))) 
+    if (!(is(g, "matrix") | is(g, "graphNEL"))) 
         stop("Input must be an adjacency matrix or graphNEL object")
-    if (is(test, "graphNEL")) {
+    if (is(g, "graphNEL")) {
         g = as(g, "matrix")
     }
     g = transitive.closure(g, mat = TRUE)
