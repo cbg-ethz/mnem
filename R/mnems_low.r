@@ -1,12 +1,13 @@
 #' Originally imported from the package 'nem'.
 #' @noRd
+#' @importFrom e1071 bincombinations
 #' @author Florian Markowetz
 enumerate.models <- function (x, name = NULL, trans.close = TRUE,
                               verbose = TRUE) {
     if (length(x) == 1) {
         n <- as.numeric(x)
         if (is.null(name)) 
-            name <- letters[1:n]
+            name <- letters[seq_len(n)]
     }
     else {
         n <- length(x)
@@ -19,13 +20,13 @@ enumerate.models <- function (x, name = NULL, trans.close = TRUE,
                     "feasible with more than 5 perturbed genes"))
     if (n == 5) 
         cat("nem> this will take a while ... \n")
-    bc <- bincombinations(n * (n - 1))
+    bc <- e1071::bincombinations(n * (n - 1))
     fkt1 <- function(x, n, name) {
         M <- diag(n)
         M[which(M == 0)] <- x
         dimnames(M) <- list(name, name)
         if (trans.close) 
-            M <- transitive.closure(M, mat = TRUE, loops = TRUE)
+            M <- transClose(M)
         return(list(M))
     }
     models <- apply(bc, 1, fkt1, n, name)
@@ -43,6 +44,7 @@ enumerate.models <- function (x, name = NULL, trans.close = TRUE,
 }
 #' Originally imported from the package 'nem'.
 #' @noRd
+#' @importFrom methods as
 #' @author Holger Froehlich
 #' @references R. Sedgewick, Algorithms, Pearson, 2002.
 transitive.reduction <- function (g) {
@@ -51,13 +53,13 @@ transitive.reduction <- function (g) {
     if (is(g, "graphNEL")) {
         g = as(g, "matrix")
     }
-    g = transitive.closure(g, mat = TRUE)
+    g = transClose(g)
     g = g - diag(diag(g))
     type = (g > 1) * 1 - (g < 0) * 1
-    for (y in 1:nrow(g)) {
-        for (x in 1:nrow(g)) {
+    for (y in seq_len(nrow(g))) {
+        for (x in seq_len(nrow(g))) {
             if (g[x, y] != 0) {
-                for (j in 1:nrow(g)) {
+                for (j in seq_len(nrow(g))) {
                   if ((g[y, j] != 0) & sign(type[x, j]) * sign(type[x, 
                     y]) * sign(type[y, j]) != -1) {
                     g[x, j] = 0
@@ -67,32 +69,6 @@ transitive.reduction <- function (g) {
         }
     }
     g
-}
-#' Originally imported from the package 'nem'.
-#' @noRd
-#' @author Florian Markowetz
-transitive.closure <- function (g, mat = FALSE, loops = TRUE) {
-    if (!(class(g) %in% c("graphNEL", "matrix"))) 
-        stop("Input must be either graphNEL object or adjacency matrix")
-    g <- as(g, "matrix")
-    n <- ncol(g)
-    matExpIterativ <- function(x, pow, y = x, z = x, i = 1) {
-        while (i < pow) {
-            z <- z %*% x
-            y <- y + z
-            i <- i + 1
-        }
-        return(y)
-    }
-    h <- matExpIterativ(g, n)
-    h <- (h > 0) * 1
-    dimnames(h) <- dimnames(g)
-    if (!loops) 
-        diag(h) <- rep(0, n)
-    else diag(h) <- rep(1, n)
-    if (!mat) 
-        h <- as(h, "graphNEL")
-    return(h)
 }
 #' Originally imported from the package 'nem'.
 #' @noRd
@@ -106,14 +82,14 @@ sampleRndNetwork <- function (Sgenes, scaleFree = TRUE, gamma = 2.5,
     degprob = (0:maxOutDegree)^(-gamma)
     degprob[1] = 1
     degprob = degprob/sum(degprob)
-    for (i in 1:n) {
+    for (i in seq_len(n)) {
         if (scaleFree) 
             outdeg = sample(0:maxOutDegree, 1, prob = degprob)
         else outdeg = sample(0:maxOutDegree, 1)
         if (outdeg > 0) {
             if (!DAG) 
                 idx0 = which(S[i, ] == 0)
-            else idx0 = which(S[i, ] == 0 & 1:n < i)
+            else idx0 = which(S[i, ] == 0 & seq_len(n) < i)
             if (length(idx0) > 0) {
                 idx = which(colSums(S[, idx0, drop = FALSE]) <= 
                   maxInDegree)
@@ -126,7 +102,7 @@ sampleRndNetwork <- function (Sgenes, scaleFree = TRUE, gamma = 2.5,
         }
     }
     if (trans.close) 
-        S = transitive.closure(S, mat = TRUE, loops = FALSE)
+        S = transClose(S)
     diag(S) = 0
     colnames(S) = Sgenes
     rownames(S) = Sgenes
@@ -138,13 +114,13 @@ bigphi <- function(x) {
     if (is(x, "mnemsim")) {
         resfull <- NULL
         for (l in seq_len(length(x$Nem))) {
-            tmp <- transitive.closure(x$Nem[[l]], mat = TRUE)
+            tmp <- transClose(x$Nem[[l]])
             resfull <- cbind(resfull, t(tmp))
         }
     } else {
         resfull <- NULL
         for (l in seq_len(length(x$comp))) {
-            tmp <- transitive.closure(x$comp[[l]]$phi, mat = TRUE)
+            tmp <- transClose(x$comp[[l]]$phi)
             colnames(tmp) <- rownames(tmp) <- seq_len(nrow(tmp))
             resfull <- cbind(resfull, t(tmp))
         }

@@ -1,3 +1,32 @@
+#' Transitive closure of a directed acyclic graph (dag)
+#'
+#' Computes the transitive closure of a dag or only of a
+#' deletion/addition of an edge
+#' @param g graph as matrix or graphNEL object
+#' @param u index of the parent of an edge (optional)
+#' @param v index of the child of an edge (optional)
+#' @return transitively closed matrix or graphNEL
+#' @author Martin Pirkl
+#' @export
+#' @import graph
+#' @importFrom methods as
+#' @examples
+#' g <- matrix(c(0,0,0,1,0,0,0,1,0), 3)
+#' transClose(g)
+transClose <- function(g, u = NULL, v = NULL) {
+    if (is(g, "graphNEL")) {
+        a <- as(g, "matrix")
+    } else if (is(g, "matrix")) {
+        a <- g
+    } else {
+        stop("g has to be a matrix or graphNEL object")
+    }
+    gtc <- mytc(a, u = u, v = v)
+    if (is(g, "graphNEL")) {
+        gtc <- as(gtc, "graphNEL")
+    }
+    return(gtc)
+}
 #' Simulation accuracy.
 #'
 #' Computes the accuracy of the fit between simulated and
