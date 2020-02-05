@@ -1098,7 +1098,6 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' of the model}
 #' @export
 #' @import
-#' epiNEM
 #' cluster
 #' graph
 #' Rgraphviz
@@ -1836,7 +1835,6 @@ plot.bootmnem <- function(x, reduce = TRUE, ...) {
 #' @export
 #' @method plot mnem
 #' @import
-#' epiNEM
 #' cluster
 #' graph
 #' Rgraphviz
@@ -2319,7 +2317,6 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 #' \item{mw}{vector of input mixture weights}
 #' @export
 #' @import
-#' epiNEM
 #' cluster
 #' graph
 #' Rgraphviz
@@ -2589,7 +2586,6 @@ fuzzyindex <- function(x, data, logtype = 2, complete = FALSE, ...) {
 #' @return normalized hamming accuracy for a and b
 #' @export
 #' @import
-#' epiNEM
 #' cluster
 #' graph
 #' Rgraphviz
