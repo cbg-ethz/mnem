@@ -42,11 +42,20 @@ enumerate.models <- function (x, name = NULL, trans.close = TRUE,
             2^(n * (n - 1)), ")\n")
     return(models)
 }
+#' Transitive reduction
+#'
+#' Computes the transitive reduction of a adjacency
+#' matrix or graphNEL object.
 #' Originally imported from the package 'nem'.
-#' @noRd
+#' @export
+#' @param g adacency matrix or graphNEL object
 #' @importFrom methods as
 #' @author Holger Froehlich
 #' @references R. Sedgewick, Algorithms, Pearson, 2002.
+#' @examples
+#' g <- matrix(c(0,0,0,1,0,0,0,1,0), 3)
+#' rownames(g) <- colnames(g) <- seq_len(3)
+#' g.tr <- transitive.reduction(g)
 transitive.reduction <- function (g) {
     if (!(is(g, "matrix") | is(g, "graphNEL"))) 
         stop("Input must be an adjacency matrix or graphNEL object")
