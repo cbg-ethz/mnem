@@ -19,6 +19,7 @@ simData(
   subsample = 1,
   scalefree = FALSE,
   badCells = 0,
+  exactProb = TRUE,
   ...
 )
 }
@@ -55,6 +56,9 @@ used}
 
 \item{badCells}{number of cells, which are just noise and not connected
 to the ground truth network}
+
+\item{exactProb}{logical; if TRUE generates random network with exact
+fraction of edges}
 
 \item{...}{additional parameters for the scale free network
 sampler (see 'nem' package)}
