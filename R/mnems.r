@@ -2305,6 +2305,8 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 #' @param scalefree if TRUE, graph is scale free
 #' @param badCells number of cells, which are just noise and not connected
 #' to the ground truth network
+#' @param exactProb logical; if TRUE generates random network with exact
+#' fraction of edges
 #' @param ... additional parameters for the scale free network
 #' sampler (see 'nem' package)
 #' @author Martin Pirkl
@@ -2328,7 +2330,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,
                     edgeprob = 0.25, multi = FALSE, subsample = 1,
-                    scalefree = FALSE, badCells = 0, ...) {
+                    scalefree = FALSE, badCells = 0, exactProb = TRUE, ...) {
     if (!is.null(mw) & Nems != length(mw)) {
         print(paste0("Vector of mixture weights 'mw' must be the length of the",
                      " number of komponents 'Nems'. Input 'Nems=", Nems,
@@ -2357,6 +2359,15 @@ simData <- function(Sgenes = 5, Egenes = 1,
                 adj[lower.tri(adj)] <- 0
                 diag(adj) <- 1
                 adj <- mytc(adj)
+                while(sum(adj)-Sgenes >
+                      floor((Sgenes*(Sgenes/2)-Sgenes)*edgeprob)
+                      & exactProb) {
+                          over <- sum(adj) - Sgenes - 
+                              floor((Sgenes*(Sgenes/2) - Sgenes)*edgeprob)
+                          adjtr <- transitive.reduction(adj)
+                          adj[sample(which(adjtr == 1),
+                                     min(over, sum(adjtr)))] <- 0
+                      }
             }
             colnames(adj) <- rownames(adj) <- sample(seq_len(Sgenes),
                                                      Sgenes)
