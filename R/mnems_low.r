@@ -675,7 +675,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
                    monoton = FALSE, logtype = 2,
                    useF = FALSE, method = "llr",
                    weights = NULL, fpfn = c(0.1, 0.1), Rho = NULL,
-                   close = FALSE, domean = TRUE, modified = FALSE, ...) {
+                   close = TRUE, domean = TRUE, modified = FALSE, ...) {
     if (method %in% "disc") {
         D <- data
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
@@ -745,8 +745,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
             phi2 <- t(Rho)%*%phi
             phi2[which(phi2 > 1)] <- 1
         }
-        P <- llrScore(R2, phi2, weights = weights)
-        P[which(P < 0)] <- 0
+        P <- llrScore(R2, cbind(phi2,0), weights = weights)
         P[, grep("_", colnames(phi))] <- min(P)
         subtopo <- as.numeric(gsub(ncol(phi)+1, 0, maxCol_row(P)))
         theta <- t(R)*0
@@ -793,7 +792,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         phibest2 <- t(Rho)%*%phibest
         phibest2[which(phibest2 > 1)] <- 1
     }
-    P <- llrScore(R2, phibest2, weights = weights)
+    P <- llrScore(R2, cbind(phibest2,0), weights = weights)
     P[, grep("_", colnames(phibest2))] <- min(P)
     subtopo <- as.numeric(gsub(
         ncol(phibest2)+1, 0, apply(P, 1, which.max)))

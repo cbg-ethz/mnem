@@ -2360,10 +2360,10 @@ simData <- function(Sgenes = 5, Egenes = 1,
                 diag(adj) <- 1
                 adj <- mytc(adj)
                 while(sum(adj)-Sgenes >
-                      floor((Sgenes*(Sgenes/2)-Sgenes)*edgeprob)
+                      floor((Sgenes*(Sgenes/2)-Sgenes/2)*edgeprob)
                       & exactProb) {
                           over <- sum(adj) - Sgenes - 
-                              floor((Sgenes*(Sgenes/2) - Sgenes)*edgeprob)
+                              floor((Sgenes*(Sgenes/2) - Sgenes/2)*edgeprob)
                           adjtr <- transitive.reduction(adj)
                           adj[sample(which(adjtr == 1),
                                      min(over, sum(adjtr)))] <- 0
