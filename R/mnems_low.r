@@ -671,8 +671,7 @@ annotAdj <- function(adj, data) {
 }
 #' @noRd
 nemEst <- function(data, maxiter = 100, start = "null",
-                   sumf = mean, alpha = 1, cut = 0,
-                   monoton = FALSE, logtype = 2,
+                   cut = 0, monoton = TRUE, logtype = 2,
                    useF = FALSE, method = "llr",
                    weights = NULL, fpfn = c(0.1, 0.1), Rho = NULL,
                    close = TRUE, domean = TRUE, modified = FALSE, ...) {
@@ -702,12 +701,8 @@ nemEst <- function(data, maxiter = 100, start = "null",
     if (!is.null(Rho)) {
         R <- R%*%t(Rho)
         weights <- as.vector(Rho%*%weights)
-        weights[which(weights > 1)] <- 1
     }
-    R2 <- R
     n <- length(unique(colnames(R)))
-    Cp <- 1
-    Cz <- 0
     phibest <- phi <- matrix(0, n, n)
     rownames(phi) <- colnames(phi) <- colnames(R)
     E0 <- apply(R, 2, sum)
@@ -715,7 +710,6 @@ nemEst <- function(data, maxiter = 100, start = "null",
     phi[upper.tri(phi)] <- 1
     phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
     E <- phi
-    E <- E*Cp
     if ("full" %in% start) {
         phi <- phi
     } else if ("rand" %in% start) {
@@ -739,20 +733,12 @@ nemEst <- function(data, maxiter = 100, start = "null",
     stop <- FALSE
     while(!stop & iter < maxiter) {
         iter <- iter + 1
-        if (is.null(Rho)) {
-            phi2 <- phi
-        } else {
-            phi2 <- t(Rho)%*%phi
-            phi2[which(phi2 > 1)] <- 1
-        }
-        P <- llrScore(R2, cbind(phi2,0), weights = weights)
-        P[, grep("_", colnames(phi))] <- min(P)
-        subtopo <- as.numeric(gsub(ncol(phi)+1, 0, maxCol_row(P)))
-        theta <- t(R)*0
-        theta[cbind(subtopo, seq_len(ncol(theta)))] <- 1
+        ll <- scoreAdj(R, phi, #Rho = Rho,
+                       weights = weights, dotopo = TRUE)
+        P <- ll$subweights
+        theta <- theta2theta(ll$subtopo, phi)
+        ll <- ll$score
         Oold <- O
-        ll <- llrScore(theta, P)
-        ll <- sum(diag(ll))
         if (ll %in% lls | all(phi == phibest)) {
             stop <- TRUE
         }
@@ -786,21 +772,13 @@ nemEst <- function(data, maxiter = 100, start = "null",
     }
     phintc <- phibest
     phibest <- mytc(phibest)
-    if (is.null(Rho)) {
-        phibest2 <- phibest
-    } else {
-        phibest2 <- t(Rho)%*%phibest
-        phibest2[which(phibest2 > 1)] <- 1
-    }
-    P <- llrScore(R2, cbind(phibest2,0), weights = weights)
-    P[, grep("_", colnames(phibest2))] <- min(P)
-    subtopo <- as.numeric(gsub(
-        ncol(phibest2)+1, 0, apply(P, 1, which.max)))
-    thetabest <- t(R)*0
-    thetabest[cbind(subtopo, seq_len(ncol(thetabest)))] <- 1
-    llbest <- scoreAdj(data, phibest, Rho = Rho, weights = weights)$score
+    ll <- scoreAdj(R, phibest, #Rho = Rho,
+                   weights = weights, dotopo = TRUE)
+    P <- ll$subweights
+    theta <- theta2theta(ll$subtopo, phibest)
+    llbest <- ll$score
     nem <- list(phi = phibest, theta = thetabest, iter = iter,
-                ll = llbest, lls = lls, num = numbest, C = Cz,
+                ll = llbest, lls = lls, num = numbest,
                 O = Obest, E = E0, phintc = phintc)
     class(nem) <- "nemEst"
     return(nem)
