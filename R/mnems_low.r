@@ -705,13 +705,28 @@ nemEst <- function(data, maxiter = 100, start = "null",
     n <- length(unique(colnames(R)))
     phibest <- phi <- matrix(0, n, n)
     rownames(phi) <- colnames(phi) <- colnames(R)
-    E0 <- apply(R, 2, sum)
-    phi <- phi[order(E0, decreasing = TRUE), order(E0, decreasing = TRUE)]
-    phi[upper.tri(phi)] <- 1
-    phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
-    E <- phi
+    ## estimate hierarchy (or directionality):
+    te <- 0
+    if (te) {
+        ## total effect:
+        E0 <- apply(R, 2, sum)
+        phi <- phi[order(E0, decreasing = TRUE), order(E0, decreasing = TRUE)]
+        phi[upper.tri(phi)] <- 1
+        phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
+        E <- phi
+    } else {
+        ## pairwise score:
+        Rpos <- R
+        Rpos[which(Rpos < 0)] <- 0
+        E0 <- t(Rpos)%*%R
+        E <- E0  - t(E0)
+        E[E > 0] <- 0
+        E[E < 0] <- 1
+        E[naturalorder(rownames(E)), naturalorder(colnames(E))]
+    }
     if ("full" %in% start) {
         phi <- phi
+        diag(phi) <- 1
     } else if ("rand" %in% start) {
         phi <- phi*0
         diag(phi) <- 1
