@@ -674,7 +674,8 @@ nemEst <- function(data, maxiter = 100, start = "null",
                    cut = 0, monoton = TRUE, logtype = 2,
                    useF = FALSE, method = "llr",
                    weights = NULL, fpfn = c(0.1, 0.1), Rho = NULL,
-                   close = TRUE, domean = TRUE, modified = FALSE, ...) {
+                   close = TRUE, domean = TRUE, modified = FALSE,
+                   totaleffect = 0, ...) {
     if (method %in% "disc") {
         D <- data
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
@@ -706,8 +707,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     phibest <- phi <- matrix(0, n, n)
     rownames(phi) <- colnames(phi) <- colnames(R)
     ## estimate hierarchy (or directionality):
-    te <- 0
-    if (te) {
+    if (totaleffect) {
         ## total effect:
         E0 <- apply(R, 2, sum)
         phi <- phi[order(E0, decreasing = TRUE), order(E0, decreasing = TRUE)]
@@ -720,9 +720,12 @@ nemEst <- function(data, maxiter = 100, start = "null",
         Rpos[which(Rpos < 0)] <- 0
         E0 <- t(Rpos)%*%R
         E <- E0  - t(E0)
-        E[E > 0] <- 0
-        E[E < 0] <- 1
+        parents <- which(E <= 0)
+        children <- which(E > 0)
+        E[parents] <- 1
+        E[children] <- 0
         E[naturalorder(rownames(E)), naturalorder(colnames(E))]
+        phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
     }
     if ("full" %in% start) {
         phi <- phi
