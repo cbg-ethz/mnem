@@ -724,7 +724,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         children <- which(E > 0)
         E[parents] <- 1
         E[children] <- 0
-        E[naturalorder(rownames(E)), naturalorder(colnames(E))]
+        E <- E[naturalorder(rownames(E)), naturalorder(colnames(E))]
         phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
     }
     if ("full" %in% start) {
