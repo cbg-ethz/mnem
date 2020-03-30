@@ -672,10 +672,10 @@ annotAdj <- function(adj, data) {
 #' @noRd
 nemEst <- function(data, maxiter = 100, start = "null",
                    cut = 0, monoton = TRUE, logtype = 2,
-                   useF = FALSE, method = "llr",
+                   method = "llr",
                    weights = NULL, fpfn = c(0.1, 0.1), Rho = NULL,
                    close = TRUE, domean = TRUE, modified = FALSE,
-                   totaleffect = 0, ...) {
+                   totaleffect = 1, ...) {
     if (method %in% "disc") {
         D <- data
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
@@ -706,16 +706,13 @@ nemEst <- function(data, maxiter = 100, start = "null",
     n <- length(unique(colnames(R)))
     phibest <- phi <- matrix(0, n, n)
     rownames(phi) <- colnames(phi) <- colnames(R)
-    ## estimate hierarchy (or directionality):
     if (totaleffect) {
-        ## total effect:
         E0 <- apply(R, 2, sum)
         phi <- phi[order(E0, decreasing = TRUE), order(E0, decreasing = TRUE)]
         phi[upper.tri(phi)] <- 1
         phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
         E <- phi
     } else {
-        ## pairwise score:
         Rpos <- R
         Rpos[which(Rpos < 0)] <- 0
         E0 <- t(Rpos)%*%R
@@ -751,7 +748,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     stop <- FALSE
     while(!stop & iter < maxiter) {
         iter <- iter + 1
-        ll <- scoreAdj(R, phi, #Rho = Rho,
+        ll <- scoreAdj(R, phi,
                        weights = weights, dotopo = TRUE)
         P <- ll$subweights
         theta <- theta2theta(ll$subtopo, phi)
@@ -775,12 +772,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         nozeros <- which(t(P) > 0, arr.ind = TRUE)
         nozeros <- nozeros[which(nozeros[, 1] %in% nogenes), ]
         theta[nozeros] <- 1
-        theta[grep("_", colnames(phi)), ] <- 0
-        if (useF) {
-            O <- (t(R)*weights)%*%t(mytc(phi2)%*%theta)
-        } else {
-            O <- (t(R)*weights)%*%t(theta)
-        }
+        O <- (t(R)*weights)%*%t(theta)
         cutoff <- cut*max(abs(O))
         phi[which(O > cutoff & E == 1)] <- 1
         phi[which(O <= cutoff | E == 0)] <- 0
@@ -789,8 +781,10 @@ nemEst <- function(data, maxiter = 100, start = "null",
         }
     }
     phintc <- phibest
-    phibest <- mytc(phibest)
-    ll <- scoreAdj(R, phibest, #Rho = Rho,
+    if (close) {
+        phibest <- mytc(phibest)
+    }
+    ll <- scoreAdj(R, phibest,
                    weights = weights, dotopo = TRUE)
     P <- ll$subweights
     theta <- theta2theta(ll$subtopo, phibest)
