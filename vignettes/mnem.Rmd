@@ -5,6 +5,11 @@ from single cell perturbation data."
 author: "Martin Pirkl, Niko Beerenwinkel"
 date: "`r Sys.Date()`"
 graphics: yes
+header-includes:
+    - |
+    ```{=latex}
+    \usepackage{xcolor}
+    ```
 output: BiocStyle::pdf_document
 vignette: >
     %\VignetteIndexEntry{mnem}
