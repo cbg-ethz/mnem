@@ -749,7 +749,8 @@ nemEst <- function(data, maxiter = 100, start = "null",
     while(!stop & iter < maxiter) {
         iter <- iter + 1
         ll <- scoreAdj(R, phi,
-                       weights = weights, dotopo = TRUE)
+                       weights = weights, dotopo = TRUE,
+                       trans.close = close)
         P <- ll$subweights
         theta <- theta2theta(ll$subtopo, phi)
         ll <- ll$score
@@ -785,7 +786,8 @@ nemEst <- function(data, maxiter = 100, start = "null",
         phibest <- mytc(phibest)
     }
     ll <- scoreAdj(R, phibest,
-                   weights = weights, dotopo = TRUE)
+                   weights = weights, dotopo = TRUE,
+                       trans.close = close)
     P <- ll$subweights
     theta <- theta2theta(ll$subtopo, phibest)
     llbest <- ll$score
