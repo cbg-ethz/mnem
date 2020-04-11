@@ -7,7 +7,7 @@ date: "`r Sys.Date()`"
 graphics: yes
 header-includes:
     - \usepackage{xcolor}
-output: BiocStyle::pdf_document
+output: BiocStyle::html_document
 vignette: >
     %\VignetteIndexEntry{mnem}
     %\VignetteEngine{knitr::rmarkdown}

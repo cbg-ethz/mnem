@@ -675,7 +675,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
                    method = "llr",
                    weights = NULL, fpfn = c(0.1, 0.1), Rho = NULL,
                    close = TRUE, domean = TRUE, modified = FALSE,
-                   totaleffect = 1, ...) {
+                   hierarchy = "totaleffect", ...) {
     if (method %in% "disc") {
         D <- data
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
@@ -706,12 +706,23 @@ nemEst <- function(data, maxiter = 100, start = "null",
     n <- length(unique(colnames(R)))
     phibest <- phi <- matrix(0, n, n)
     rownames(phi) <- colnames(phi) <- colnames(R)
-    if (totaleffect) {
+    if (hierarchy == "totaleffect") {
         E0 <- apply(R, 2, sum)
         phi <- phi[order(E0, decreasing = TRUE), order(E0, decreasing = TRUE)]
         phi[upper.tri(phi)] <- 1
         phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
         E <- phi
+    } else if (hierarchy == "pairwise.greedy") {
+        for (i in seq_len(n-1)) {
+            for (j in (i+1):n) {
+                pwg <- mynem(R[, c(i,j)], logtype = logtype,
+                             weights = weights[c(i,j)], trans.close = close,
+                             domean = FALSE)
+                phi[i, j] <- pwg$adj[1, 2]
+                phi[j, i] <- pwg$adj[2, 1]
+            }
+        }
+        E0 <- E <- phi
     } else {
         Rpos <- R
         Rpos[which(Rpos < 0)] <- 0
@@ -1006,7 +1017,14 @@ get.del.tc <- function (Phi) {
 #' @noRd
 theta2theta <- function(x, y) {
     if (is.matrix(x)) {
-        z <- apply(x, 2, which.max)
+        z <- apply(x, 2, function(x) {
+            if (max(x) == 0) {
+                y <- 0
+            } else {
+                y <- which.max(x)
+            }
+            return(y)
+        })
     } else {
         z <- matrix(0, nrow(y), length(x))
         z[cbind(x, seq_len(ncol(z)))] <- 1
