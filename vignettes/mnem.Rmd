@@ -136,7 +136,7 @@ component. For the other components attachments differ and do not agree with the
 E-gene name anymore.
 
 ```{r, fig.height=6, fig.width=10, fig.cap=fig.cap0}
-seed <- 27
+seed <- 2
 Sgenes <- 3
 Egenes <- 10
 nCells <- 100
@@ -198,13 +198,7 @@ plot(bestk$ics, col = "red", main = "penalized log likelihood", type = "b",
 
 We compare the actual log likelihood shown in figure 4 (left, blue)
 to the penalized log likelihood
-(right, red). Notice that the raw log likelihood of $k=4,5$ is the same
-as for the $k=3$ component model. However, if we penalize complexity
-the three component model gives us the best score (minimum).
-The penalized like the raw log likelihood is not guaranteed to have
-only one global optimum, but can have several local ones. Hence, in practice
-when there are little time constraints larger $k>4$ should also be
-tested.
+(right, red).
 
 We can also look at the convergence of the expectation maximization
 algorithm. Since we started the EM `r starts` times, we have as many
