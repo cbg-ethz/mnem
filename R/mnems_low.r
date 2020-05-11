@@ -699,15 +699,16 @@ nemEst <- function(data, maxiter = 100, start = "null",
     }
     if (is.null(weights)) { weights <- rep(1, ncol(data2)) }
     R <- data2[, naturalsort(colnames(data2))]
-    if (!is.null(Rho)) {
-        R <- R%*%t(Rho)
-        weights <- as.vector(Rho%*%weights)
+    if (is.null(Rho)) {
+        Rho <- diag(ncol(R))
     }
-    n <- length(unique(colnames(R)))
+    N <- rowSums(Rho)
+    n <- getSgeneN(R)
     phibest <- phi <- matrix(0, n, n)
-    rownames(phi) <- colnames(phi) <- colnames(R)
+    Sgenes <- getSgenes(R)
+    rownames(phi) <- colnames(phi) <- Sgenes
     if (hierarchy == "totaleffect") {
-        E0 <- apply(R, 2, sum)
+        E0 <- apply(t(t(R%*%t(Rho))/N), 2, sum)
         phi <- phi[order(E0, decreasing = TRUE), order(E0, decreasing = TRUE)]
         phi[upper.tri(phi)] <- 1
         phi <- phi[naturalsort(rownames(phi)), naturalsort(colnames(phi))]
@@ -724,9 +725,9 @@ nemEst <- function(data, maxiter = 100, start = "null",
         }
         E0 <- E <- phi
     } else {
-        Rpos <- R
+        Rpos <- t(t(R%*%t(Rho))/N)
         Rpos[which(Rpos < 0)] <- 0
-        E0 <- t(Rpos)%*%R
+        E0 <- t(Rpos)%*%(R%*%t(Rho))
         E <- E0  - t(E0)
         parents <- which(E <= 0)
         children <- which(E > 0)
@@ -761,7 +762,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         iter <- iter + 1
         ll <- scoreAdj(R, phi,
                        weights = weights, dotopo = TRUE,
-                       trans.close = close)
+                       trans.close = close, Rho = Rho)
         P <- ll$subweights
         theta <- theta2theta(ll$subtopo, phi)
         ll <- ll$score
@@ -784,7 +785,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
         nozeros <- which(t(P) > 0, arr.ind = TRUE)
         nozeros <- nozeros[which(nozeros[, 1] %in% nogenes), ]
         theta[nozeros] <- 1
-        O <- (t(R)*weights)%*%t(theta)
+        O <- (t(R%*%t(Rho))*weights)%*%t(theta)
         cutoff <- cut*max(abs(O))
         phi[which(O > cutoff & E == 1)] <- 1
         phi[which(O <= cutoff | E == 0)] <- 0
@@ -792,13 +793,15 @@ nemEst <- function(data, maxiter = 100, start = "null",
             phi <- mytc(phi)
         }
     }
+    Obg <<- Obest
+    tbg <<- thetabest
     phintc <- phibest
     if (close) {
         phibest <- mytc(phibest)
     }
     ll <- scoreAdj(R, phibest,
                    weights = weights, dotopo = TRUE,
-                       trans.close = close)
+                       trans.close = close, Rho = Rho)
     P <- ll$subweights
     theta <- theta2theta(ll$subtopo, phibest)
     llbest <- ll$score
@@ -1050,6 +1053,12 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     get.insertions <- get.ins.fast
     get.reversions <- get.rev.tc
     get.deletions <- get.del.tc
+    D.backup <- D
+    if (!modified) {
+        D <- modData(D)
+        colnames(D) <- gsub("\\..*", "", colnames(D))
+    }
+    Rho <- getRho(D)
     if ("modules" %in% search) {
         if (length(search) > 1) {
             search <- search[-which(search %in% "modules")]
@@ -1068,11 +1077,6 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         if (search %in% "exhaustive") {
             search <- "greedy"
         }
-    }
-    D.backup <- D
-    if (!modified) {
-        D <- modData(D)
-        colnames(D) <- gsub("\\..*", "", colnames(D))
     }
     if (length(unique(colnames(D))) == ncol(D)) {
         domean <- FALSE
@@ -1284,7 +1288,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         better <- tmp$phi
         oldscore <- tmp$ll
         allscores <- tmp$lls
-        subweights <- Dw%*%cbind(tmp$phi[colnames(Dw), ], 0)
+        subweights <- Dw%*%cbind(t(Rho)%*%tmp$phi, 0)
     }
 
     if (!is.null(parallel)) {
