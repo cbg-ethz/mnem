@@ -2727,10 +2727,13 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                     edgelabel = NULL, edgetail = NULL, bool = TRUE,
                     draw = TRUE, ...) {
     if (is.matrix(dnf)) {
-        diag(dnf) <- 0
         if (all(dnf == 0)) {
             diag(dnf) <- 1
         }
+        edgelwd <- edgelabel <- dnf[which(dnf != 0)]
+        edgelabel <- round(edgelabel, 3)
+        edgelwd <- edgelwd - min(edgelwd) + 1
+        dnf[which(dnf != 0)] <- 1
         dnf <- dnf2 <- adj2dnf(dnf)
         dnf <- dnf[grep("=", dnf)]
         if (length(dnf) == 0) {
