@@ -1265,6 +1265,8 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         }
         best <- which.max(scores)
         better <- mytc(models[[best]])
+        allscores <- scores
+        oldscore <- max(scores)
         diag(better) <- 1
     }
 
