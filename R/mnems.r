@@ -1,3 +1,129 @@
+#' Network score
+#'
+#' Computes the fit (score of a network) of the data given a network matrix
+#' @param D data matrix; use modified = FALSE
+#' @param adj adjacency matrix of the network phi
+#' @param method either llr if D consists of log odds or disc,
+#' if D is binary
+#' @param logtype log base of the log odds
+#' @param weights a numeric vector of weights for the columns of D
+#' @param trans.close if TRUE uses the transitive closure of adj
+#' @param subtopo optional matrix with the subtopology theta as
+#' adjacency matrix
+#' @param prior a prior network matrix for adj
+#' @param ratio if FALSE uses alternative distance for the model score
+#' @param fpfn numeric vector of length two with false positive and
+#' false negative rates
+#' @param Rho optional perturbation matrix
+#' @param dotopo if TRUE computes and returns the subtopology theta (optional)
+#' @param P previous score matrix (only used internally)
+#' @param oldadj previous adjacency matrix (only used internally)
+#' @param modified if TRUE, assumes a prepocessed data matrix
+#' @return transitively closed matrix or graphNEL
+#' @author Martin Pirkl
+#' @export
+#' @import graph
+#' @importFrom matrixStats rowMaxs
+#' @examples
+#' D <- matrix(rnorm(100*3), 100, 3)
+#' colnames(D) <- 1:3
+#' rownames(D) <- 1:100
+#' adj <- diag(3)
+#' colnames(adj) <- rownames(adj) <- 1:3
+#' scoreAdj(D, adj)
+scoreAdj <- function(D, adj, method = "llr", logtype = 2, weights = NULL,
+                     trans.close = TRUE, subtopo = NULL,
+                     prior = NULL, ratio = TRUE, fpfn = c(0.1, 0.1),
+                     Rho = NULL, dotopo = FALSE,
+                     P = NULL, oldadj = NULL, modified = TRUE) {
+    if (!modified) { D <- modData(D) }
+    if (method %in% "disc") {                                             
+        D[which(D == 1)] <- log((1 - fpfn[2])/fpfn[1])/log(logtype)       
+        D[which(D == 0)] <- log(fpfn[2]/(1 - fpfn[1]))/log(logtype)       
+        method <- "llr"                                                   
+    }   
+    if (trans.close) {
+        adj <- mytc(adj)
+    }
+    if (is.null(Rho)) {
+        adj1 <- adj[colnames(D), ]
+    } else {
+        adj1 <- t(Rho)%*%adj
+        adj1[which(adj1 > 1)] <- 1
+    }
+    if (method %in% "llr") {
+        ll <- "max"
+        if (is.null(P) | is.null(oldadj)) {
+            score <- llrScore(D, adj1, weights = weights, ratio = ratio)
+        } else {
+            score <- P
+            changeidx <- unique(floor(which(adj != oldadj)/nrow(adj)+0.99))
+            score[, changeidx] <- llrScore(D, adj1[, changeidx],
+                                           weights = weights, ratio = ratio)
+        }
+    }
+    if (is.null(subtopo) & dotopo) {
+        subtopo <- maxCol_row(cbind(0, score))
+        subtopo <- subtopo - 1
+    }
+    subweights <- score
+    if (ll %in% "max") {
+        if (is.null(subtopo)) {
+            score[which(score < 0)] <- 0
+            score <- sum(matrixStats::rowMaxs(score))
+        } else {
+            score <- sum(score[cbind(seq_len(nrow(score)),
+                                     as.numeric(subtopo))])
+        }
+    }
+    if (ll %in% "marg") {
+        score <- sum(score)
+    }
+    if (!is.null(prior)) {
+        prior <- transitive.reduction(prior)
+        adj <- transitive.reduction(adj)
+        score <- score - sum(abs(prior - adj))/length(prior)
+    }
+    return(list(score = score, subtopo = subtopo, subweights = subweights))
+}
+#' Transitive reduction
+#'
+#' Computes the transitive reduction of a adjacency
+#' matrix or graphNEL object.
+#' Originally imported from the package 'nem'.
+#' @param g adacency matrix or graphNEL object
+#' @author Holger Froehlich
+#' @references R. Sedgewick, Algorithms, Pearson, 2002.
+#' @return transitively reduced adjacency matrix
+#' @export
+#' @importFrom methods as
+#' @examples
+#' g <- matrix(c(0,0,0,1,0,0,0,1,0), 3)
+#' rownames(g) <- colnames(g) <- seq_len(3)
+#' g.tr <- transitive.reduction(g)
+transitive.reduction <- function (g) {
+    if (!(is(g, "matrix") | is(g, "graphNEL"))) 
+        stop("Input must be an adjacency matrix or graphNEL object")
+    if (is(g, "graphNEL")) {
+        g = as(g, "matrix")
+    }
+    g = transClose(g)
+    g = g - diag(diag(g))
+    type = (g > 1) * 1 - (g < 0) * 1
+    for (y in seq_len(nrow(g))) {
+        for (x in seq_len(nrow(g))) {
+            if (g[x, y] != 0) {
+                for (j in seq_len(nrow(g))) {
+                  if ((g[y, j] != 0) & sign(type[x, j]) * sign(type[x, 
+                    y]) * sign(type[y, j]) != -1) {
+                    g[x, j] = 0
+                  }
+                }
+            }
+        }
+    }
+    g
+}
 #' Transitive closure of a directed acyclic graph (dag)
 #'
 #' Computes the transitive closure of a dag or only of a

@@ -42,43 +42,6 @@ enumerate.models <- function (x, name = NULL, trans.close = TRUE,
             2^(n * (n - 1)), ")\n")
     return(models)
 }
-#' Transitive reduction
-#'
-#' Computes the transitive reduction of a adjacency
-#' matrix or graphNEL object.
-#' Originally imported from the package 'nem'.
-#' @export
-#' @param g adacency matrix or graphNEL object
-#' @importFrom methods as
-#' @author Holger Froehlich
-#' @references R. Sedgewick, Algorithms, Pearson, 2002.
-#' @examples
-#' g <- matrix(c(0,0,0,1,0,0,0,1,0), 3)
-#' rownames(g) <- colnames(g) <- seq_len(3)
-#' g.tr <- transitive.reduction(g)
-transitive.reduction <- function (g) {
-    if (!(is(g, "matrix") | is(g, "graphNEL"))) 
-        stop("Input must be an adjacency matrix or graphNEL object")
-    if (is(g, "graphNEL")) {
-        g = as(g, "matrix")
-    }
-    g = transClose(g)
-    g = g - diag(diag(g))
-    type = (g > 1) * 1 - (g < 0) * 1
-    for (y in seq_len(nrow(g))) {
-        for (x in seq_len(nrow(g))) {
-            if (g[x, y] != 0) {
-                for (j in seq_len(nrow(g))) {
-                  if ((g[y, j] != 0) & sign(type[x, j]) * sign(type[x, 
-                    y]) * sign(type[y, j]) != -1) {
-                    g[x, j] = 0
-                  }
-                }
-            }
-        }
-    }
-    g
-}
 #' Originally imported from the package 'nem'.
 #' @noRd
 #' @author Holger Froehlich, Cordula Zeller
@@ -793,8 +756,6 @@ nemEst <- function(data, maxiter = 100, start = "null",
             phi <- mytc(phi)
         }
     }
-    Obg <<- Obest
-    tbg <<- thetabest
     phintc <- phibest
     if (close) {
         phibest <- mytc(phibest)
@@ -1044,7 +1005,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                   trans.close = TRUE, subtopo = NULL, prior = NULL,
                   ratio = TRUE, domean = TRUE, modulesize = 5,
                   fpfn = c(0.1, 0.1), Rho = NULL, logtype = 2,
-                  modified = FALSE, Sgenes = NULL, combi = 1, ...) {
+                  modified = FALSE, Sgenes = NULL, ...) {
     if (method %in% "disc") {
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
         D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
@@ -1118,7 +1079,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
     score <- scoreAdj(D, better, method = method, weights = weights,
                       subtopo = subtopo,
                       prior = prior, ratio = ratio, fpfn = fpfn,
-                      Rho = Rho, combi = combi)
+                      Rho = Rho)
     score <- score$score
     oldscore <- score
     allscores <- score
@@ -1177,7 +1138,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                                   weights = weights,
                                   subtopo = subtopo, prior = prior,
                                   ratio = ratio, fpfn = fpfn,
-                                  Rho = Rho, combi = combi)
+                                  Rho = Rho)
                 P <- score$subweights
                 oldadj <- better
                 score <- score$score
@@ -1195,7 +1156,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
                                       subtopo = subtopo, prior = prior,
                                       ratio = ratio, fpfn = fpfn,
                                       Rho = Rho, P = P, oldadj = oldadj,
-                                      trans.close = FALSE, combi = combi)
+                                      trans.close = FALSE)
                     P <- score$subweights
                     score <- score$score
                     return(list(score, P))
@@ -1254,7 +1215,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
             score <- scoreAdj(D, adj, method = method, weights = weights,
                               subtopo = subtopo, prior = prior,
                               ratio = ratio, fpfn = fpfn,
-                              Rho = Rho, combi = combi)
+                              Rho = Rho)
             score <- score$score
             return(score)
         }
@@ -1301,7 +1262,7 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         subtopo <- scoreAdj(D, better, method = method, weights = weights,
                             prior = prior,
                             ratio = ratio, fpfn = fpfn,
-                            Rho = Rho, dotopo = TRUE, combi = combi)
+                            Rho = Rho, dotopo = TRUE)
         subweights <- subtopo$subweights
         subtopo <- subtopo$subtopo
     } else {
@@ -1386,57 +1347,6 @@ llrScore <- function(data, adj, weights = NULL, ratio = TRUE) {
         }
     }
     return(score)
-}
-#' @noRd
-#' @importFrom matrixStats rowMaxs
-scoreAdj <- function(D, adj, method = "llr", weights = NULL,
-                     trans.close = TRUE, subtopo = NULL,
-                     prior = NULL, ratio = TRUE, fpfn = c(0.1, 0.1),
-                     Rho = NULL, dotopo = FALSE,
-                     P = NULL, oldadj = NULL, combi = 1) {
-    if (trans.close) {
-        adj <- mytc(adj)
-    }
-    if (is.null(Rho)) {
-        adj1 <- adj[colnames(D), ]
-    } else {
-        adj1 <- t(Rho)%*%adj
-        adj1[which(adj1 > 1)] <- 1
-    }
-    if (method %in% "llr") {
-        ll <- "max"
-        if (is.null(P) | is.null(oldadj)) {
-            score <- llrScore(D, adj1, weights = weights, ratio = ratio)
-        } else {
-            score <- P
-            changeidx <- unique(floor(which(adj != oldadj)/nrow(adj)+0.99))
-            score[, changeidx] <- llrScore(D, adj1[, changeidx],
-                                           weights = weights, ratio = ratio)
-        }
-    }
-    if (is.null(subtopo) & dotopo) {
-        subtopo <- maxCol_row(cbind(0, score))
-        subtopo <- subtopo - 1
-    }
-    subweights <- score
-    if (ll %in% "max") {
-        if (is.null(subtopo)) {
-            score[which(score < 0)] <- 0
-            score <- sum(matrixStats::rowMaxs(score))
-        } else {
-            score <- sum(score[cbind(seq_len(nrow(score)),
-                                     as.numeric(subtopo))])
-        }
-    }
-    if (ll %in% "marg") {
-        score <- sum(score)
-    }
-    if (!is.null(prior)) {
-        prior <- transitive.reduction(prior)
-        adj <- transitive.reduction(adj)
-        score <- score - sum(abs(prior - adj))/length(prior)
-    }
-    return(list(score = score, subtopo = subtopo, subweights = subweights))
 }
 #' @noRd
 adj2dnf <- function(A) {
