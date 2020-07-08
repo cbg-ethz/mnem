@@ -4,8 +4,18 @@
 \alias{clustNEM}
 \title{Cluster NEM.}
 \usage{
-clustNEM(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
-  nem = TRUE, getprobspars = list(), getaffinitypars = list(), ...)
+clustNEM(
+  data,
+  k = 2:10,
+  cluster = NULL,
+  starts = 1,
+  logtype = 2,
+  nem = TRUE,
+  getprobspars = list(),
+  getaffinitypars = list(),
+  Rho = NULL,
+  ...
+)
 }
 \arguments{
 \item{data}{data of log ratios with cells in columns and features in rows}
@@ -23,6 +33,10 @@ clustNEM(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 \item{getprobspars}{list of parameters for the getProbs function}
 
 \item{getaffinitypars}{list of parameters for the getAffinity function}
+
+\item{Rho}{perturbation matrix with dimensions nxl with n S-genes and
+l samples; either as probabilities with the sum of probabilities for a
+sample less or equal to 1 or discrete with 1s and 0s}
 
 \item{...}{additional arguments for standard nem function}
 }

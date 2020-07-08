@@ -4,8 +4,7 @@
 \alias{bootstrap}
 \title{Bootstrap.}
 \usage{
-bootstrap(x, size = 1000, p = 1, logtype = 2, complete = FALSE,
-  ...)
+bootstrap(x, size = 1000, p = 1, logtype = 2, complete = FALSE, ...)
 }
 \arguments{
 \item{x}{mnem object}

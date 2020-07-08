@@ -4,7 +4,7 @@ data <- data + rnorm(length(data), 0, 1)
 result <- mnem(data, k = 2, starts = 2)
 resp <- getAffinity(result$probs, mw = result$mw, data = data)
 resp1 <- apply(resp, 2, function(x) {
-    xmax <- which.max(x)
+    xmax <- which(x == max(x))
     y <- x*0
     y[xmax] <- 1
     return(y)

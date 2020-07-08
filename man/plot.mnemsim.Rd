@@ -4,8 +4,7 @@
 \alias{plot.mnemsim}
 \title{Plot simulated mixture.}
 \usage{
-\method{plot}{mnemsim}(x, data = NULL, logtype = 2,
-  fuzzypars = list(), ...)
+\method{plot}{mnemsim}(x, data = NULL, logtype = 2, fuzzypars = list(), ...)
 }
 \arguments{
 \item{x}{mnemsim object}

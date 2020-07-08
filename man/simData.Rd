@@ -4,10 +4,24 @@
 \alias{simData}
 \title{Simulate data.}
 \usage{
-simData(Sgenes = 5, Egenes = 1, Nems = 2, reps = NULL, mw = NULL,
-  evolution = FALSE, nCells = 1000, uninform = 0, unitheta = FALSE,
-  edgeprob = 0.25, multi = FALSE, subsample = 1, scalefree = FALSE,
-  ...)
+simData(
+  Sgenes = 5,
+  Egenes = 1,
+  Nems = 2,
+  reps = NULL,
+  mw = NULL,
+  evolution = FALSE,
+  nCells = 1000,
+  uninform = 0,
+  unitheta = FALSE,
+  edgeprob = 0.25,
+  multi = FALSE,
+  subsample = 1,
+  scalefree = FALSE,
+  badCells = 0,
+  exactProb = TRUE,
+  ...
+)
 }
 \arguments{
 \item{Sgenes}{number of Sgenes}
@@ -39,6 +53,12 @@ no quadruple knock-downs}
 used}
 
 \item{scalefree}{if TRUE, graph is scale free}
+
+\item{badCells}{number of cells, which are just noise and not connected
+to the ground truth network}
+
+\item{exactProb}{logical; if TRUE generates random network with exact
+fraction of edges}
 
 \item{...}{additional parameters for the scale free network
 sampler (see 'nem' package)}

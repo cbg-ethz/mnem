@@ -1,1 +1,1 @@
-BiocGenerics:::testPackage("epiNEM")
+BiocGenerics:::testPackage("mnem")

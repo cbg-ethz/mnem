@@ -4,9 +4,20 @@
 \alias{createApp}
 \title{Creating app data.}
 \usage{
-createApp(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
-  maxk = 5, parallel = NULL, path = "", dataonly = FALSE,
-  allcrop = FALSE, multi = FALSE, ...)
+createApp(
+  sets = seq_len(3),
+  m = NULL,
+  n = NULL,
+  o = NULL,
+  maxk = 5,
+  parallel = NULL,
+  path = "",
+  types = c("data", "lods", "mnem"),
+  allcrop = FALSE,
+  multi = FALSE,
+  file = NULL,
+  ...
+)
 }
 \arguments{
 \item{sets}{numeric vector with the data sets: 1 (CROPseq),
@@ -22,14 +33,18 @@ createApp(sets = seq_len(3), m = NULL, n = NULL, o = NULL,
 
 \item{parallel}{number of threads for parallelisation}
 
-\item{path}{path to the data files path/file.csv}
+\item{path}{path to the data files path/file.csv: "path/"}
 
-\item{dataonly}{if TRUE, only fetches and normalizes the data and
-computes the log odds}
+\item{types}{types of data/analysis; "data" creates the gene expression
+matrix, "lods" includes the log odds, "mnem" additionally performes the
+mixture nem analysis; default c("data", "lods", "mnem")}
 
 \item{allcrop}{if TRUE, does not restrict and uses the full CROPseq dataset}
 
 \item{multi}{if TRUE, includes cells with more than one perturbed gene}
+
+\item{file}{path and filename of the rda file with the raw data from the
+command "data <- createApp(..., types = "data")"}
 
 \item{...}{additional parameters for the mixture nem function}
 }
