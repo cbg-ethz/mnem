@@ -662,9 +662,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     }
     if (is.null(weights)) { weights <- rep(1, ncol(data2)) }
     R <- data2[, naturalsort(colnames(data2))]
-    if (is.null(Rho)) {
-        Rho <- diag(ncol(R))
-    }
+    Rho <- diag(ncol(R))
     N <- rowSums(Rho)
     n <- getSgeneN(R)
     phibest <- phi <- matrix(0, n, n)
