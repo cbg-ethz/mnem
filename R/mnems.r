@@ -1267,7 +1267,6 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
         D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
         method <- "llr"
-        D <- D + rnorm(length(D), 0, 10^-5)
     }
     if (reduce & search %in% "exhaustive" & is.null(redSpace)) {
         colnames(D) <- gsub("_.*", "", colnames(D))
@@ -1374,6 +1373,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
     if (k == 1) {
         if (!is.null(init)) {
             start <- phi[[1]][[1]]
+        } else {
+            start <- NULL
         }
         if (!is.null(theta)) {
             subtopoX <- theta[[1]][[1]]
