@@ -88,10 +88,10 @@ scoreAdj <- function(D, adj, method = "llr", logtype = 2, weights = NULL,
 }
 #' Transitive reduction
 #'
-#' Computes the transitive reduction of a adjacency
+#' Computes the transitive reduction of an adjacency
 #' matrix or graphNEL object.
 #' Originally imported from the package 'nem'.
-#' @param g adacency matrix or graphNEL object
+#' @param g adjacency matrix or graphNEL object
 #' @author Holger Froehlich
 #' @references R. Sedgewick, Algorithms, Pearson, 2002.
 #' @return transitively reduced adjacency matrix
@@ -107,7 +107,7 @@ transitive.reduction <- function (g) {
     if (is(g, "graphNEL")) {
         g = as(g, "matrix")
     }
-    g = transClose(g)
+    g = transitive.closure(g)
     g = g - diag(diag(g))
     type = (g > 1) * 1 - (g < 0) * 1
     for (y in seq_len(nrow(g))) {
@@ -138,8 +138,8 @@ transitive.reduction <- function (g) {
 #' @importFrom methods as
 #' @examples
 #' g <- matrix(c(0,0,0,1,0,0,0,1,0), 3)
-#' transClose(g)
-transClose <- function(g, u = NULL, v = NULL) {
+#' transitive.closure(g)
+transitive.closure <- function(g, u = NULL, v = NULL) {
     if (is(g, "graphNEL")) {
         a <- as(g, "matrix")
     } else if (is(g, "matrix")) {

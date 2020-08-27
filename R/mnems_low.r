@@ -26,7 +26,7 @@ enumerate.models <- function (x, name = NULL, trans.close = TRUE,
         M[which(M == 0)] <- x
         dimnames(M) <- list(name, name)
         if (trans.close) 
-            M <- transClose(M)
+            M <- transitive.closure(M)
         return(list(M))
     }
     models <- apply(bc, 1, fkt1, n, name)
@@ -74,7 +74,7 @@ sampleRndNetwork <- function (Sgenes, scaleFree = TRUE, gamma = 2.5,
         }
     }
     if (trans.close) 
-        S = transClose(S)
+        S = transitive.closure(S)
     diag(S) = 0
     colnames(S) = Sgenes
     rownames(S) = Sgenes
@@ -86,13 +86,13 @@ bigphi <- function(x) {
     if (is(x, "mnemsim")) {
         resfull <- NULL
         for (l in seq_len(length(x$Nem))) {
-            tmp <- transClose(x$Nem[[l]])
+            tmp <- transitive.closure(x$Nem[[l]])
             resfull <- cbind(resfull, t(tmp))
         }
     } else {
         resfull <- NULL
         for (l in seq_len(length(x$comp))) {
-            tmp <- transClose(x$comp[[l]]$phi)
+            tmp <- transitive.closure(x$comp[[l]]$phi)
             colnames(tmp) <- rownames(tmp) <- seq_len(nrow(tmp))
             resfull <- cbind(resfull, t(tmp))
         }
