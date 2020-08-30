@@ -7,13 +7,13 @@
 transitive.reduction(g)
 }
 \arguments{
-\item{g}{adacency matrix or graphNEL object}
+\item{g}{adjacency matrix or graphNEL object}
 }
 \value{
 transitively reduced adjacency matrix
 }
 \description{
-Computes the transitive reduction of a adjacency
+Computes the transitive reduction of an adjacency
 matrix or graphNEL object.
 Originally imported from the package 'nem'.
 }
