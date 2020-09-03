@@ -2600,9 +2600,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
                                    uninform, ncol(data)))
     }
     if (badCells > 0) {
-        data <- cbind(data, matrix(sample(c(0,1),
-                                          nrow(data)*badCells, replace = TRUE),
-                                   nrow(data), badCells))
+        data <- cbind(data, matrix(0,nrow(data),badCells))
     }
     sim <- list(Nem = Nem, theta = theta, data = data, index = index, mw = mw)
     class(sim) <- "mnemsim"
