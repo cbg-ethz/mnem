@@ -1535,7 +1535,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                          dataF)
                                           postprobsR <- c(postprobs[i, nozero],
                                                           rep(0, n))
-                                          RhoR <- Rho[, nozero, drop = FALSE]
+                                          RhoR <- cbind(Rho[, nozero, drop = FALSE],diag(n))
                                       }
                                   } else {
                                       dataR <- dataF
