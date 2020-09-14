@@ -797,7 +797,12 @@ doMean <- function(D, weights = NULL, Rho = NULL, logtype = 2) {
             D <- D*rep(weights, rep(nrow(D), ncol(D)))
         }
         if (!is.null(Rho)) {
-            Rho <- apply(Rho, 2, function(x) x/sum(x))
+            Rho <- apply(Rho, 2, function(x) {
+                if (any(x > 1)) {
+                    x <- x/sum(x)
+                }
+                return(x)
+            })
             Rho[is.na(Rho)] <- 0
             mD <- D%*%t(Rho)
             mD <- mD[, naturalorder(colnames(mD))]
@@ -1017,7 +1022,9 @@ mynem <- function(D, search = "greedy", start = NULL, method = "llr",
         D <- modData(D)
         colnames(D) <- gsub("\\..*", "", colnames(D))
     }
-    Rho <- getRho(D)
+    if (is.null(Rho)) {
+        Rho <- getRho(D)
+    }
     if ("modules" %in% search) {
         if (length(search) > 1) {
             search <- search[-which(search %in% "modules")]
