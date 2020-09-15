@@ -798,7 +798,7 @@ doMean <- function(D, weights = NULL, Rho = NULL, logtype = 2) {
         }
         if (!is.null(Rho)) {
             Rho <- apply(Rho, 2, function(x) {
-                if (any(x > 1)) {
+                if (sum(x) > 1) {
                     x <- x/sum(x)
                 }
                 return(x)
