@@ -26,7 +26,7 @@ enumerate.models <- function (x, name = NULL, trans.close = TRUE,
         M[which(M == 0)] <- x
         dimnames(M) <- list(name, name)
         if (trans.close) 
-            M <- transClose(M)
+            M <- transitive.closure(M)
         return(list(M))
     }
     models <- apply(bc, 1, fkt1, n, name)
@@ -74,7 +74,7 @@ sampleRndNetwork <- function (Sgenes, scaleFree = TRUE, gamma = 2.5,
         }
     }
     if (trans.close) 
-        S = transClose(S)
+        S = transitive.closure(S)
     diag(S) = 0
     colnames(S) = Sgenes
     rownames(S) = Sgenes
@@ -86,13 +86,13 @@ bigphi <- function(x) {
     if (is(x, "mnemsim")) {
         resfull <- NULL
         for (l in seq_len(length(x$Nem))) {
-            tmp <- transClose(x$Nem[[l]])
+            tmp <- transitive.closure(x$Nem[[l]])
             resfull <- cbind(resfull, t(tmp))
         }
     } else {
         resfull <- NULL
         for (l in seq_len(length(x$comp))) {
-            tmp <- transClose(x$comp[[l]]$phi)
+            tmp <- transitive.closure(x$comp[[l]]$phi)
             colnames(tmp) <- rownames(tmp) <- seq_len(nrow(tmp))
             resfull <- cbind(resfull, t(tmp))
         }
@@ -677,7 +677,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     } else if (hierarchy == "pairwise.greedy") {
         for (i in seq_len(n-1)) {
             for (j in (i+1):n) {
-                pwg <- mynem(R[, c(i,j)], logtype = logtype,
+                pwg <- nem(R[, c(i,j)], logtype = logtype,
                              weights = weights[c(i,j)], trans.close = close,
                              domean = FALSE)
                 phi[i, j] <- pwg$adj[1, 2]
@@ -797,7 +797,12 @@ doMean <- function(D, weights = NULL, Rho = NULL, logtype = 2) {
             D <- D*rep(weights, rep(nrow(D), ncol(D)))
         }
         if (!is.null(Rho)) {
-            Rho <- apply(Rho, 2, function(x) x/sum(x))
+            Rho <- apply(Rho, 2, function(x) {
+                if (sum(x) > 1) {
+                    x <- x/sum(x)
+                }
+                return(x)
+            })
             Rho[is.na(Rho)] <- 0
             mD <- D%*%t(Rho)
             mD <- mD[, naturalorder(colnames(mD))]
@@ -872,7 +877,7 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
                                 which(colnames(start) %in% subset)]
             }
             if (!is.null(Rho)) { Rho <- getRho(subdata) }
-            tmp <- mynem(subdata, search = search, method = method,
+            tmp <- nem(subdata, search = search, method = method,
                          start = start2,
                          parallel = parallel, reduce = reduce,
                          weights = weights[which(colnames(data) %in% subset)],
@@ -994,286 +999,6 @@ theta2theta <- function(x, y) {
         colnames(z) <- seq_len(ncol(z))
     }
     return(z)
-}
-#' @noRd
-#' @importFrom utils getFromNamespace
-mynem <- function(D, search = "greedy", start = NULL, method = "llr",
-                  parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
-                  verbose = FALSE, redSpace = NULL,
-                  trans.close = TRUE, subtopo = NULL, prior = NULL,
-                  ratio = TRUE, domean = TRUE, modulesize = 5,
-                  fpfn = c(0.1, 0.1), Rho = NULL, logtype = 2,
-                  modified = FALSE, Sgenes = NULL, ...) {
-    if (method %in% "disc") {
-        D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
-        D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
-        method <- "llr"
-    }
-    get.insertions <- get.ins.fast
-    get.reversions <- get.rev.tc
-    get.deletions <- get.del.tc
-    D.backup <- D
-    if (!modified) {
-        D <- modData(D)
-        colnames(D) <- gsub("\\..*", "", colnames(D))
-    }
-    Rho <- getRho(D)
-    if ("modules" %in% search) {
-        if (length(search) > 1) {
-            search <- search[-which(search %in% "modules")]
-        } else {
-            search <- "greedy"
-        }
-        if (length(unique(colnames(D))) > modulesize) {
-            start <- modules(D, method = method, weights = weights,
-                             reduce = reduce, verbose = verbose, start = start,
-                             trans.close = trans.close, redSpace = redSpace,
-                             subtopo = subtopo, fpfn = fpfn,
-                             ratio = ratio, parallel = parallel, prior = prior,
-                             modulesize = modulesize, search = search,
-                             domean = domean, Rho = Rho, logtype = logtype)
-        }
-        if (search %in% "exhaustive") {
-            search <- "greedy"
-        }
-    }
-    if (length(unique(colnames(D))) == ncol(D)) {
-        domean <- FALSE
-    }
-    if (domean) {
-        D <- doMean(D, weights = weights, Rho = Rho, logtype = logtype)
-        weights <- NULL
-        Rho <- getRho(D)
-        Sgenes <- getSgenes(D)
-        domean <- FALSE
-    }
-    if (is.null(Sgenes)) {
-        Sgenes <- getSgenes(D)
-    }
-    if (is.null(start)) {
-        start2 <- "null"
-        start <- better <- matrix(0, length(Sgenes), length(Sgenes))
-        diag(start) <- 1
-        colnames(start) <- rownames(start) <- Sgenes
-    } else {
-        if (length(start) == 1) {
-            if (!(search %in% "estimate")) {
-                start2 <- start
-                start <- better <- matrix(0, length(Sgenes), length(Sgenes))
-                diag(start) <- 1
-                colnames(start) <- rownames(start) <- Sgenes
-            } else {
-                better <- matrix(0, length(Sgenes), length(Sgenes))
-                start2 <- start
-            }
-        } else {
-            better <- start2 <- start
-            diag(start) <- 1
-            colnames(start) <- rownames(start) <- Sgenes
-        }
-    }
-    diag(better) <- 1
-    colnames(better) <- rownames(better) <- Sgenes
-    score <- scoreAdj(D, better, method = method, weights = weights,
-                      subtopo = subtopo,
-                      prior = prior, ratio = ratio, fpfn = fpfn,
-                      Rho = Rho)
-    score <- score$score
-    oldscore <- score
-    allscores <- score
-
-    if (!is.null(parallel)) {
-        get.insertions <- get.ins.fast
-        get.reversions <- get.rev.tc
-        get.deletions <- get.del.tc
-        naturalsort <- naturalsort::naturalsort
-        sfInit(parallel = TRUE, cpus = parallel)
-        sfExport("modules", "D", "start", "better", "transitive.reduction",
-                 "method", "scoreAdj", "weights", "mytc",
-                 "llrScore", "get.deletions", "get.insertions",
-                 "get.reversions", "getRho", "doMean")
-    }
-
-    if (search %in% "small") {
-        search <- "greedy"
-        max_iter <- 1
-    } else {
-        max_iter <- Inf
-    }
-
-    guess <- FALSE
-    if (search %in% "fast") {
-        search <- "greedy"
-        guess <- TRUE
-    }
-
-    if (search %in% "greedy") {
-        P <- oldadj <- NULL
-        if (guess) {
-            better <- mynem(D, search = "estimate", start = start,
-                            method = method, parallel = parallel,
-                            reduce = reduce, weights = weights, runs = runs,
-                            verbose = verbose, redSpace = redSpace,
-                            trans.close = trans.close, subtopo = subtopo,
-                            prior = prior, ratio = ratio, domean = domean,
-                            fpfn = fpfn, Rho = Rho, logtype = logtype,
-                            modified = modified, Sgenes = Sgenes)$adj
-            better <- mytc(better)
-        }
-        for (iter in seq_len(runs)) {
-            if (iter > 1) {
-                better <- matrix(sample(c(0,1),nrow(better)*ncol(better),
-                                       replace = TRUE, prob = c(0.9,0.1)),
-                                nrow(better),
-                                ncol(better))
-                colnames(better) <- rownames(better) <-
-                    sample(Sgenes, length(Sgenes))
-                better[lower.tri(better)] <- 0
-                diag(better) <- 1
-                better <- better[order(as.numeric(rownames(better))),
-                                 order(as.numeric(colnames(better)))]
-                score <- scoreAdj(D, better, method = method,
-                                  weights = weights,
-                                  subtopo = subtopo, prior = prior,
-                                  ratio = ratio, fpfn = fpfn,
-                                  Rho = Rho)
-                P <- score$subweights
-                oldadj <- better
-                score <- score$score
-                oldscore <- score
-                allscores <- score
-            }
-            stop <- FALSE
-            count <- 0
-            while(!stop) {
-                oldadj <- better
-                doScores <- function(i) {
-                    new <- models[[i]]
-                    score <- scoreAdj(D, new, method = method,
-                                      weights = weights,
-                                      subtopo = subtopo, prior = prior,
-                                      ratio = ratio, fpfn = fpfn,
-                                      Rho = Rho, P = P, oldadj = oldadj,
-                                      trans.close = FALSE)
-                    P <- score$subweights
-                    score <- score$score
-                    return(list(score, P))
-                }
-                models <- unique(c(get.insertions(better),
-                                   get.reversions(better),
-                                   get.deletions(better)))
-                if (is.null(parallel)) {
-                    scores <- unlist(lapply((seq_len(length(models))),
-                                            doScores), recursive = FALSE)
-                } else {
-                    scores <- unlist(sfLapply((seq_len(length(models))),
-                                              doScores), recursive = FALSE)
-                }
-                Ps <- scores[seq_len(length(models))*2]
-                scores <- unlist(scores[seq_len(length(models))*2 - 1])
-                scores[is.na(scores)] <- 0
-                bestidx <- which.max(scores)
-                best <- models[[bestidx]]
-                if ((max(scores, na.rm = TRUE) > oldscore |
-                    ((max(scores, na.rm = TRUE) == oldscore &
-                     sum(better == 1) > sum(best == 1))))
-                    & count < max_iter) {
-                    better <- best
-                    oldscore <- max(scores)
-                    allscores <- c(allscores, oldscore)
-                    P <- Ps[[which.max(scores)]]
-                } else {
-                    stop <- TRUE
-                }
-                count <- count + 1
-            }
-            if (iter > 1) {
-                if (oldscore > oldscore2) {
-                    better2 <- better
-                    allscores2 <- allscores
-                    oldscore2 <- oldscore
-                }
-            } else {
-                better2 <- better
-                allscores2 <- allscores
-                oldscore2 <- oldscore
-            }
-        }
-        better <- better2
-        allscores <- allscores2
-        oldscore <- oldscore2
-    }
-
-    if (search %in% "exhaustive") {
-        models <- enumerate.models(length(Sgenes), Sgenes,
-                                   trans.close = trans.close,
-                                   verbose = verbose)
-        doScores <- function(i) {
-            adj <- models[[i]]
-            score <- scoreAdj(D, adj, method = method, weights = weights,
-                              subtopo = subtopo, prior = prior,
-                              ratio = ratio, fpfn = fpfn,
-                              Rho = Rho)
-            score <- score$score
-            return(score)
-        }
-        if (is.null(parallel)) {
-            scores <- unlist(lapply(seq_len(length(models)), doScores))
-        } else {
-            scores <- unlist(sfLapply(seq_len(length(models)), doScores))
-        }
-        best <- which.max(scores)
-        better <- mytc(models[[best]])
-        allscores <- scores
-        oldscore <- max(scores)
-        diag(better) <- 1
-    }
-
-    if (search %in% "estimate") {
-        if (!is.null(weights)) {
-            Dw <- D*rep(weights, rep(nrow(D), ncol(D)))
-            weights <- NULL
-        } else {
-            Dw <- D
-        }
-        tmp <- nemEst(Dw, start = "null", method = method, fpfn = fpfn,
-                      Rho = Rho, domean = domean, modified = TRUE, ...)
-        tmp1 <- nemEst(Dw, start = "full", method = method, fpfn = fpfn,
-                       Rho = Rho, domean = domean, modified = TRUE, ...)
-        if (tmp1$ll > tmp$ll) { tmp <- tmp1 }
-        if (is.matrix(start2)) {
-            tmp2 <- nemEst(Dw, start = start2, method = method, fpfn = fpfn,
-                           Rho = Rho, domean = domean, modified = TRUE, ...)
-            if (tmp2$ll > tmp$ll) { tmp <- tmp2 }
-        }
-        better <- tmp$phi
-        oldscore <- tmp$ll
-        allscores <- tmp$lls
-        subweights <- Dw%*%cbind(t(Rho)%*%tmp$phi, 0)
-    }
-
-    if (!is.null(parallel)) {
-        sfStop()
-    }
-
-    if (is.null(subtopo)) {
-        subtopo <- scoreAdj(D, better, method = method, weights = weights,
-                            prior = prior,
-                            ratio = ratio, fpfn = fpfn,
-                            Rho = Rho, dotopo = TRUE)
-        subweights <- subtopo$subweights
-        subtopo <- subtopo$subtopo
-    } else {
-        subweights <- P
-    }
-
-    better <- transitive.reduction(better)
-    better <- better[order(as.numeric(rownames(better))),
-                     order(as.numeric(colnames(better)))]
-    nem <- list(adj = better, score = oldscore, scores = allscores,
-                redSpace = redSpace, subtopo = subtopo, D = D.backup,
-                subweights = subweights)
-    return(nem)
 }
 #' @noRd
 adj2dnf <- function(A) {
