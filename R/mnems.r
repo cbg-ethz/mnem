@@ -90,6 +90,7 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
     if (length(unique(colnames(D))) == ncol(D)) {
         domean <- FALSE
     }
+    Sgenes <- NULL
     if (domean) {
         D <- doMean(D, weights = weights, Rho = Rho, logtype = logtype)
         weights <- NULL
@@ -1742,9 +1743,9 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
             if (!is.null(parallel)) {
                 doMean <- doMean
                 rowRanges <- matrixStats::rowRanges
-                get.deletions <- getFromNamespace("get.deletions", "nem")
-                get.insertions <- getFromNamespace("get.insertions", "nem")
-                get.reversions <- getFromNamespace("get.reversions", "nem")
+                get.insertions <- get.ins.fast
+                get.reversions <- get.rev.tc
+                get.deletions <- get.del.tc
                 naturalsort <- naturalsort::naturalsort
                 sfInit(parallel = TRUE, cpus = parallel)
                 sfExport("modules", "mw", "ratio", "getSgeneN", "modData",
@@ -2159,7 +2160,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
             comp[[i]]$theta <- best$res[[i]]$subtopo
         }
     }
-    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda,
+    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda0,
                 probs = probs, lls = best$ll, phievo = best$phievo,
                 thetaevo = best$thetaevo, mwevo = best$mwevo,
                 ll = getLL(probs, logtype = logtype, mw = lambda, data = data,
