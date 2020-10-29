@@ -137,12 +137,13 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
         get.insertions <- get.ins.fast
         get.reversions <- get.rev.tc
         get.deletions <- get.del.tc
+        eigenMapMatMult <- mnem:::eigenMapMatMult
         naturalsort <- naturalsort::naturalsort
         sfInit(parallel = TRUE, cpus = parallel)
         sfExport("modules", "D", "start", "better", "transitive.reduction",
                  "method", "scoreAdj", "weights", "mytc",
                  "llrScore", "get.deletions", "get.insertions",
-                 "get.reversions", "getRho", "doMean")
+                 "get.reversions", "getRho", "doMean","eigenMapMatMult")
     }
 
     if (search %in% "small") {
@@ -647,7 +648,7 @@ fitacc <- function(x, y, strict = FALSE, unique = TRUE,
 #' @param convergence difference of when two log likelihoods
 #' are considered equal; see also convergence for the function
 #' mnem()
-#' @param ... additional parameters ofr the plots/lines functions
+#' @param ... additional parameters for the plots/lines functions
 #' @author Martin Pirkl
 #' @return plot of EM convergence
 #' @export
@@ -1747,7 +1748,12 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                 get.reversions <- get.rev.tc
                 get.deletions <- get.del.tc
                 naturalsort <- naturalsort::naturalsort
+                eigenMapMatMult <- mnem:::eigenMapMatMult
+                transClose_W <- mnem:::transClose_W
+                maxCol_row <- mnem:::maxCol_row
+                transClose_Ins <- mnem:::transClose_Ins
                 sfInit(parallel = TRUE, cpus = parallel)
+                sfLibrary(naturalsort)
                 sfExport("modules", "mw", "ratio", "getSgeneN", "modData",
                          "sortAdj", "calcEvopen", "evolution",
                          "getSgenes",
@@ -1755,13 +1761,13 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                          "scoreAdj", "max_iter", "random_probs",
                          "verbose", "llrScore", "search", "redSpace",
                          "affinity", "getProbs", "probscl", "method",
-                         "naturalsort", "getRho", "doMean",
+                         "getRho", "doMean","transitive.closure",
                          "transitive.reduction", "get.insertions",
                          "mytc", "get.deletions",
                          "get.reversions", "nemEst", "rowRanges",
                          "eigenMapMatMult", "get.ins.fast",
                          "get.rev.tc", "get.del.tc",
-                         "transClose_W")
+                         "transClose_W","maxCol_row","transClose_Ins")
             }
             do_inits <- function(s) {
                 if (!is.null(init)) {
@@ -1863,7 +1869,9 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                          dataF)
                                           postprobsR <- c(postprobs[i, nozero],
                                                           rep(0, n))
-                                          RhoR <- cbind(Rho[, nozero, drop = FALSE],diag(n))
+                                          RhoR <- cbind(
+                                              Rho[, nozero, drop = FALSE],
+                                              diag(n))
                                       }
                                   } else {
                                       dataR <- dataF
