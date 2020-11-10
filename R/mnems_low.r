@@ -557,17 +557,18 @@ estimateSubtopo <- function(data, fun = which.max) {
     return(subtopoX)
 }
 #' @noRd
-getProbs <- function(probs, k, data, res, method = "llr", n, affinity = 0,
+getProbs <- function(probs, k, data, res, method = "llr", affinity = 0,
                      converged = 10^-2, subtopoX = NULL, ratio = TRUE,
                      logtype = 2, mw = NULL, fpfn = fpfn, Rho = NULL,
                      complete = FALSE) {
+    n <- ncol(res[[1]]$adj)
     bestprobs <- probsold <- probs
     time0 <- TRUE
     count <- 0
     if (ncol(data) <= 100) {
         max_count <- 100
     } else {
-        max_count <- 1
+        max_count <- 10
     }
     ll0 <- llold <- -Inf
     stop <- FALSE

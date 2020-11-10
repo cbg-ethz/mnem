@@ -134,16 +134,9 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
     allscores <- score
 
     if (!is.null(parallel)) {
-        get.insertions <- get.ins.fast
-        get.reversions <- get.rev.tc
-        get.deletions <- get.del.tc
-        eigenMapMatMult <- mnem:::eigenMapMatMult
-        naturalsort <- naturalsort::naturalsort
         sfInit(parallel = TRUE, cpus = parallel)
-        sfExport("modules", "D", "start", "better", "transitive.reduction",
-                 "method", "scoreAdj", "weights", "mytc",
-                 "llrScore", "get.deletions", "get.insertions",
-                 "get.reversions", "getRho", "doMean","eigenMapMatMult")
+        sfLibrary(naturalsort)
+        sfLibrary(mnem)
     }
 
     if (search %in% "small") {
@@ -1742,32 +1735,9 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
     } else {
         if (inference %in% "em") {
             if (!is.null(parallel)) {
-                doMean <- doMean
-                rowRanges <- matrixStats::rowRanges
-                get.insertions <- get.ins.fast
-                get.reversions <- get.rev.tc
-                get.deletions <- get.del.tc
-                naturalsort <- naturalsort::naturalsort
-                eigenMapMatMult <- mnem:::eigenMapMatMult
-                transClose_W <- mnem:::transClose_W
-                maxCol_row <- mnem:::maxCol_row
-                transClose_Ins <- mnem:::transClose_Ins
                 sfInit(parallel = TRUE, cpus = parallel)
                 sfLibrary(naturalsort)
-                sfExport("modules", "mw", "ratio", "getSgeneN", "modData",
-                         "sortAdj", "calcEvopen", "evolution",
-                         "getSgenes",
-                         "getLL", "getAffinity", "D", "nem",
-                         "scoreAdj", "max_iter", "random_probs",
-                         "verbose", "llrScore", "search", "redSpace",
-                         "affinity", "getProbs", "probscl", "method",
-                         "getRho", "doMean","transitive.closure",
-                         "transitive.reduction", "get.insertions",
-                         "mytc", "get.deletions",
-                         "get.reversions", "nemEst", "rowRanges",
-                         "eigenMapMatMult", "get.ins.fast",
-                         "get.rev.tc", "get.del.tc",
-                         "transClose_W","maxCol_row","transClose_Ins")
+                sfLibrary(mnem)
             }
             do_inits <- function(s) {
                 if (!is.null(init)) {
