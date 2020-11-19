@@ -17,7 +17,7 @@ plotConvergence(x, col = NULL, type = "b", convergence = 0.1, ...)
 are considered equal; see also convergence for the function
 mnem()}
 
-\item{...}{additional parameters ofr the plots/lines functions}
+\item{...}{additional parameters for the plots/lines functions}
 }
 \value{
 plot of EM convergence
