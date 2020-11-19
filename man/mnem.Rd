@@ -135,9 +135,9 @@ l samples; either as probabilities with the sum of probabilities for a
 sample less or equal to 1 or discrete with 1s and 0s}
 
 \item{ksel}{character vector of methods for the inference of k; can combine
-"hc" (hierarchical clustering) or "kmeans" with "silhouette", "BIC" or "AIC";
-can also include "cor" for correlation distance (preferred)
-instead of euclidean}
+as the first two vlues "hc" (hierarchical clustering) or "kmeans" with 
+"silhouette", "BIC" or "AIC"; the third value is either "cor" for 
+correlation distance or any method accepted by the function 'dist'}
 }
 \value{
 object of class mnem

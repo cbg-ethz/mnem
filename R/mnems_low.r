@@ -334,7 +334,9 @@ initComps <- function(data, k=2, starts=1, verbose = FALSE, meanet = NULL,
     return(init)
 }
 #' @noRd
-initps <- function(data, ks, k, starts = 3, ksel = "dist") {
+initps <- function(data, ks, k,
+                   starts = 3,
+                   ksel = c("kmeans", "silhouette", "manhattan")) {
     clusters <- list()
     multi <- grep("_", colnames(data))
     if (length(multi) > 0) {
@@ -347,7 +349,8 @@ initps <- function(data, ks, k, starts = 3, ksel = "dist") {
             d <- (1 - cor(data[, which(colnames(data) %in% i)]))/2
             d <- as.dist(d)
         } else {
-            d <- dist(t(data[, which(colnames(data) %in% i)]))
+            d <- dist(t(data[, which(colnames(data) %in% i)]),
+                      method = ksel[3])
         }
         if (length(d) > 1) {
             hc <- hclust(d)
@@ -433,7 +436,8 @@ learnk <- function(data, kmax = 10, ksel = c("hc", "silhouette", "cor"),
             d <- (1 - cor(data[, which(colnames(data) %in% i)]))/2
             d <- as.dist(d)
         } else {
-            d <- dist(t(data[, which(colnames(data) %in% i)]))
+            d <- dist(t(data[, which(colnames(data) %in% i)]),
+                      method=ksel[3])
         }
         if ("hc" %in% ksel) {
             hc <- hclust(d)
