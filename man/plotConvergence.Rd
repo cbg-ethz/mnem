@@ -4,27 +4,18 @@
 \alias{plotConvergence}
 \title{Plot convergence of EM}
 \usage{
-plotConvergence(x, col = NULL, type = "b", convergence = 0.1, ...)
+plotConvergence(x, ...)
 }
 \arguments{
-\item{x}{mnem object}
+\item{x}{object with convergence statistics}
 
-\item{col}{vector of colors for the iterations}
-
-\item{type}{see ?plot.default}
-
-\item{convergence}{difference of when two log likelihoods
-are considered equal; see also convergence for the function
-mnem()}
-
-\item{...}{additional parameters for the plots/lines functions}
+\item{...}{additional parameters for the specific object type}
 }
 \value{
 plot of EM convergence
 }
 \description{
-This function plots the convergence of the different EM iterations (four
-figures, e.g. par(mfrow=(2,2))).
+Generic function plotting convergence diagnostics for different methods.
 }
 \examples{
 sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))

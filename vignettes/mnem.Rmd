@@ -1,7 +1,7 @@
 ---
-title: "Mixture Nested Effects Models  \n
-Simultaneous inference of causal networks and corresponding subpopulations
-from single cell perturbation data."
+title: |
+  | Mixture Nested Effects Models:
+  | Simultaneous inference of causal networks and corresponding subpopulations from single cell perturbation data
 author: "Martin Pirkl, Niko Beerenwinkel"
 date: "`r Sys.Date()`"
 graphics: yes

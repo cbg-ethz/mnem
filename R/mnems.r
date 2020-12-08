@@ -633,6 +633,25 @@ fitacc <- function(x, y, strict = FALSE, unique = TRUE,
 }
 #' Plot convergence of EM
 #'
+#' Generic function plotting convergence diagnostics for different methods.
+#' @param x object with convergence statistics
+#' @param ... additional parameters for the specific object type
+#' @author Martin Pirkl
+#' @return plot of EM convergence
+#' @export
+#' @importFrom grDevices rgb
+#' @examples
+#' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
+#' data <- (sim$data - 0.5)/0.5
+#' data <- data + rnorm(length(data), 0, 1)
+#' result <- mnem(data, k = 2, starts = 1)
+#' par(mfrow=c(2,2))
+#' plotConvergence(result)
+plotConvergence <- function (x, ...) {
+    UseMethod("plotConvergence",x)
+}
+#' Plot convergence of EM
+#'
 #' This function plots the convergence of the different EM iterations (four
 #' figures, e.g. par(mfrow=(2,2))).
 #' @param x mnem object
@@ -645,6 +664,7 @@ fitacc <- function(x, y, strict = FALSE, unique = TRUE,
 #' @author Martin Pirkl
 #' @return plot of EM convergence
 #' @export
+#' @method plotConvergence mnem
 #' @importFrom grDevices rgb
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
@@ -653,7 +673,7 @@ fitacc <- function(x, y, strict = FALSE, unique = TRUE,
 #' result <- mnem(data, k = 2, starts = 1)
 #' par(mfrow=c(2,2))
 #' plotConvergence(result)
-plotConvergence <- function(x, col = NULL, type = "b",
+plotConvergence.mnem <- function(x, col = NULL, type = "b",
                                  convergence = 0.1, ...) {
     runs <- length(x$limits)
     if (is.null(col)) {
