@@ -564,7 +564,7 @@ estimateSubtopo <- function(data, fun = which.max) {
 getProbs <- function(probs, k, data, res, method = "llr", affinity = 0,
                      converged = 10^-2, subtopoX = NULL, ratio = TRUE,
                      logtype = 2, mw = NULL, fpfn = fpfn, Rho = NULL,
-                     complete = FALSE) {
+                     complete = FALSE, nullcomp = FALSE) {
     n <- ncol(res[[1]]$adj)
     bestprobs <- probsold <- probs
     time0 <- TRUE
@@ -591,23 +591,27 @@ getProbs <- function(probs, k, data, res, method = "llr", affinity = 0,
                                     complete = complete)
         probs0 <- probsold*0
         for (i in seq_len(k)) {
-            adj1 <- mytc(res[[i]]$adj)
-            if (is.null(Rho)) {
-                adj1 <- adj1[colnames(data), ]
+            if (i == k & nullcomp) {
+                tmp <- 0
             } else {
-                adj1 <- t(Rho)%*%adj1
-                adj1[which(adj1 > 1)] <- 1
-            }
-            adj1 <- cbind(adj1, "0" = 0)
-            if (is.null(res[[i]]$subtopo)) {
-                subtopo <- maxCol_row(t(t(data)*postprobsold[i, ])%*%adj1)
-            } else {
-                subtopo <- res[[i]]$subtopo
-                subtopo[which(subtopo == 0)] <- ncol(adj1)
-            }
-            adj2 <- adj1[, subtopo]
-            if (method %in% "llr") {
-                tmp <- colSums(data*t(adj2))
+                adj1 <- mytc(res[[i]]$adj)
+                if (is.null(Rho)) {
+                    adj1 <- adj1[colnames(data), ]
+                } else {
+                    adj1 <- t(Rho)%*%adj1
+                    adj1[which(adj1 > 1)] <- 1
+                }
+                adj1 <- cbind(adj1, "0" = 0)
+                if (is.null(res[[i]]$subtopo)) {
+                    subtopo <- maxCol_row(t(t(data)*postprobsold[i, ])%*%adj1)
+                } else {
+                    subtopo <- res[[i]]$subtopo
+                    subtopo[which(subtopo == 0)] <- ncol(adj1)
+                }
+                adj2 <- adj1[, subtopo]
+                if (method %in% "llr") {
+                    tmp <- colSums(data*t(adj2))
+                }
             }
             probs0[i, ] <- tmp
         }

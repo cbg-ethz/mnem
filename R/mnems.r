@@ -502,6 +502,10 @@ transitive.closure <- function(g, u = NULL, v = NULL) {
 #' fitacc(result, sim, strict = TRUE, type = "spec")
 fitacc <- function(x, y, strict = FALSE, unique = TRUE,
                    type = "ham") {
+    nullcomp <- x$nullcomp
+    if (nullcomp) {
+        x$comp[[length(x$comp)]] <- NULL
+    }
     for (i in seq_len(length(x$comp))) {
         x$comp[[i]]$theta <- NULL
     }
@@ -1553,6 +1557,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' as the first two vlues "hc" (hierarchical clustering) or "kmeans" with 
 #' "silhouette", "BIC" or "AIC"; the third value is either "cor" for 
 #' correlation distance or any method accepted by the function 'dist'
+#' @param nullcomp if TRUE, adds a null component (k+1)
 #' @author Martin Pirkl
 #' @return object of class mnem
 #' \item{comp}{list of the component with each component being
@@ -1589,7 +1594,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  subtopoX = NULL, ratio = TRUE, logtype = 2,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), Rho = NULL,
-                 ksel = c("kmeans", "silhouette", "cor")) {
+                 ksel = c("kmeans", "silhouette", "cor"),
+                 nullcomp = FALSE) {
     if (length(grep("_", colnames(D))) > 0 & is.null(Rho)) {
         Rho <- getRho(D)
     }
@@ -1712,6 +1718,9 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
     res1 <- NULL
     if (starts <= 1) { parallel2 <- parallel; parallel <- NULL }
     if (!is.null(parallel)) { parallel2 <- NULL }
+    if (nullcomp) {
+        k <- k+1
+    }
     if (k == 1) {
         if (!is.null(init)) {
             start <- phi[[1]][[1]]
@@ -1747,7 +1756,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         probs <- matrix(0, k, ncol(data))
         probs <- getProbs(probs, k, data, res, method, affinity,
                           converged, subtopoX, ratio, mw = mw, fpfn = fpfn,
-                          Rho = Rho, complete = complete)
+                          Rho = Rho, complete = complete, nullcomp = nullcomp)
         subtopoX <- probs$subtopoX
         limits[[1]]$ll <- probs$ll
         limits[[1]]$probs <- probs$probs
@@ -1769,14 +1778,23 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                             res1[[i]][["subtopo"]] <- theta[[s]][[i]]
                         }
                     }
-                    k <- length(res1)
+                    if (nullcomp) {
+                        k <- length(res1) + 1
+                        res1[[k]] <- list()
+                        res1[[k]][["adj"]] <- res1[[i]][["adj"]]*0
+                        res1[[k]][["subtopo"]] <- res1[[i]][["subtopo"]]*0
+                        mw <- rep(1/k,k)
+                    } else {
+                        k <- length(res1)
+                    }
                     n <- ncol(res1[[1]]$adj)
                     if (is.null(p)) {
                         probs <- matrix(0, k, ncol(data))
                         probs0 <- getProbs(probs, k, data, res1, method,
                                           affinity, converged, subtopoX,
                                           ratio, mw = mw, fpfn = fpfn,
-                                          Rho = Rho, complete = complete)
+                                          Rho = Rho, complete = complete,
+                                          nullcomp = nullcomp)
                         subtopoX <- probs0$subtopoX
                         mw <- probs0$mw
                         ll <- probs0$ll
@@ -1873,62 +1891,69 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                   } else {
                                       thetaX <- NULL
                                   }
-                                  if (is.null(start0)) {
-                                      res[[i]] <- nem(D = dataR,
-                                                        weights = postprobsR,
-                                                        search = search,
-                                                        start = start0,
-                                                        method = method,
-                                                        parallel = parallel2,
-                                                        reduce = reduce,
-                                                        runs = runs,
-                                                        verbose = verbose,
-                                                        redSpace = redSpace,
-                                                        ratio = ratio,
-                                                        domean = domean,
-                                                        modulesize = modulesize,
-                                                        Rho = RhoR,
-                                                        logtype = logtype,
-                                                        modified = TRUE,
-                                                        Sgenes = Sgenes,
-                                                        subtopo = thetaX)
-                                  } else {
-                                      test01 <- list()
-                                      test01scores <- numeric(2)
-                                      for (j in seq_len(2)) {
-                                          if (j == 2) {
-                                              start1 <- start0
-                                          } else {
-                                              start1 <- start0*0
+                                  if (!nullcomp | i != k) {
+                                      if (is.null(start0)) {
+                                          res[[i]] <- nem(D = dataR,
+                                                          weights = postprobsR,
+                                                          search = search,
+                                                          start = start0,
+                                                          method = method,
+                                                          parallel = parallel2,
+                                                          reduce = reduce,
+                                                          runs = runs,
+                                                          verbose = verbose,
+                                                          redSpace = redSpace,
+                                                          ratio = ratio,
+                                                          domean = domean,
+                                                          modulesize =
+                                                              modulesize,
+                                                          Rho = RhoR,
+                                                          logtype = logtype,
+                                                          modified = TRUE,
+                                                          Sgenes = Sgenes,
+                                                          subtopo = thetaX)
+                                      } else {
+                                          test01 <- list()
+                                          test01scores <- numeric(2)
+                                          for (j in seq_len(2)) {
+                                              if (j == 2) {
+                                                  start1 <- start0
+                                              } else {
+                                                  start1 <- start0*0
+                                              }
+                                              test01[[j]] <-
+                                                  nem(D = dataR,
+                                                      weights =
+                                                          postprobsR,
+                                                      search = search,
+                                                      start = start1,
+                                                      method = method,
+                                                      parallel =
+                                                          parallel2,
+                                                      reduce = reduce,
+                                                      runs = runs,
+                                                      verbose = verbose,
+                                                      redSpace =
+                                                          redSpace,
+                                                      ratio = ratio,
+                                                      domean = domean,
+                                                      odulesize =
+                                                          modulesize,
+                                                      Rho = RhoR,
+                                                      logtype = logtype,
+                                                      modified = TRUE,
+                                                      Sgenes = Sgenes,
+                                                      subtopo = thetaX)
+                                              test01scores[j] <-
+                                                  max(test01[[j]]$scores)
                                           }
-                                          test01[[j]] <-
-                                              nem(D = dataR,
-                                                    weights =
-                                                        postprobsR,
-                                                    search = search,
-                                                    start = start1,
-                                                    method = method,
-                                                    parallel =
-                                                        parallel2,
-                                                    reduce = reduce,
-                                                    runs = runs,
-                                                    verbose = verbose,
-                                                    redSpace =
-                                                        redSpace,
-                                                    ratio = ratio,
-                                                    domean = domean,
-                                                    odulesize =
-                                                        modulesize,
-                                                    Rho = RhoR,
-                                                    logtype = logtype,
-                                                    modified = TRUE,
-                                                    Sgenes = Sgenes,
-                                                    subtopo = thetaX)
-                                          test01scores[j] <-
-                                              max(test01[[j]]$scores)
+                                          res[[i]] <-
+                                              test01[[which.max(test01scores)]]
                                       }
-                                      res[[i]] <-
-                                          test01[[which.max(test01scores)]]
+                                  } else {
+                                      res[[i]] <- list()
+                                      res[[i]]$adj <- res[[i-1]]$adj*0
+                                      res[[i]]$subtopo <- res[[i-1]]$subtopo*0
                                   }
                                   edgechange <- edgechange +
                                       sum(abs(res[[i]]$adj - res1[[i]]$adj))
@@ -1936,7 +1961,6 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                       sum(res[[i]]$subtopo != res1[[i]]$subtopo)
                                   res[[i]]$D <- NULL
                                   res[[i]]$subweights <- NULL
-
                               }
                               evopen <- 0
                               if (evolution) {
@@ -1953,7 +1977,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                 affinity, converged,
                                                 subtopoX, ratio,
                                                 mw = mw, fpfn = fpfn,
-                                                Rho = Rho, complete = complete)
+                                                Rho = Rho, complete = complete,
+                                                nullcomp = nullcomp)
                               if (getLL(probs$probs, logtype = logtype,
                                         mw = mw, data = data,
                                         complete = complete) >
@@ -2160,7 +2185,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                 probs = probs, lls = best$ll, phievo = best$phievo,
                 thetaevo = best$thetaevo, mwevo = best$mwevo,
                 ll = getLL(probs, logtype = logtype, mw = lambda, data = data,
-                           complete = complete), complete = complete, Rho = Rho)
+                           complete = complete), complete = complete, Rho = Rho,
+                nullcomp = nullcomp)
     class(res) <- "mnem"
     return(res)
 }
@@ -2305,6 +2331,11 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                       bestCell = TRUE, showprobs = FALSE, shownull = TRUE,
                       ratio = TRUE, method = "llr", showweights = TRUE, ...) {
     complete <- x$complete
+    if (is.null(x$nullcomp)) {
+        nullcomp <- FALSE
+    } else {
+        nullcomp <- x$nullcomp
+    }
     x2 <- x
     data <- x$data
     Rho <- x$Rho
@@ -2365,7 +2396,12 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
     unipct <- round(rowSums(unipct)/ncol(mixnorm), 3)*100
     Sgenes <- getSgenes(data)
     SgeneN <- getSgeneN(data)
-    for (i in seq_len(length(x$comp))) {
+    if (nullcomp) {
+        k <- length(x$comp) - 1
+    } else {
+        k <- length(x$comp)
+    }
+    for (i in seq_len(k)) {
         shared <- shared0 <- unique(colnames(mixnorm)[
             which(apply(mixnorm, 2,function(x)
                 return(sum(x != 0))) != 1 & mixnorm[i, ] != 0)])
@@ -2924,7 +2960,9 @@ simData <- function(Sgenes = 5, Egenes = 1,
                                    uninform, ncol(data)))
     }
     if (badCells > 0) {
-        data <- cbind(data, matrix(0,nrow(data),badCells))
+        baddata <- matrix(0,nrow(data),badCells)
+        colnames(baddata) <- sample(seq_len(Sgenes),badCells,replace=TRUE)
+        data <- cbind(data, baddata)
     }
     sim <- list(Nem = Nem, theta = theta, data = data, index = index, mw = mw)
     class(sim) <- "mnemsim"
@@ -3025,7 +3063,7 @@ fuzzyindex <- function(x, data, logtype = 2, complete = FALSE, ...) {
     n <- getSgeneN(data)
     probs <- matrix(0, k, ncol(x$data))
     probs <- getProbs(probs, k, data, res, mw = x$mw, logtype = logtype,
-                      Rho=Rho, complete = complete)
+                      Rho=Rho, complete = complete, nullcomp = FALSE)
     ll <- probs$ll
     mw <- probs$mw
     colnames(probs$probs) <- colnames(data)

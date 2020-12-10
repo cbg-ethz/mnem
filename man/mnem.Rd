@@ -38,7 +38,8 @@ mnem(
   increase = TRUE,
   fpfn = c(0.1, 0.1),
   Rho = NULL,
-  ksel = c("kmeans", "silhouette", "cor")
+  ksel = c("kmeans", "silhouette", "cor"),
+  nullcomp = FALSE
 )
 }
 \arguments{
@@ -138,6 +139,8 @@ sample less or equal to 1 or discrete with 1s and 0s}
 as the first two vlues "hc" (hierarchical clustering) or "kmeans" with 
 "silhouette", "BIC" or "AIC"; the third value is either "cor" for 
 correlation distance or any method accepted by the function 'dist'}
+
+\item{nullcomp}{if TRUE, adds a null component (k+1)}
 }
 \value{
 object of class mnem
