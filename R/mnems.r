@@ -2342,11 +2342,13 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
     if (is.null(Rho)) {
         Rho <- getRho(data)
     }
-
+    if (nullcomp) {
+        x$comp[[length(x$comp)]] <- NULL
+    }
+    k <- length(x$comp)
     laymat <- rbind(seq_len(length(x$comp)+1),
                     c(length(x$comp)+2, rep(length(x$comp)+3,
                                             length(x$comp))))
-
     if (legend & !showdata) {
         laymat <- matrix(seq_len(length(x$comp)+1), nrow = 1)
     }
@@ -2359,7 +2361,6 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                                                 length(x$comp)-1)))
     }
     layout(laymat)
-
     par(oma=oma)
     if (legend) {
         plotDnf(c("Sgenes=Egenes", "Egenes=Cells", "Cells=Fit"),
@@ -2396,11 +2397,6 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
     unipct <- round(rowSums(unipct)/ncol(mixnorm), 3)*100
     Sgenes <- getSgenes(data)
     SgeneN <- getSgeneN(data)
-    if (nullcomp) {
-        k <- length(x$comp) - 1
-    } else {
-        k <- length(x$comp)
-    }
     for (i in seq_len(k)) {
         shared <- shared0 <- unique(colnames(mixnorm)[
             which(apply(mixnorm, 2,function(x)
