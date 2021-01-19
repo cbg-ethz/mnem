@@ -2779,7 +2779,7 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 #' @param uninform number of uninformative Egenes
 #' @param unitheta uniform theta, if TRUE
 #' @param edgeprob edge probability, value between 0 and 1 for sparse or
-#' dense networks
+#' dense networks or a range c(l,u) with lower and upper bound
 #' @param multi a vector with the percentages of cell with multiple
 #' perturbations, e.g. c(0.2,0.1,0) for 20% double and 10% triple and
 #' no quadruple knock-downs
@@ -2789,7 +2789,7 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 #' @param badCells number of cells, which are just noise and not connected
 #' to the ground truth network
 #' @param exactProb logical; if TRUE generates random network with exact
-#' fraction of edges
+#' fraction of edges provided by edgeprob
 #' @param ... additional parameters for the scale free network
 #' sampler (see 'nem' package)
 #' @author Martin Pirkl
@@ -2812,7 +2812,7 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 simData <- function(Sgenes = 5, Egenes = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,
-                    edgeprob = 0.25, multi = FALSE, subsample = 1,
+                    edgeprob = c(0,1), multi = FALSE, subsample = 1,
                     scalefree = FALSE, badCells = 0, exactProb = TRUE, ...) {
     if (!is.null(mw) & Nems != length(mw)) {
         print(paste0("Vector of mixture weights 'mw' must be the length of the",
@@ -2820,6 +2820,10 @@ simData <- function(Sgenes = 5, Egenes = 1,
                      " is overridden by the length ", length(mw),
                      " of 'mw'."))
         Nems <- length(mw)
+    }
+    edgeprob2 <- 0
+    if (length(edgeprob)==2) {
+        edgeprob2 <- edgeprob
     }
     if (multi[1] == FALSE) { multi <- rep(0, Sgenes-1) }
     if (length(multi) < Sgenes-1) {
@@ -2830,6 +2834,9 @@ simData <- function(Sgenes = 5, Egenes = 1,
     index <- NULL
     theta <- list()
     for (i in seq_len(Nems)) {
+        if (length(edgeprob2)==2) {
+            edgeprob <- runif(1,edgeprob2[1],edgeprob2[2])
+        }
         if (i == 1 | !evolution) {
             if (scalefree) {
                 adj <- sampleRndNetwork(seq_len(Sgenes), DAG = TRUE, ...)

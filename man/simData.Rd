@@ -14,7 +14,7 @@ simData(
   nCells = 1000,
   uninform = 0,
   unitheta = FALSE,
-  edgeprob = 0.25,
+  edgeprob = c(0, 1),
   multi = FALSE,
   subsample = 1,
   scalefree = FALSE,
@@ -43,7 +43,7 @@ simData(
 \item{unitheta}{uniform theta, if TRUE}
 
 \item{edgeprob}{edge probability, value between 0 and 1 for sparse or
-dense networks}
+dense networks or a range c(l,u) with lower and upper bound}
 
 \item{multi}{a vector with the percentages of cell with multiple
 perturbations, e.g. c(0.2,0.1,0) for 20% double and 10% triple and
@@ -58,7 +58,7 @@ used}
 to the ground truth network}
 
 \item{exactProb}{logical; if TRUE generates random network with exact
-fraction of edges}
+fraction of edges provided by edgeprob}
 
 \item{...}{additional parameters for the scale free network
 sampler (see 'nem' package)}
