@@ -1567,7 +1567,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' @param mcmc_nodeswitch if set to TRUE, node switching is allowed as a move, additional to the edge moves
 #' @param mcmc_EM_NEM if set to TRUE, the EM and NEM are each run 10 times to infer the network mixture and the resulting lilelihoods saved to compare them to the MCMC
 #' @param mcmc_postgaps can be set to 1, 10 or 100. Determines after how many iterations the next Phi mixture is added to the Phi edge Frequency tracker in the mcmc
-#' @param penalized if set to TRUE, the penalized likelihood will be used for the mcmc. 
+#' @param mcmc_penalized if set to TRUE, the penalized likelihood will be used for the mcmc. 
 #' Per default this is FALSE, since no component learning is involved and sparcity is hence not enforced
 #' @author Martin Pirkl
 #' @return object of class mnem
@@ -2071,9 +2071,10 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
             }
         }
         if (inference %in% "mcmc"){
-          mcmc <- MCMC(Nems=k, Sgenes=Sgenes, data=data, stop_counter=mcmc_iterations, burn_in=mcmc_burn_in, 
+          res <- MCMC(Nems=k, Sgenes=Sgenes, data=data, stop_counter=mcmc_iterations, burn_in=mcmc_burn_in, 
                        starts=mcmc_starts, Hastings=mcmc_Hastings, Initialize=mcmc_initialize, NodeSwitching=mcmc_nodeswitch, 
                        EM_NEM=mcmc_EM_NEM, post_gaps=mcmc_postgaps, penalized=mcmc_penalized)
+          class(res) <- "mcmc"
         }
         ## if (inference %in% "greedy") {
         ##     lls <- NULL
@@ -2107,106 +2108,108 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         ##     }
         ## }
     }
-    best <- limits[[1]]
-    if (length(limits) > 1) {
-        for (i in 2:length(limits)) {
-            if (max(best$ll) <= max(limits[[i]]$ll)) {
-                best <- limits[[i]]
-            }
-        }
+    if (inference %in% "em"){
+      best <- limits[[1]]
+      if (length(limits) > 1) {
+          for (i in 2:length(limits)) {
+              if (max(best$ll) <= max(limits[[i]]$ll)) {
+                  best <- limits[[i]]
+              }
+          }
+      }
+      if (compress) {
+          unique <- list()
+          count <- 1
+          added <- 1
+          for (i in seq_len(length(best$res))) {
+              if (i == 1) {
+                  unique[[1]] <- best$res[[1]]
+                  next()
+              }
+              count <- count + 1
+              unique[[count]] <- best$res[[i]]
+              added <- c(added, i)
+              for (j in seq_len(length(unique)-1)) {
+                  if (all(unique[[count]]$adj - unique[[j]]$adj  == 0)) {
+                      unique[[count]] <- NULL
+                      count <- count - 1
+                      added <- added[-length(added)]
+                      break()
+                  }
+              }
+          }
+          dead <- NULL
+          for (i in seq_len(length(unique))) {
+              dups <- NULL
+              a <- mytc(unique[[i]]$adj)
+              for (j in seq_len(length(unique))) {
+                  if (i %in% j | j %in% dead) { next() }
+                  b <- mytc(unique[[j]]$adj)
+                  dups <- c(dups, which(apply(abs(a - b), 1, sum) == 0))
+              }
+              if (all(seq_len(nrow(unique[[i]]$adj)) %in% dups)) {
+                  dead <- c(dead, i)
+              }
+          }
+          if (is.null(dead)) {
+              ulength <- seq_len(length(unique))
+          } else {
+              added <- added[-dead]
+              ulength <- (seq_len(length(unique)))[-dead]
+          }
+          count <- 0
+          unique2 <- list()
+          for (i in ulength) {
+              count <- count + 1
+              unique2[[count]] <- unique[[i]]    }
+          unique <- unique2
+          probs <- best$probs[added, , drop = FALSE]
+          colnames(probs) <- colnames(D.backup)
+          postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE,
+                                   logtype = logtype, mw = mw, data = data,
+                                   complete = complete)
+          if (!is.null(dim(postprobs))) {
+              lambda <- apply(postprobs, 1, sum)
+              lambda0 <- lambda/sum(lambda)
+              lambda <- best$mw
+          } else {
+              lambda <- 1
+          }
+          comp <- list()
+          for (i in seq_len(length(unique))) {
+              comp[[i]] <- list()
+              comp[[i]]$phi <- unique[[i]]$adj
+              comp[[i]]$theta <- unique[[i]]$subtopo
+          }
+      } else {
+          probs <- best$probs[, , drop = FALSE]
+          colnames(probs) <- colnames(D.backup)
+          postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE,
+                                   logtype = logtype, mw = best$mw, data = data,
+                                   complete = complete)
+          if (!is.null(dim(postprobs))) {
+              lambda <- apply(postprobs, 1, sum)
+              lambda0 <- lambda/sum(lambda)
+              lambda <- best$mw
+              if (k == 1) { lambda <- 1 }
+          } else {
+              lambda <- 1
+          }
+          comp <- list()
+          for (i in seq_len(length(best$res))) {
+              comp[[i]] <- list()
+              comp[[i]]$phi <- best$res[[i]]$adj
+              comp[[i]]$theta <- best$res[[i]]$subtopo
+          }
+      }
+      res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda0,
+                  probs = probs, lls = best$ll, phievo = best$phievo,
+                  thetaevo = best$thetaevo, mwevo = best$mwevo,
+                  ll = getLL(probs, logtype = logtype, mw = lambda, data = data,
+                             complete = complete), complete = complete, Rho = Rho,
+                  nullcomp = nullcomp)
+      class(res) <- "mnem"
     }
-    if (compress) {
-        unique <- list()
-        count <- 1
-        added <- 1
-        for (i in seq_len(length(best$res))) {
-            if (i == 1) {
-                unique[[1]] <- best$res[[1]]
-                next()
-            }
-            count <- count + 1
-            unique[[count]] <- best$res[[i]]
-            added <- c(added, i)
-            for (j in seq_len(length(unique)-1)) {
-                if (all(unique[[count]]$adj - unique[[j]]$adj  == 0)) {
-                    unique[[count]] <- NULL
-                    count <- count - 1
-                    added <- added[-length(added)]
-                    break()
-                }
-            }
-        }
-        dead <- NULL
-        for (i in seq_len(length(unique))) {
-            dups <- NULL
-            a <- mytc(unique[[i]]$adj)
-            for (j in seq_len(length(unique))) {
-                if (i %in% j | j %in% dead) { next() }
-                b <- mytc(unique[[j]]$adj)
-                dups <- c(dups, which(apply(abs(a - b), 1, sum) == 0))
-            }
-            if (all(seq_len(nrow(unique[[i]]$adj)) %in% dups)) {
-                dead <- c(dead, i)
-            }
-        }
-        if (is.null(dead)) {
-            ulength <- seq_len(length(unique))
-        } else {
-            added <- added[-dead]
-            ulength <- (seq_len(length(unique)))[-dead]
-        }
-        count <- 0
-        unique2 <- list()
-        for (i in ulength) {
-            count <- count + 1
-            unique2[[count]] <- unique[[i]]    }
-        unique <- unique2
-        probs <- best$probs[added, , drop = FALSE]
-        colnames(probs) <- colnames(D.backup)
-        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE,
-                                 logtype = logtype, mw = mw, data = data,
-                                 complete = complete)
-        if (!is.null(dim(postprobs))) {
-            lambda <- apply(postprobs, 1, sum)
-            lambda0 <- lambda/sum(lambda)
-            lambda <- best$mw
-        } else {
-            lambda <- 1
-        }
-        comp <- list()
-        for (i in seq_len(length(unique))) {
-            comp[[i]] <- list()
-            comp[[i]]$phi <- unique[[i]]$adj
-            comp[[i]]$theta <- unique[[i]]$subtopo
-        }
-    } else {
-        probs <- best$probs[, , drop = FALSE]
-        colnames(probs) <- colnames(D.backup)
-        postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE,
-                                 logtype = logtype, mw = best$mw, data = data,
-                                 complete = complete)
-        if (!is.null(dim(postprobs))) {
-            lambda <- apply(postprobs, 1, sum)
-            lambda0 <- lambda/sum(lambda)
-            lambda <- best$mw
-            if (k == 1) { lambda <- 1 }
-        } else {
-            lambda <- 1
-        }
-        comp <- list()
-        for (i in seq_len(length(best$res))) {
-            comp[[i]] <- list()
-            comp[[i]]$phi <- best$res[[i]]$adj
-            comp[[i]]$theta <- best$res[[i]]$subtopo
-        }
-    }
-    res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda0,
-                probs = probs, lls = best$ll, phievo = best$phievo,
-                thetaevo = best$thetaevo, mwevo = best$mwevo,
-                ll = getLL(probs, logtype = logtype, mw = lambda, data = data,
-                           complete = complete), complete = complete, Rho = Rho,
-                nullcomp = nullcomp)
-    class(res) <- "mnem"
     return(res)
 }
 #' Bootstrap.
