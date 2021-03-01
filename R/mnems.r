@@ -359,11 +359,11 @@ scoreAdj <- function(D, adj, method = "llr", logtype = 2, weights = NULL,
                      Rho = NULL, dotopo = FALSE,
                      P = NULL, oldadj = NULL, modified = TRUE) {
     if (!modified) { D <- modData(D) }
-    if (method %in% "disc") {                                             
-        D[which(D == 1)] <- log((1 - fpfn[2])/fpfn[1])/log(logtype)       
-        D[which(D == 0)] <- log(fpfn[2]/(1 - fpfn[1]))/log(logtype)       
-        method <- "llr"                                                   
-    }   
+    if (method %in% "disc") {
+        D[which(D == 1)] <- log((1 - fpfn[2])/fpfn[1])/log(logtype)
+        D[which(D == 0)] <- log(fpfn[2]/(1 - fpfn[1]))/log(logtype)
+        method <- "llr"
+    }
     if (trans.close) {
         adj <- mytc(adj)
     }
@@ -424,7 +424,7 @@ scoreAdj <- function(D, adj, method = "llr", logtype = 2, weights = NULL,
 #' rownames(g) <- colnames(g) <- seq_len(3)
 #' g.tr <- transitive.reduction(g)
 transitive.reduction <- function (g) {
-    if (!(is(g, "matrix") | is(g, "graphNEL"))) 
+    if (!(is(g, "matrix") | is(g, "graphNEL")))
         stop("Input must be an adjacency matrix or graphNEL object")
     if (is(g, "graphNEL")) {
         g = as(g, "matrix")
@@ -436,7 +436,7 @@ transitive.reduction <- function (g) {
         for (x in seq_len(nrow(g))) {
             if (g[x, y] != 0) {
                 for (j in seq_len(nrow(g))) {
-                  if ((g[y, j] != 0) & sign(type[x, j]) * sign(type[x, 
+                  if ((g[y, j] != 0) & sign(type[x, j]) * sign(type[x,
                     y]) * sign(type[y, j]) != -1) {
                     g[x, j] = 0
                   }
@@ -1554,21 +1554,31 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' l samples; either as probabilities with the sum of probabilities for a
 #' sample less or equal to 1 or discrete with 1s and 0s
 #' @param ksel character vector of methods for the inference of k; can combine
-#' as the first two vlues "hc" (hierarchical clustering) or "kmeans" with 
-#' "silhouette", "BIC" or "AIC"; the third value is either "cor" for 
+#' as the first two vlues "hc" (hierarchical clustering) or "kmeans" with
+#' "silhouette", "BIC" or "AIC"; the third value is either "cor" for
 #' correlation distance or any method accepted by the function 'dist'
 #' @param nullcomp if TRUE, adds a null component (k+1)
 #' @param mcmc_iteraions number of iterations for mcmc
-#' @param mcmc_burn_in number of iterations to be discarded prior to analyzing the posterior distribution of the mcmc
-#' @param mcmc_starts how many times the MCMC is restarted for the same data set
+#' @param mcmc_burn_in number of iterations to be discarded prior to
+#' analyzing the posterior distribution of the mcmc
+#' @param mcmc_starts how many times the MCMC is restarted for the same data
+#' set
 #' @param mcmc_Hastings if set to TRUE, the Hastings ratio is calculated
-#' @param mcmc_initialize if set to "random", the initial Phi for the MCMC has edges added by sampling from a uniform distribution. 
+#' @param mcmc_initialize if set to "random", the initial Phi for the MCMC
+#' has edges added by sampling from a uniform distribution.
 #' If set to "empty", the initial Phi is empty
-#' @param mcmc_nodeswitch if set to TRUE, node switching is allowed as a move, additional to the edge moves
-#' @param mcmc_EM_NEM if set to TRUE, the EM and NEM are each run 10 times to infer the network mixture and the resulting lilelihoods saved to compare them to the MCMC
-#' @param mcmc_postgaps can be set to 1, 10 or 100. Determines after how many iterations the next Phi mixture is added to the Phi edge Frequency tracker in the mcmc
-#' @param mcmc_penalized if set to TRUE, the penalized likelihood will be used for the mcmc. 
-#' Per default this is FALSE, since no component learning is involved and sparcity is hence not enforced
+#' @param mcmc_nodeswitch if set to TRUE, node switching is allowed as a
+#' move, additional to the edge moves
+#' @param mcmc_EM_NEM if set to TRUE, the EM and NEM are each run 10 times
+#' to infer the network mixture and the resulting lilelihoods saved to
+#' compare them to the MCMC
+#' @param mcmc_postgaps can be set to 1, 10 or 100. Determines after how
+#' many iterations the next Phi mixture is added to the Phi edge Frequency
+#' tracker in the mcmc
+#' @param mcmc_penalized if set to TRUE, the penalized likelihood will be
+#' used for the mcmc.
+#' Per default this is FALSE, since no component learning is involved and
+#' sparcity is hence not enforced
 #' @author Martin Pirkl
 #' @return object of class mnem
 #' \item{comp}{list of the component with each component being
@@ -1606,9 +1616,9 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), Rho = NULL,
                  ksel = c("kmeans", "silhouette", "cor"),
-                 nullcomp = FALSE, mcmc_iterations=30000, mcmc_burn_in=10000, 
-                 mcmc_starts=3, mcmc_Hastings=TRUE, mcmc_initialize= "random", 
-                 mcmc_nodeswitch=TRUE, mcmc_EM_NEM=FALSE, mcmc_postgaps=100, 
+                 nullcomp = FALSE, mcmc_iterations=30000, mcmc_burn_in=10000,
+                 mcmc_starts=3, mcmc_Hastings=TRUE, mcmc_initialize= "random",
+                 mcmc_nodeswitch=TRUE, mcmc_EM_NEM=FALSE, mcmc_postgaps=100,
                  mcmc_penalized=FALSE) {
     if (length(grep("_", colnames(D))) > 0 & is.null(Rho)) {
         Rho <- getRho(D)
@@ -2071,10 +2081,10 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
             }
         }
         if (inference %in% "mcmc"){
-          res <- MCMC(Nems=k, Sgenes=Sgenes, data=data, stop_counter=mcmc_iterations, burn_in=mcmc_burn_in, 
-                       starts=mcmc_starts, Hastings=mcmc_Hastings, Initialize=mcmc_initialize, NodeSwitching=mcmc_nodeswitch, 
+          res <- MCMC(Nems=k, Sgenes=Sgenes, data=data, stop_counter=mcmc_iterations, burn_in=mcmc_burn_in,
+                       starts=mcmc_starts, Hastings=mcmc_Hastings, Initialize=mcmc_initialize, NodeSwitching=mcmc_nodeswitch,
                        EM_NEM=mcmc_EM_NEM, post_gaps=mcmc_postgaps, penalized=mcmc_penalized)
-          class(res) <- "mcmc"
+          class(res) <- "mnem_mcmc"
         }
         ## if (inference %in% "greedy") {
         ##     lls <- NULL
@@ -2679,18 +2689,18 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
         }
     }
 }
-                              
+
 #' Plot mnem_mcmc result.
 #'
-#' @param x mcmc object
+#' @param x mnem_mcmc object
 #' @param starts restarts of mcmc as used in mnem function
 #' @author Viktoria Brunner
 #' @return visualization of mcmc result with Rgraphviz
 #' @export
-#' @method plot mcmc
+#' @method plot mnem_mcmc
 #' @import
 #' ggplot2
-#' wesanderson          
+#' wesanderson
 #' @importFrom graphics layout par text
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
@@ -2698,21 +2708,22 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 1)
 #' plot(result)
-plot.mcmc <- function(x, starts=3) {
-  
+plot.mnem_mcmc <- function(x, starts=3) {
+
   colours <- wes_palette("FantasticFox1", starts, type = "continuous")
-  
+
   df_trace <- data.frame("time"=x$trace_time)
-  
+
   for (i in 1:starts){
     df_trace$new_col <- x$trace[[i]]
-    names(df_trace)[names(df_trace) == 'new_col'] <- paste("trace", i, sep = "")
+    names(df_trace)[names(df_trace) == 'new_col'] <- paste("trace", i,
+                                                           sep = "")
   }
-  
-  p <- ggplot(data = df_trace, mapping = aes(x=time, y=trace1)) 
-  
+
+  p <- ggplot(data = df_trace, mapping = aes(x=time, y=trace1))
+
   p + geom_line() + ylab("likelihood")
-  
+
 }
 #' Cluster NEM.
 #'
@@ -2909,7 +2920,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
                 while(sum(adj)-Sgenes >
                       floor((Sgenes*(Sgenes/2)-Sgenes/2)*edgeprob)
                       & exactProb) {
-                          over <- sum(adj) - Sgenes - 
+                          over <- sum(adj) - Sgenes -
                               floor((Sgenes*(Sgenes/2) - Sgenes/2)*edgeprob)
                           adjtr <- transitive.reduction(adj)
                           adj[sample(which(adjtr == 1),
@@ -3025,12 +3036,12 @@ simData <- function(Sgenes = 5, Egenes = 1,
         data <- cbind(data, baddata)
     }
     sim <- list(Nem = Nem, theta = theta, data = data, index = index, mw = mw)
-    class(sim) <- "mnemsim"
+    class(sim) <- "mnem_sim"
     return(sim)
 }
 #' Plot simulated mixture.
 #'
-#' @param x mnemsim object
+#' @param x mnem_sim object
 #' @param data noisy data matrix (optional)
 #' @param logtype logarithm type of the data
 #' @param fuzzypars list of parameters for the function fuzzyindex
@@ -3038,11 +3049,11 @@ simData <- function(Sgenes = 5, Egenes = 1,
 #' @author Martin Pirkl
 #' @return visualization of simulated mixture with Rgraphviz
 #' @export
-#' @method plot mnemsim
+#' @method plot mnem_sim
 #' @examples
 #' sim <- simData(Sgenes = 3, Egenes = 2, Nems = 2, mw = c(0.4,0.6))
 #' plot(sim)
-plot.mnemsim <- function(x, data = NULL, logtype = 2, fuzzypars = list(), ...) {
+plot.mnem_sim <- function(x, data = NULL, logtype = 2, fuzzypars = list(), ...) {
     noisymix <- TRUE
     if (is.null(data)) {
         data <- x$data
@@ -3091,7 +3102,7 @@ plot.mnemsim <- function(x, data = NULL, logtype = 2, fuzzypars = list(), ...) {
 #'
 #' Calculates responsibilities and mixture weights based on
 #' the ground truth and noisy data.
-#' @param x mnemsim object
+#' @param x mnem_sim object
 #' @param data noisy data matrix
 #' @param logtype logarithm type of the data
 #' @param complete if TRUE, complete data log likelihood is considered (for

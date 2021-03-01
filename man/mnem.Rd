@@ -39,14 +39,23 @@ mnem(
   fpfn = c(0.1, 0.1),
   Rho = NULL,
   ksel = c("kmeans", "silhouette", "cor"),
-  nullcomp = FALSE
+  nullcomp = FALSE,
+  mcmc_iterations = 30000,
+  mcmc_burn_in = 10000,
+  mcmc_starts = 3,
+  mcmc_Hastings = TRUE,
+  mcmc_initialize = "random",
+  mcmc_nodeswitch = TRUE,
+  mcmc_EM_NEM = FALSE,
+  mcmc_postgaps = 100,
+  mcmc_penalized = FALSE
 )
 }
 \arguments{
 \item{D}{data with cells indexing the columns and features (E-genes)
 indexing the rows}
 
-\item{inference}{inference method "em" for expectation maximization}
+\item{inference}{inference method "em" for expectation maximization or "mcmc" for markov chain monte carlo sampling}
 
 \item{search}{search method for single network inference "greedy",
 "exhaustive" or "modules" (also possible: "small", which is greedy with
@@ -136,11 +145,41 @@ l samples; either as probabilities with the sum of probabilities for a
 sample less or equal to 1 or discrete with 1s and 0s}
 
 \item{ksel}{character vector of methods for the inference of k; can combine
-as the first two vlues "hc" (hierarchical clustering) or "kmeans" with 
-"silhouette", "BIC" or "AIC"; the third value is either "cor" for 
+as the first two vlues "hc" (hierarchical clustering) or "kmeans" with
+"silhouette", "BIC" or "AIC"; the third value is either "cor" for
 correlation distance or any method accepted by the function 'dist'}
 
 \item{nullcomp}{if TRUE, adds a null component (k+1)}
+
+\item{mcmc_burn_in}{number of iterations to be discarded prior to
+analyzing the posterior distribution of the mcmc}
+
+\item{mcmc_starts}{how many times the MCMC is restarted for the same data
+set}
+
+\item{mcmc_Hastings}{if set to TRUE, the Hastings ratio is calculated}
+
+\item{mcmc_initialize}{if set to "random", the initial Phi for the MCMC
+has edges added by sampling from a uniform distribution.
+If set to "empty", the initial Phi is empty}
+
+\item{mcmc_nodeswitch}{if set to TRUE, node switching is allowed as a
+move, additional to the edge moves}
+
+\item{mcmc_EM_NEM}{if set to TRUE, the EM and NEM are each run 10 times
+to infer the network mixture and the resulting lilelihoods saved to
+compare them to the MCMC}
+
+\item{mcmc_postgaps}{can be set to 1, 10 or 100. Determines after how
+many iterations the next Phi mixture is added to the Phi edge Frequency
+tracker in the mcmc}
+
+\item{mcmc_penalized}{if set to TRUE, the penalized likelihood will be
+used for the mcmc.
+Per default this is FALSE, since no component learning is involved and
+sparcity is hence not enforced}
+
+\item{mcmc_iteraions}{number of iterations for mcmc}
 }
 \value{
 object of class mnem

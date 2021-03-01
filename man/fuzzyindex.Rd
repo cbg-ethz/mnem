@@ -7,7 +7,7 @@
 fuzzyindex(x, data, logtype = 2, complete = FALSE, ...)
 }
 \arguments{
-\item{x}{mnemsim object}
+\item{x}{mnem_sim object}
 
 \item{data}{noisy data matrix}
 
