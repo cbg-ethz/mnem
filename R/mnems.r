@@ -2709,21 +2709,15 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' result <- mnem(data, k = 2, starts = 1)
 #' plot(result)
 plot.mnem_mcmc <- function(x, starts=3) {
-
-  colours <- wes_palette("FantasticFox1", starts, type = "continuous")
-
-  df_trace <- data.frame("time"=x$trace_time)
-
-  for (i in 1:starts){
-    df_trace$new_col <- x$trace[[i]]
-    names(df_trace)[names(df_trace) == 'new_col'] <- paste("trace", i,
-                                                           sep = "")
-  }
-
-  p <- ggplot(data = df_trace, mapping = aes(x=time, y=trace1))
-
-  p + geom_line() + ylab("likelihood")
-
+    colours <- wes_palette("FantasticFox1", starts, type = "continuous")
+    df_trace <- data.frame("time"=x$trace_time)
+    for (i in 1:starts){
+        df_trace$new_col <- x$trace[[i]]
+        names(df_trace)[names(df_trace) == 'new_col'] <- paste("trace", i,
+                                                               sep = "")
+    }
+    p <- ggplot(data = df_trace, mapping = aes(x=time, y=trace1))
+    p + geom_line() + ylab("likelihood")
 }
 #' Cluster NEM.
 #'
