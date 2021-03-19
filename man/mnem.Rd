@@ -12,6 +12,7 @@ mnem(
   theta = NULL,
   mw = NULL,
   method = "llr",
+  marginal = FALSE,
   parallel = NULL,
   reduce = FALSE,
   runs = 1,
@@ -40,15 +41,11 @@ mnem(
   Rho = NULL,
   ksel = c("kmeans", "silhouette", "cor"),
   nullcomp = FALSE,
-  mcmc_iterations = 30000,
-  mcmc_burn_in = 10000,
-  mcmc_starts = 3,
-  mcmc_Hastings = TRUE,
-  mcmc_initialize = "random",
-  mcmc_nodeswitch = TRUE,
-  mcmc_EM_NEM = FALSE,
-  mcmc_postgaps = 100,
-  mcmc_penalized = FALSE
+  burnin = 10,
+  hastings = TRUE,
+  nodeswitch = TRUE,
+  postgaps = 10,
+  penalized = FALSE
 )
 }
 \arguments{
@@ -71,6 +68,8 @@ for n starts of the EM and k components}
 
 \item{method}{"llr" for log ratios or foldchanges as input (see ratio)}
 
+\item{marginal}{logical to compute the marginal likelihood (TRUE)}
+
 \item{parallel}{number of threads for parallelization of the number of
 em runs}
 
@@ -79,14 +78,15 @@ unique networks}
 
 \item{runs}{number of runs for greedy search}
 
-\item{starts}{number of starts for the em}
+\item{starts}{number of starts for the em or mcmc}
 
 \item{type}{initialize with responsibilities either by "random",
 "cluster" (each S-gene is clustered and the different S-gene clustered
 differently combined for several starts),
 "cluster2" (clustNEM is used to infer reasonable phis, which are then
 used as a start for one EM run), "cluster3" (global clustering as a start),
-or "networks" (initialize with random phis)}
+or "networks" (initialize with random phis), inference='mcmc' only supports
+'networks' and 'empty' for unconncected networks phi}
 
 \item{complete}{if TRUE, optimizes the expected complete log likelihood
 of the model, otherwise the log likelihood of the observed data}
@@ -99,7 +99,8 @@ of the model, otherwise the log likelihood of the observed data}
 
 \item{verbose}{verbose output}
 
-\item{max_iter}{maximum iteration, if likelihood does not converge}
+\item{max_iter}{maximum iterations (moves for inference='mcmc'.
+adjust parameter  burnin)}
 
 \item{parallel2}{if parallel=NULL, number of threads for single component
 optimization}
@@ -151,35 +152,22 @@ correlation distance or any method accepted by the function 'dist'}
 
 \item{nullcomp}{if TRUE, adds a null component (k+1)}
 
-\item{mcmc_burn_in}{number of iterations to be discarded prior to
-analyzing the posterior distribution of the mcmc}
+\item{hastings}{if set to TRUE, the Hastings ratio is calculated}
 
-\item{mcmc_starts}{how many times the MCMC is restarted for the same data
-set}
-
-\item{mcmc_Hastings}{if set to TRUE, the Hastings ratio is calculated}
-
-\item{mcmc_initialize}{if set to "random", the initial Phi for the MCMC
-has edges added by sampling from a uniform distribution.
-If set to "empty", the initial Phi is empty}
-
-\item{mcmc_nodeswitch}{if set to TRUE, node switching is allowed as a
+\item{nodeswitch}{if set to TRUE, node switching is allowed as a
 move, additional to the edge moves}
 
-\item{mcmc_EM_NEM}{if set to TRUE, the EM and NEM are each run 10 times
-to infer the network mixture and the resulting lilelihoods saved to
-compare them to the MCMC}
-
-\item{mcmc_postgaps}{can be set to 1, 10 or 100. Determines after how
+\item{postgaps}{can be set to numeric. Determines after how
 many iterations the next Phi mixture is added to the Phi edge Frequency
 tracker in the mcmc}
 
-\item{mcmc_penalized}{if set to TRUE, the penalized likelihood will be
+\item{penalized}{if set to TRUE, the penalized likelihood will be
 used for the mcmc.
 Per default this is FALSE, since no component learning is involved and
 sparcity is hence not enforced}
 
-\item{mcmc_iteraions}{number of iterations for mcmc}
+\item{burn_in}{number of iterations to be discarded prior to
+analyzing the posterior distribution of the mcmc}
 }
 \value{
 object of class mnem

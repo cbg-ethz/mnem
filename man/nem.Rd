@@ -9,6 +9,7 @@ nem(
   search = "greedy",
   start = NULL,
   method = "llr",
+  marginal = FALSE,
   parallel = NULL,
   reduce = FALSE,
   weights = NULL,
@@ -40,6 +41,8 @@ the greedy}
 
 \item{method}{"llr" for log odds or p-values densities or "disc"
 for binary data}
+
+\item{marginal}{logical to compute the marginal likelihood (TRUE)}
 
 \item{parallel}{NULL for no parallel optimization or an integer
 for the number of threads}

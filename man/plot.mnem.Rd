@@ -26,6 +26,7 @@
   shownull = TRUE,
   ratio = TRUE,
   method = "llr",
+  marginal = FALSE,
   showweights = TRUE,
   ...
 )
@@ -77,6 +78,8 @@ to each S-gene}
 \item{ratio}{use log ratios (TRUE) or foldchanges (FALSE)}
 
 \item{method}{"llr" for ratios}
+
+\item{marginal}{logical to compute the marginal likelihood (TRUE)}
 
 \item{showweights}{if TRUE, shows mixture weights for all components}
 

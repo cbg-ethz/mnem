@@ -4,12 +4,16 @@
 \alias{plot.mnem_mcmc}
 \title{Plot mnem_mcmc result.}
 \usage{
-\method{plot}{mnem_mcmc}(x, starts = 3)
+\method{plot}{mnem_mcmc}(x, starts = NULL, burnin = 0, ...)
 }
 \arguments{
 \item{x}{mnem_mcmc object}
 
 \item{starts}{restarts of mcmc as used in mnem function}
+
+\item{burnin}{number of iteration to start from}
+
+\item{...}{parameters for function ggplot2}
 }
 \value{
 visualization of mcmc result with Rgraphviz

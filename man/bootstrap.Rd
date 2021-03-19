@@ -20,7 +20,7 @@ for natural)}
 \item{complete}{if TRUE, complete data log likelihood is considered (for
 very large data sets, e.g. 1000 cells and 1000 E-genes)}
 
-\item{...}{additional parameters for hte nem function}
+\item{...}{additional parameters for the nem function}
 }
 \value{
 returns bootstrap support for each edge in each component (phi); list

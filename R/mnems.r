@@ -9,6 +9,7 @@
 #' the greedy
 #' @param method "llr" for log odds or p-values densities or "disc"
 #' for binary data
+#' @param marginal logical to compute the marginal likelihood (TRUE)
 #' @param parallel NULL for no parallel optimization or an integer
 #' for the number of threads
 #' @param reduce reduce search space (TRUE) for exhaustive search
@@ -46,12 +47,13 @@
 #' scoreAdj(D, adj)
 #' @importFrom utils getFromNamespace
 nem <- function(D, search = "greedy", start = NULL, method = "llr",
-                  parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
-                  verbose = FALSE, redSpace = NULL,
-                  trans.close = TRUE, subtopo = NULL, prior = NULL,
-                  ratio = TRUE, domean = TRUE, modulesize = 5,
-                  fpfn = c(0.1, 0.1), Rho = NULL, logtype = 2,
-                  modified = FALSE, ...) {
+                marginal = FALSE,
+                parallel = NULL, reduce = FALSE, weights = NULL, runs = 1,
+                verbose = FALSE, redSpace = NULL,
+                trans.close = TRUE, subtopo = NULL, prior = NULL,
+                ratio = TRUE, domean = TRUE, modulesize = 5,
+                fpfn = c(0.1, 0.1), Rho = NULL, logtype = 2,
+                modified = FALSE, ...) {
     if (method %in% "disc") {
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
         D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
@@ -125,7 +127,8 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
     }
     diag(better) <- 1
     colnames(better) <- rownames(better) <- Sgenes
-    score <- scoreAdj(D, better, method = method, weights = weights,
+    score <- scoreAdj(D, better, method = method, marginal = marginal,
+                      weights = weights,
                       subtopo = subtopo,
                       prior = prior, ratio = ratio, fpfn = fpfn,
                       Rho = Rho)
@@ -156,13 +159,14 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
         P <- oldadj <- NULL
         if (guess) {
             better <- nem(D, search = "estimate", start = start,
-                            method = method, parallel = parallel,
-                            reduce = reduce, weights = weights, runs = runs,
-                            verbose = verbose, redSpace = redSpace,
-                            trans.close = trans.close, subtopo = subtopo,
-                            prior = prior, ratio = ratio, domean = domean,
-                            fpfn = fpfn, Rho = Rho, logtype = logtype,
-                            modified = modified, Sgenes = Sgenes)$adj
+                          method = method, parallel = parallel,
+                          reduce = reduce, weights = weights, runs = runs,
+                          verbose = verbose, redSpace = redSpace,
+                          trans.close = trans.close, subtopo = subtopo,
+                          prior = prior, ratio = ratio, domean = domean,
+                          fpfn = fpfn, Rho = Rho, logtype = logtype,
+                          modified = modified, Sgenes = Sgenes,
+                          marginal = marginal)$adj
             better <- mytc(better)
         }
         for (iter in seq_len(runs)) {
@@ -178,6 +182,7 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
                 better <- better[order(as.numeric(rownames(better))),
                                  order(as.numeric(colnames(better)))]
                 score <- scoreAdj(D, better, method = method,
+                                  marginal = marginal,
                                   weights = weights,
                                   subtopo = subtopo, prior = prior,
                                   ratio = ratio, fpfn = fpfn,
@@ -195,6 +200,7 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
                 doScores <- function(i) {
                     new <- models[[i]]
                     score <- scoreAdj(D, new, method = method,
+                                      marginal = marginal,
                                       weights = weights,
                                       subtopo = subtopo, prior = prior,
                                       ratio = ratio, fpfn = fpfn,
@@ -255,7 +261,8 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
                                    verbose = verbose)
         doScores <- function(i) {
             adj <- models[[i]]
-            score <- scoreAdj(D, adj, method = method, weights = weights,
+            score <- scoreAdj(D, adj, method = method, marginal = marginal,
+                              weights = weights,
                               subtopo = subtopo, prior = prior,
                               ratio = ratio, fpfn = fpfn,
                               Rho = Rho)
@@ -302,7 +309,8 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
     }
 
     if (is.null(subtopo)) {
-        subtopo <- scoreAdj(D, better, method = method, weights = weights,
+        subtopo <- scoreAdj(D, better, method = method, marginal = marginal,
+                            weights = weights,
                             prior = prior,
                             ratio = ratio, fpfn = fpfn,
                             Rho = Rho, dotopo = TRUE)
@@ -353,7 +361,8 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
 #' adj <- diag(3)
 #' colnames(adj) <- rownames(adj) <- 1:3
 #' scoreAdj(D, adj)
-scoreAdj <- function(D, adj, method = "llr", logtype = 2, weights = NULL,
+scoreAdj <- function(D, adj, method = "llr", marginal = FALSE,
+                     logtype = 2, weights = NULL,
                      trans.close = TRUE, subtopo = NULL,
                      prior = NULL, ratio = TRUE, fpfn = c(0.1, 0.1),
                      Rho = NULL, dotopo = FALSE,
@@ -389,17 +398,12 @@ scoreAdj <- function(D, adj, method = "llr", logtype = 2, weights = NULL,
         subtopo <- subtopo - 1
     }
     subweights <- score
-    if (ll %in% "max") {
-        if (is.null(subtopo)) {
-            score[which(score < 0)] <- 0
-            score <- sum(matrixStats::rowMaxs(score))
-        } else {
-            score <- sum(score[cbind(seq_len(nrow(score)),
-                                     as.numeric(subtopo))])
-        }
-    }
-    if (ll %in% "marg") {
-        score <- sum(score)
+    score <- cbind(0, score)
+    if (!marginal) {
+        score <- sum(matrixStats::rowMaxs(score))
+    } else {
+        pscore <- logtype^score
+        score <- sum(log(rowSums(pscore))/log(logtype))
     }
     if (!is.null(prior)) {
         prior <- transitive.reduction(prior)
@@ -1506,25 +1510,28 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' for n starts of the EM and k components
 #' @param mw mixture weights; if NULL estimated or uniform
 #' @param method "llr" for log ratios or foldchanges as input (see ratio)
+#' @param marginal logical to compute the marginal likelihood (TRUE)
 #' @param parallel number of threads for parallelization of the number of
 #' em runs
 #' @param reduce logical - reduce search space for exhaustive search to
 #' unique networks
 #' @param runs number of runs for greedy search
-#' @param starts number of starts for the em
+#' @param starts number of starts for the em or mcmc
 #' @param type initialize with responsibilities either by "random",
 #' "cluster" (each S-gene is clustered and the different S-gene clustered
 #' differently combined for several starts),
 #' "cluster2" (clustNEM is used to infer reasonable phis, which are then
 #' used as a start for one EM run), "cluster3" (global clustering as a start),
-#' or "networks" (initialize with random phis)
+#' or "networks" (initialize with random phis), inference='mcmc' only supports
+#' 'networks' and 'empty' for unconncected networks phi
 #' @param complete if TRUE, optimizes the expected complete log likelihood
 #' of the model, otherwise the log likelihood of the observed data
 #' @param p initial probabilities as a k (components) times l (cells) matrix
 #' @param k number of components
 #' @param kmax maximum number of components when k=NULL is inferred
 #' @param verbose verbose output
-#' @param max_iter maximum iteration, if likelihood does not converge
+#' @param max_iter maximum iterations (moves for inference='mcmc'.
+#' adjust parameter  burnin)
 #' @param parallel2 if parallel=NULL, number of threads for single component
 #' optimization
 #' @param converged absolute distance for convergence between new and old log
@@ -1558,24 +1565,15 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' "silhouette", "BIC" or "AIC"; the third value is either "cor" for
 #' correlation distance or any method accepted by the function 'dist'
 #' @param nullcomp if TRUE, adds a null component (k+1)
-#' @param mcmc_iteraions number of iterations for mcmc
-#' @param mcmc_burn_in number of iterations to be discarded prior to
+#' @param burn_in number of iterations to be discarded prior to
 #' analyzing the posterior distribution of the mcmc
-#' @param mcmc_starts how many times the MCMC is restarted for the same data
-#' set
-#' @param mcmc_Hastings if set to TRUE, the Hastings ratio is calculated
-#' @param mcmc_initialize if set to "random", the initial Phi for the MCMC
-#' has edges added by sampling from a uniform distribution.
-#' If set to "empty", the initial Phi is empty
-#' @param mcmc_nodeswitch if set to TRUE, node switching is allowed as a
+#' @param hastings if set to TRUE, the Hastings ratio is calculated
+#' @param nodeswitch if set to TRUE, node switching is allowed as a
 #' move, additional to the edge moves
-#' @param mcmc_EM_NEM if set to TRUE, the EM and NEM are each run 10 times
-#' to infer the network mixture and the resulting lilelihoods saved to
-#' compare them to the MCMC
-#' @param mcmc_postgaps can be set to 1, 10 or 100. Determines after how
+#' @param postgaps can be set to numeric. Determines after how
 #' many iterations the next Phi mixture is added to the Phi edge Frequency
 #' tracker in the mcmc
-#' @param mcmc_penalized if set to TRUE, the penalized likelihood will be
+#' @param penalized if set to TRUE, the penalized likelihood will be
 #' used for the mcmc.
 #' Per default this is FALSE, since no component learning is involved and
 #' sparcity is hence not enforced
@@ -1606,7 +1604,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 1)
 mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
-                 theta = NULL, mw = NULL, method = "llr",
+                 theta = NULL, mw = NULL, method = "llr", marginal = FALSE,
                  parallel = NULL, reduce = FALSE, runs = 1, starts = 3,
                  type = "networks", complete = FALSE,
                  p = NULL, k = NULL, kmax = 10, verbose = FALSE,
@@ -1616,10 +1614,10 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), Rho = NULL,
                  ksel = c("kmeans", "silhouette", "cor"),
-                 nullcomp = FALSE, mcmc_iterations=30000, mcmc_burn_in=10000,
-                 mcmc_starts=3, mcmc_Hastings=TRUE, mcmc_initialize= "random",
-                 mcmc_nodeswitch=TRUE, mcmc_EM_NEM=FALSE, mcmc_postgaps=100,
-                 mcmc_penalized=FALSE) {
+                 nullcomp = FALSE, burnin=10,
+                 hastings=TRUE,
+                 nodeswitch=TRUE, postgaps=10,
+                 penalized=FALSE) {
     if (length(grep("_", colnames(D))) > 0 & is.null(Rho)) {
         Rho <- getRho(D)
     }
@@ -1631,7 +1629,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
     if (nrow(D) > 10^3 & !complete) {
         print(paste0("The input data set consists of ", nrow(D), " E-genes ",
                      "and overall ", length(D), " data points. ",
-                     "Consider option 'complete = TRUE', if the",
+                     "Consider option 'complete = TRUE', if the ",
                      "observed log-likelihood reaches infinity, i.e. error."))
     }
     if (all(D %in% c(0,1))) { method <- "disc" }
@@ -1646,11 +1644,12 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
             D <- D[, -which(duplicated(colnames(D)) == TRUE)]
         }
         redSpace <- nem(D,
-                          search = "exhaustive", reduce = TRUE,
-                          verbose = verbose, parallel = c(parallel, parallel2),
-                          subtopo = subtopoX, ratio = ratio, domean = FALSE,
-                          modulesize = modulesize, logtype = logtype,
-                          modified = TRUE, Sgenes = Sgenes, Rho = Rho)$redSpace
+                        search = "exhaustive", reduce = TRUE,
+                        verbose = verbose, parallel = c(parallel, parallel2),
+                        subtopo = subtopoX, ratio = ratio, domean = FALSE,
+                        modulesize = modulesize, logtype = logtype,
+                        modified = TRUE, Sgenes = Sgenes, Rho = Rho,
+                        marginal = marginal)$redSpace
     }
     if (!is.null(parallel)) { if (parallel == 1) { parallel <- NULL } }
     D.backup <- D
@@ -1689,13 +1688,14 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
     if (!is.null(k)) {
         if ((type %in% "networks" | type %in% "networks2") & is.null(phi)) {
             meanet <- nem(D = data, search = search, start = phi,
-                            method = method,
-                            parallel = parallel2, reduce = reduce,
-                            runs = runs,
-                            verbose = verbose, redSpace = redSpace,
-                            ratio = ratio, domean = domean,
-                            modulesize = modulesize, Rho = Rho,
-                            logtype = logtype, modified = TRUE, Sgenes = Sgenes)
+                          method = method,
+                          parallel = parallel2, reduce = reduce,
+                          runs = runs,
+                          verbose = verbose, redSpace = redSpace,
+                          ratio = ratio, domean = domean,
+                          modulesize = modulesize, Rho = Rho,
+                          logtype = logtype, modified = TRUE, Sgenes = Sgenes,
+                          marginal = marginal)
             if (type %in% "networks2") {
                 linets <- TRUE
             } else {
@@ -1762,14 +1762,15 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         limits[[1]] <- list()
         limits[[1]]$res <- list()
         limits[[1]]$res[[1]] <- nem(D = data, search = search, start = start,
-                                      method = method,
-                                      parallel = parallel2, reduce = reduce,
-                                      runs = runs,
-                                      verbose = verbose, redSpace = redSpace,
-                                      ratio = ratio, domean = domean,
-                                      modulesize = modulesize, Rho = Rho,
-                                      logtype = logtype, modified = TRUE,
-                                      Sgenes = Sgenes, subtopo = subtopoX)
+                                    method = method,
+                                    parallel = parallel2, reduce = reduce,
+                                    runs = runs,
+                                    verbose = verbose, redSpace = redSpace,
+                                    ratio = ratio, domean = domean,
+                                    modulesize = modulesize, Rho = Rho,
+                                    logtype = logtype, modified = TRUE,
+                                    Sgenes = Sgenes, subtopo = subtopoX,
+                                    marginal = marginal)
         limits[[1]]$res[[1]]$D <- NULL
         res <- list()
         res[[1]] <- list()
@@ -1780,7 +1781,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         probs <- matrix(0, k, ncol(data))
         probs <- getProbs(probs, k, data, res, method, affinity,
                           converged, subtopoX, ratio, mw = mw, fpfn = fpfn,
-                          Rho = Rho, complete = complete, nullcomp = nullcomp)
+                          Rho = Rho, complete = complete, nullcomp = nullcomp,
+                          marginal = marginal)
         subtopoX <- probs$subtopoX
         limits[[1]]$ll <- probs$ll
         limits[[1]]$probs <- probs$probs
@@ -1818,14 +1820,16 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                           affinity, converged, subtopoX,
                                           ratio, mw = mw, fpfn = fpfn,
                                           Rho = Rho, complete = complete,
-                                          nullcomp = nullcomp)
+                                          nullcomp = nullcomp,
+                                          marginal = marginal)
                         subtopoX <- probs0$subtopoX
                         mw <- probs0$mw
                         ll <- probs0$ll
-                        probs <- probs0$probs
+                        probs <- probs0
                     } else {
+                        probs <- list()
                         p <- p*t(t(p)*apply(abs(data), 2, sum))
-                        probs <- log(p)/log(logtype)
+                        probs$probs <- log(p)/log(logtype)
                     }
                 }
                 if (is.null(init)) {
@@ -1839,8 +1843,10 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                         k <- nrow(p)
                         probs <- log(p)/log(logtype)
                     }
+                    probs <- list()
+                    probs$probs <- probs
                 }
-                mw <- apply(getAffinity(probs, affinity = affinity, norm = TRUE,
+                mw <- apply(getAffinity(probs$probs, affinity = affinity, norm = TRUE,
                                         logtype = logtype, mw = mw, data = data,
                                         complete = complete), 1,sum)
                 mw <- mw/sum(mw)
@@ -1849,8 +1855,9 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                     print(paste("start...", s))
                 }
                 limits <- list()
-                ll <- getLL(probs, logtype = logtype, mw = mw, data = data,
-                            complete = complete)
+                ll <- -Inf
+                # ll <- getLL(probs, logtype = logtype, mw = mw, data = data,
+                #             complete = complete)
                 llold <- bestll <- -Inf
                 bestmw <- mw
                 lls <- phievo <- thetaevo <- mwevo <- NULL
@@ -1871,7 +1878,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                   probsold <- probs
                               }
                               res <- list()
-                              postprobs <- getAffinity(probs, affinity =
+                              postprobs <- getAffinity(probs$probs, affinity =
                                                                   affinity,
                                                        norm = TRUE, logtype =
                                                                         logtype,
@@ -1935,7 +1942,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                           logtype = logtype,
                                                           modified = TRUE,
                                                           Sgenes = Sgenes,
-                                                          subtopo = thetaX)
+                                                          subtopo = thetaX,
+                                                          marginal = marginal)
                                       } else {
                                           test01 <- list()
                                           test01scores <- numeric(2)
@@ -1967,7 +1975,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                       logtype = logtype,
                                                       modified = TRUE,
                                                       Sgenes = Sgenes,
-                                                      subtopo = thetaX)
+                                                      subtopo = thetaX,
+                                                      marginal = marginal)
                                               test01scores[j] <-
                                                   max(test01[[j]]$scores)
                                           }
@@ -1994,32 +2003,25 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                               res1 <- res
                               ## E-step:
                               n <- ncol(res[[1]]$adj)
-                              probs0 <- list()
-                              probs0$probs <- probsold
+                              probs0 <- probsold
                               probs <- probsold
-                              probs <- getProbs(probs, k, data, res, method,
+                              probs <- getProbs(probs$probs, k, data, res, method,
                                                 affinity, converged,
                                                 subtopoX, ratio,
                                                 mw = mw, fpfn = fpfn,
                                                 Rho = Rho, complete = complete,
-                                                nullcomp = nullcomp)
-                              if (getLL(probs$probs, logtype = logtype,
-                                        mw = mw, data = data,
-                                        complete = complete) >
-                                  getLL(probs0$probs, logtype = logtype,
-                                        mw = mw, data = data,
-                                        complete = complete)) {
+                                                nullcomp = nullcomp,
+                                                marginal = marginal)
+                              if (probs$ll > probs0$ll) {
                                   probs0 <- probs
                               }
                               subtopoX <- probs0$subtopoX
-                              probs <- probs0$probs
+                              probs <- probs0
                               modelsize <- n*n*k
                               datasize <- nrow(data)*ncol(data)*k
-                              ll <- getLL(probs, logtype = logtype, mw = mw,
-                                          data = data, complete = complete) +
-                                  evopen*datasize*(modelsize^-1)
+                              ll <- probs0$ll + evopen*datasize*(modelsize^-1)
                               mwold <- mw
-                              mw <- apply(getAffinity(probs,
+                              mw <- apply(getAffinity(probs$probs,
                                                       affinity = affinity,
                                                       norm = TRUE,
                                                       logtype = logtype,
@@ -2081,10 +2083,16 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
             }
         }
         if (inference %in% "mcmc"){
-          res <- MCMC(Nems=k, Sgenes=Sgenes, data=data, stop_counter=mcmc_iterations, burn_in=mcmc_burn_in,
-                       starts=mcmc_starts, Hastings=mcmc_Hastings, Initialize=mcmc_initialize, NodeSwitching=mcmc_nodeswitch,
-                       EM_NEM=mcmc_EM_NEM, post_gaps=mcmc_postgaps, penalized=mcmc_penalized)
-          class(res) <- "mnem_mcmc"
+            res <- MCMC(Nems=k, Sgenes=length(Sgenes), data=data,
+                        stop_counter=max_iter, burn_in=burnin,
+                        starts=starts, Hastings=hastings,
+                        Initialize=type, phi = phi,
+                        NodeSwitching=nodeswitch,
+                        post_gaps=postgaps,
+                        penalized=penalized,
+                        logtype = logtype,
+                        marginal = marginal)
+            class(res) <- "mnem_mcmc"
         }
         ## if (inference %in% "greedy") {
         ##     lls <- NULL
@@ -2100,7 +2108,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
         ##                               affinity, converged,
         ##                               subtopoX, ratio,
         ##                               mw = mw, fpfn = fpfn,
-        ##                               Rho = Rho, complete = complete)
+        ##                               Rho = Rho, complete = complete,
+        ##                               marginal = marginal)
         ##             if (getLL(probs$probs, logtype = logtype,
         ##                       mw = mw, data = data, complete = complete) >
         ##                 getLL(probs0$probs, logtype = logtype, mw = mw,
@@ -2173,7 +2182,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
               count <- count + 1
               unique2[[count]] <- unique[[i]]    }
           unique <- unique2
-          probs <- best$probs[added, , drop = FALSE]
+          probs <- best$probs$probs[added, , drop = FALSE]
           colnames(probs) <- colnames(D.backup)
           postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE,
                                    logtype = logtype, mw = mw, data = data,
@@ -2192,7 +2201,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
               comp[[i]]$theta <- unique[[i]]$subtopo
           }
       } else {
-          probs <- best$probs[, , drop = FALSE]
+          probs <- best$probs$probs[, , drop = FALSE]
           colnames(probs) <- colnames(D.backup)
           postprobs <- getAffinity(probs, affinity = affinity, norm = TRUE,
                                    logtype = logtype, mw = best$mw, data = data,
@@ -2215,8 +2224,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
       res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda0,
                   probs = probs, lls = best$ll, phievo = best$phievo,
                   thetaevo = best$thetaevo, mwevo = best$mwevo,
-                  ll = getLL(probs, logtype = logtype, mw = lambda, data = data,
-                             complete = complete), complete = complete, Rho = Rho,
+                  ll = best$ll, complete = complete, Rho = Rho,
                   nullcomp = nullcomp)
       class(res) <- "mnem"
     }
@@ -2234,7 +2242,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
 #' for natural)
 #' @param complete if TRUE, complete data log likelihood is considered (for
 #' very large data sets, e.g. 1000 cells and 1000 E-genes)
-#' @param ... additional parameters for hte nem function
+#' @param ... additional parameters for the nem function
 #' @author Martin Pirkl
 #' @return returns bootstrap support for each edge in each component (phi); list
 #' of adjacency matrices
@@ -2337,6 +2345,7 @@ plot.bootmnem <- function(x, reduce = TRUE, ...) {
 #' @param shownull if TRUE, shows the null node
 #' @param ratio use log ratios (TRUE) or foldchanges (FALSE)
 #' @param method "llr" for ratios
+#' @param marginal logical to compute the marginal likelihood (TRUE)
 #' @param showweights if TRUE, shows mixture weights for all components
 #' @param ... additional parameters
 #' @author Martin Pirkl
@@ -2361,7 +2370,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                       sep = FALSE, tsne = FALSE, affinity = 0, logtype = 2,
                       cells = TRUE, pch = ".", legend = FALSE, showdata = FALSE,
                       bestCell = TRUE, showprobs = FALSE, shownull = TRUE,
-                      ratio = TRUE, method = "llr", showweights = TRUE, ...) {
+                      ratio = TRUE, method = "llr", marginal = FALSE,
+                      showweights = TRUE, ...) {
     complete <- x$complete
     if (is.null(x$nullcomp)) {
         nullcomp <- FALSE
@@ -2455,7 +2465,8 @@ plot.mnem <- function(x, oma = c(3,1,1,3), main = "M&NEM", anno = TRUE,
                                        complete = complete)
                 subtopo <- scoreAdj(modData(data), x$comp[[i]]$phi,
                                     method = method, weights = weights[i, ],
-                                    ratio = ratio, ...)$subtopo
+                                    ratio = ratio, marginal = marginal,
+                                    ...)$subtopo
             } else {
                 subtopo <- x$comp[[i]]$theta
             }
@@ -2694,6 +2705,8 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #'
 #' @param x mnem_mcmc object
 #' @param starts restarts of mcmc as used in mnem function
+#' @param burnin number of iteration to start from
+#' @param ... parameters for function ggplot2
 #' @author Viktoria Brunner
 #' @return visualization of mcmc result with Rgraphviz
 #' @export
@@ -2708,16 +2721,25 @@ Mixture weight: ", round(x$mw[i], 3)*100, "%", sep = "")
 #' data <- data + rnorm(length(data), 0, 1)
 #' result <- mnem(data, k = 2, starts = 1)
 #' plot(result)
-plot.mnem_mcmc <- function(x, starts=3) {
+plot.mnem_mcmc <- function(x, starts = NULL, burnin = 0, ...) {
+    if (is.null(starts)) {
+        starts <- length(x$trace)
+    }
     colours <- wes_palette("FantasticFox1", starts, type = "continuous")
-    df_trace <- data.frame("time"=x$trace_time)
+    df_trace <- data.frame("time"=x$trace_time[-seq_len(burnin)])
     for (i in 1:starts){
-        df_trace$new_col <- x$trace[[i]]
+        df_trace$new_col <- x$trace[[i]][-seq_len(burnin)]
         names(df_trace)[names(df_trace) == 'new_col'] <- paste("trace", i,
                                                                sep = "")
     }
-    p <- ggplot(data = df_trace, mapping = aes(x=time, y=trace1))
-    p + geom_line() + ylab("likelihood")
+    # p <- ggplot(data = df_trace, mapping = aes(x=time, y=trace1))
+    # p + geom_line() + ylab("likelihood")
+    plot(df_trace[[1]], df_trace[[2]], col = colours[1],
+         ylim = c(min(df_trace[, -1]), max(df_trace[, -1])),
+         xlab = 'mcmc iterations', ylab = 'log likelihood', ...)
+    for (i in 3:(starts+1)) {
+        lines(df_trace[[i]], col = colours[i-1], ...)
+    }
 }
 #' Cluster NEM.
 #'
@@ -3128,7 +3150,8 @@ fuzzyindex <- function(x, data, logtype = 2, complete = FALSE, ...) {
     n <- getSgeneN(data)
     probs <- matrix(0, k, ncol(x$data))
     probs <- getProbs(probs, k, data, res, mw = x$mw, logtype = logtype,
-                      Rho=Rho, complete = complete, nullcomp = FALSE)
+                      Rho=Rho, complete = complete, nullcomp = FALSE,
+                      marginal = marginal)
     ll <- probs$ll
     mw <- probs$mw
     colnames(probs$probs) <- colnames(data)

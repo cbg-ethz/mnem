@@ -8,6 +8,7 @@ scoreAdj(
   D,
   adj,
   method = "llr",
+  marginal = FALSE,
   logtype = 2,
   weights = NULL,
   trans.close = TRUE,

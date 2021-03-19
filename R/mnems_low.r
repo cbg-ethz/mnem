@@ -47,7 +47,7 @@ enumerate.models <- function (x, name = NULL, trans.close = TRUE,
 #' @author Holger Froehlich, Cordula Zeller
 sampleRndNetwork <- function (Sgenes, scaleFree = TRUE, gamma = 2.5,
                               maxOutDegree = length(Sgenes),
-    maxInDegree = length(Sgenes), trans.close = TRUE, DAG = FALSE) {
+                              maxInDegree = length(Sgenes), trans.close = TRUE, DAG = FALSE) {
     n = length(Sgenes)
     S = diag(n)
     maxOutDegree = min(n, maxOutDegree)
@@ -64,11 +64,11 @@ sampleRndNetwork <- function (Sgenes, scaleFree = TRUE, gamma = 2.5,
             else idx0 = which(S[i, ] == 0 & seq_len(n) < i)
             if (length(idx0) > 0) {
                 idx = which(colSums(S[, idx0, drop = FALSE]) <=
-                  maxInDegree)
+                                maxInDegree)
                 if (length(idx) > 0) {
-                  idx = sample(idx0[idx], min(outdeg, length(idx0[idx])),
-                    replace = TRUE)
-                  S[i, idx] = 1
+                    idx = sample(idx0[idx], min(outdeg, length(idx0[idx])),
+                                 replace = TRUE)
+                    S[i, idx] = 1
                 }
             }
         }
@@ -140,8 +140,8 @@ mnemh.rec <- function(data, k = 2, logtype = 2, ...) {
 random_probs <- function(k, data, full = FALSE, logtype = 2) {
     samplefun <- function(n,p) {
         x <- sample(c(0.5,1.5), n,
-               replace = TRUE,
-               prob = p)
+                    replace = TRUE,
+                    prob = p)
 
         return(x)
     }
@@ -253,10 +253,10 @@ calcEvopen <- function(res, list = TRUE) {
     for (i in seq_len(length(res)-1)) {
         if (list) {
             evopen <- evopen + sum(abs(res[[i]] -
-                                       res[[(i+1)]]))/length(res[[i]])
+                                           res[[(i+1)]]))/length(res[[i]])
         } else {
             evopen <- evopen + sum(abs(res[[i]]$adj -
-                                       res[[(i+1)]]$adj))/length(res[[i]]$adj)
+                                           res[[(i+1)]]$adj))/length(res[[i]]$adj)
         }
     }
     evopen <- -evopen#/(k-1)
@@ -387,7 +387,7 @@ initps <- function(data, ks, k,
         for (i in seq_len(k)) {
             for (j in seq_len(n)) {
                 tmp[i, which(colnames(data) == j)[
-                           which(clusters[[j]] == takes[i, j])]] <- 1.5
+                    which(clusters[[j]] == takes[i, j])]] <- 1.5
             }
         }
         takestmp <- paste(takes, collapse = "")
@@ -564,7 +564,7 @@ estimateSubtopo <- function(data, fun = which.max) {
 getProbs <- function(probs, k, data, res, method = "llr", affinity = 0,
                      converged = 10^-2, subtopoX = NULL, ratio = TRUE,
                      logtype = 2, mw = NULL, fpfn = fpfn, Rho = NULL,
-                     complete = FALSE, nullcomp = FALSE) {
+                     complete = FALSE, nullcomp = FALSE, marginal = FALSE) {
     n <- ncol(res[[1]]$adj)
     bestprobs <- probsold <- probs
     time0 <- TRUE
@@ -590,9 +590,10 @@ getProbs <- function(probs, k, data, res, method = "llr", affinity = 0,
                                     logtype = logtype, mw = mw, data = data,
                                     complete = complete)
         probs0 <- probsold*0
+        eprobs <- matrix(0, k, nrow(data))
         for (i in seq_len(k)) {
             if (i == k & nullcomp) {
-                tmp <- 0
+                tmp <- tmp2 <- 0
             } else {
                 adj1 <- mytc(res[[i]]$adj)
                 if (is.null(Rho)) {
@@ -609,14 +610,27 @@ getProbs <- function(probs, k, data, res, method = "llr", affinity = 0,
                     subtopo[which(subtopo == 0)] <- ncol(adj1)
                 }
                 adj2 <- adj1[, subtopo]
+                if (marginal) {
+                    tmp2 <- llrScore(data, adj1, ratio = ratio)
+                    tmp2 <- logtype^tmp2
+                    tmp2 <- log(rowSums(tmp2))/log(logtype)
+                }
                 if (method %in% "llr") {
                     tmp <- colSums(data*t(adj2))
                 }
             }
             probs0[i, ] <- tmp
+            if (marginal) {
+                eprobs[i, ] <- tmp2
+            }
         }
-        ll0 <- getLL(probs0, logtype = logtype, mw = mw,
-                     data = data, complete = complete)
+        if (marginal) {
+            ll0 <- getLL(eprobs, logtype = logtype, mw = mw,
+                         data = data, complete = complete)
+        } else {
+            ll0 <- getLL(probs0, logtype = logtype, mw = mw,
+                         data = data, complete = complete)
+        }
         if (max(ll0) - llold > 0) {
             bestprobs <- probs0
         }
@@ -687,8 +701,8 @@ nemEst <- function(data, maxiter = 100, start = "null",
         for (i in seq_len(n-1)) {
             for (j in (i+1):n) {
                 pwg <- nem(R[, c(i,j)], logtype = logtype,
-                             weights = weights[c(i,j)], trans.close = close,
-                             domean = FALSE)
+                           weights = weights[c(i,j)], trans.close = close,
+                           domean = FALSE)
                 phi[i, j] <- pwg$adj[1, 2]
                 phi[j, i] <- pwg$adj[2, 1]
             }
@@ -769,7 +783,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
     }
     ll <- scoreAdj(R, phibest,
                    weights = weights, dotopo = TRUE,
-                       trans.close = close, Rho = Rho)
+                   trans.close = close, Rho = Rho)
     P <- ll$subweights
     theta <- theta2theta(ll$subtopo, phibest)
     llbest <- ll$score
@@ -789,10 +803,10 @@ doMean <- function(D, weights = NULL, Rho = NULL, logtype = 2) {
             if (doodds) {
                 A <- exp(D)/(1+exp(D))
                 D <- log(t(t(A)*weights +
-                           (1-weights)*0.5)/t(t(1 - A)*weights +
-                                              (1-weights)*0.5))/log(logtype)
+                               (1-weights)*0.5)/t(t(1 - A)*weights +
+                                                      (1-weights)*0.5))/log(logtype)
             } else {
-            D <- D*rep(weights, rep(nrow(D), ncol(D)))
+                D <- D*rep(weights, rep(nrow(D), ncol(D)))
             }
         }
         for (i in seq_len(length(unique(colnames(D))))) {
@@ -823,7 +837,7 @@ doMean <- function(D, weights = NULL, Rho = NULL, logtype = 2) {
                     (ncol(D)/length(unique(colnames(D))))
             } else {
                 mD <- t(rowsum(t(D), colnames(D))/
-                        as.numeric(table(colnames(D))))
+                            as.numeric(table(colnames(D))))
             }
         }
     }
@@ -887,14 +901,14 @@ modules <- function(D, method = "llr", weights = NULL, reduce = FALSE,
             }
             if (!is.null(Rho)) { Rho <- getRho(subdata) }
             tmp <- nem(subdata, search = search, method = method,
-                         start = start2,
-                         parallel = parallel, reduce = reduce,
-                         weights = weights[which(colnames(data) %in% subset)],
-                         verbose = verbose,
-                         redSpace = redSpace, trans.close = trans.close,
-                         subtopo = subtopo, prior = prior, ratio = ratio,
-                         domean = FALSE, fpfn = fpfn, Rho = Rho,
-                         logtype = logtype)
+                       start = start2,
+                       parallel = parallel, reduce = reduce,
+                       weights = weights[which(colnames(data) %in% subset)],
+                       verbose = verbose,
+                       redSpace = redSpace, trans.close = trans.close,
+                       subtopo = subtopo, prior = prior, ratio = ratio,
+                       domean = FALSE, fpfn = fpfn, Rho = Rho,
+                       logtype = logtype)
             if (is.null(fullnet)) {
                 fullnet <- tmp$adj
             } else {
@@ -1053,7 +1067,7 @@ graph2adj <- function(gR) {
     adj.matrix <- matrix(0,
                          length(nodes(gR)),
                          length(nodes(gR))
-                         )
+    )
     rownames(adj.matrix) <- nodes(gR)
     colnames(adj.matrix) <- nodes(gR)
     for (i in seq_len(length(nodes(gR)))) {
@@ -1325,432 +1339,329 @@ addgrid <- function(x = c(0,1,0.1), y = c(0,1,0.1), lty = 2,
 #' @param penalized if set to TRUE, the penalized likelihood will be used.
 #'  Per default this is FALSE, since no component learning is involved and
 #'   sparcity is hence not enforced
+#' @param logtype log base of the data
 #' @author Viktoria Brunner
 #' @noRd
 #' @return object of class mcmc
 MCMC <- function(Nems=2, Sgenes=5, data, stop_counter=30000, burn_in=10000,
                  probs=NULL, starts=3, Hastings=TRUE, Initialize="random",
-                 NodeSwitching=TRUE, EM_NEM=TRUE, post_gaps=100,
-                 penalized=FALSE){
-
-  k <- Nems
-  n <- Sgenes
-
-  #initialize saving entities (outside loop)
-  ll_track <- list()
-  mw_track <- list()
-
-  ll_best_timer_saved <- list()
-  ll_best_vector_saved <- list()
-
-  switch_counter_saved <- list()
-
-  Phi_track_saved <- list()
-  Phi_best_saved <- list()
-  for (i in 1:3){
-    Phi_track_saved[[i]] <- list()
-    Phi_best_saved[[i]] <- list()
-  }
-
-  run <- 0
-  max.len <- 0
-
-  for (s in 1:starts){
-    # set convergence criteria
-    counter <- 0
-    counter_accept <- 0
-    stop <- FALSE
-    ll_tracker <- mw_tracker <- rep(0,stop_counter)
-    ll_time <- mw_time <- c(1:(length(ll_tracker)))
-    ll_best_vector <- vector()
-    ll_best_timer <- vector()
-    accept <- FALSE
-    run <- run+1
-    accept_min <- seq(1,k,1)
-    switch_counter <- vector()
-
-    #Initialize mw as uniform and probs as empty if not given otherwise
-    if (probs==NULL){
-      probs <- matrix(0, k, ncol(data))
+                 phi = NULL, NodeSwitching=TRUE, EM_NEM=TRUE, post_gaps=10,
+                 penalized=FALSE, logtype = 2, marginal = FALSE){
+    if (burn_in >= stop_counter) {
+        burn_in <- floor(0.1*stop_counter)
     }
-
-    mw_old <- rep(1/k, k)
-
-    #Initialize Phi as empty or random
-    Topology <- list()
-    for (i in 1:k){
-
-      Topology[[i]] <- list()
-
-      dimnames<-list(1:n,1:n)
-
-      if (Initialize=="random"){
-        Topology[[i]]$adj <- matrix(sample(0:1, n*n, replace=TRUE), n,
-                                    n, dimnames=dimnames)
-      } else{
-        Topology[[i]]$adj <- matrix(0, n , n, dimnames=dimnames)
-      }
-
-      data1 <- t(t(data)*getAffinity(probs, mw = mw_old, complete = FALSE)[i,])
-      P <- cbind(0,data1%*%t(getRho(data1))%*%transitive.closure(
-          Topology[[i]]$adj))
-      Topology[[i]]$subtopo <- max.col(P)-1
-
+    if (!is.null(phi)) {
+        Initialize <- 'prior'
+        starts <- length(phi)
     }
-
-    probs <- getProbs(probs, k=k, data=data, mw=mw_old, res=Topology,
-                      complete = FALSE)
-    probs <- probs_best <- probs$probs
-
-    #penalized ll
-    if (penalized==TRUE){
-      s <- 0
-      for (i in 1:k){
-        theta <- theta2theta(Topology[[i]]$subtopo,Topology[[i]]$adj)
-        s <- s+sum(Topology[[i]]$adj)+sum(theta)+k-1
-      }
-      ll_old <- ll_best <- (log(n)*s)-2*(getLL(probs, mw=mw_old, logtype=2))
+    k <- Nems
+    n <- Sgenes
+    #initialize saving entities (outside loop)
+    ll_track <- list()
+    mw_track <- list()
+    ll_best_timer_saved <- list()
+    ll_best_vector_saved <- list()
+    switch_counter_saved <- list()
+    Phi_track_saved <- list()
+    Phi_best_saved <- list()
+    for (i in 1:starts){
+        Phi_track_saved[[i]] <- list()
+        Phi_best_saved[[i]] <- list()
     }
-    #unpenalized ll
-    else{
-      ll_old <- ll_best <- getLL(probs, mw=mw_old, logtype=2)
-    }
-
-    #initialize Phi
-    Phi_best <- list()
-    old_Phi <- list()
-    norm_post <- list()
-    for (i in 1:k){
-      Phi_best[[i]] <- matrix(0, n , n, dimnames=dimnames)
-    }
-
-    #initialize Phi edge frequency trackers
-    Phi_track <- Phi_track_10 <- Phi_track_100 <- Phi_best
-
-
-    #start MCMC
-    while (!stop){
-      accept <- FALSE
-
-      #sample component to change
-      which_k<-sample(1:k,1)
-      #change Phi in component by edge reversal/ adding/ removing or node
-      #switching
-      Phi_new<-Topology[[which_k]]$adj
-
-      #prevent cycle by calculating transitively closed of old matrix and
-      #its inverse and omit them from edge sampling
-      closed_Phi <- transitive.closure(Phi_new)
-      closed_trans_Phi <- closed_Phi + t(closed_Phi)
-      closed_trans_Phi[which(closed_trans_Phi != 0)] <- 1
-
-      omit_edge <- which(closed_trans_Phi != Phi_new)
-      omit_length <- length(Phi_new)-length(omit_edge)
-      prob_vector <- rep(1/omit_length, length(Phi_new))
-      prob_vector[omit_edge] <- 0
-
-      #calulate move probabilities
-      node_switch <- choose(n,2)
-      prob_switch <- node_switch/ (node_switch+omit_length)
-
-      action <- c("node","edge")
-      do <- sample(action, size=1, prob=c(prob_switch,1-prob_switch))
-
-      #node switching
-      if (do=="node" && NodeSwitching==TRUE){
-        prob <- rep(1/node_switch, n)
-        nodes <- seq(1, n, 1)
-        do <- sample(nodes, size=2, prob=prob)
-
-        Phi_new[c(do[1],do[2]),]  <- Phi_new[c(do[2],do[1]),]
-        Phi_new[,c(do[1],do[2])]  <- Phi_new[,c(do[2],do[1])]
-
-      }
-
-      #edge sampling: sample edge w/o the omitted ones
-      else{
-        Phi_sample <- Phi_new
-        names(Phi_sample) <- seq_along(Phi_sample)
-        edge <- as.numeric(names(sample(x=Phi_sample, size=1,
-                                        prob=prob_vector)))
-
-        ##check for existing edge
-        curr_edge <- Topology[[which_k]]$adj[edge]
-        ##change respective edge in Phi
-        if (curr_edge==0){
-          Phi_new[edge]<-1
-        } else{
-          action<-sample(1:2,1)
-          if (action==1){
-            Phi_new[edge]<-0
-          } else{
-            Phi_new[edge]<-0
-
-            Phi_new<-t(Phi_new)
-            Phi_new[edge]<-1
-            Phi_new<-t(Phi_new)
-          }
+    run <- 0
+    max.len <- 0
+    for (s in 1:starts){
+        if (!is.null(phi[[s]])) {
+            k <- length(phi[[s]])
         }
-      }
-
-      #calculate Hastings ratio if desired
-      if (Hastings){
-        hastings_X_Y <- 1/(omit_length+node_switch)
-
-        closed_Phi <- transitive.closure(Phi_new)
-        closed_trans_Phi <- closed_Phi + t(closed_Phi)
-        closed_trans_Phi[which(closed_trans_Phi != 0)] <- 1
-
-        omit_edge <- which(closed_trans_Phi != Phi_new)
-        omit_length <- length(Phi_new)-length(omit_edge)
-        hastings_Y_X <- 1/(omit_length+node_switch)
-      }
-
-      #insert Phi into new test list
-      Topology_test <- Topology
-      Topology_test[[which_k]]$adj <- Phi_new
-
-      #Calculate MAP for Theta
-      Theta<-list()
-      for (i in 1:k){
-        data1 <- t(t(data)*getAffinity(probs, mw = mw_old,
-                                       complete = FALSE)[i,]) # daten R_k
-        P <- cbind(0,data1%*%t(getRho(data1))%*%transitive.closure(
-            Topology_test[[i]]$adj))
-        Theta[[i]] <- max.col(P)-1
-      }
-
-      #Insert new Theta into test list
-      for (i in 1:k){
-        Topology_test[[i]]$subtopo <- Theta[[i]]
-      }
-
-      #Calculate new probabilities based on new Phi and Theta in test list
-      probs_new <- getProbs(probs, k=k, data=data, res=Topology_test,
-                            mw = mw_old, complete = FALSE)
-
-      #extract new mixture likelihood
-      if (penalized==TRUE){
-        s <- 0
+        # set convergence criteria
+        counter <- 0
+        counter_accept <- 0
+        stop <- FALSE
+        ll_tracker <- mw_tracker <- rep(0,stop_counter)
+        ll_time <- mw_time <- c(1:(length(ll_tracker)))
+        ll_best_vector <- vector()
+        ll_best_timer <- vector()
+        accept <- FALSE
+        run <- run+1
+        accept_min <- seq(1,k,1)
+        switch_counter <- vector()
+        #Initialize mw as uniform and probs as empty if not given otherwise
+        if (is.null(probs)){
+            probs <- matrix(0, k, ncol(data))
+        }
+        mw_old <- rep(1/k, k)
+        #Initialize Phi
+        Topology <- list()
         for (i in 1:k){
-          theta <- theta2theta(
-              Topology_test[[i]]$subtopo,Topology_test[[i]]$adj)
-          s<-s+sum(Topology_test[[i]]$adj)+sum(theta)+k-1
-        }
-        ll_new <- (log(n)*s)-2*(getLL(probs_new$probs, mw=mw_old, logtype=2))
-      }
-      else{
-        ll_new <- probs_new$ll
-      }
-
-      #calculate metropolis ratio of mixture likelihood's
-      Metr_ratio <- exp(ll_new-ll_old)
-
-      if (Hastings){
-        Hastings_ratio <- hastings_X_Y/hastings_Y_X
-      } else{
-        Hastings_ratio <- 1
-      }
-
-      #Set acceptance probability of new mixture
-      Acceptance_prob <- min(Metr_ratio*Hastings_ratio, 1)
-
-      #for penalized likelihood:
-      if (penalized==TRUE){
-        if (ll_new>0){
-          Acceptance_prob <- 0
-        }
-      }
-
-      if (Acceptance_prob > (runif(1))){
-
-        accept <- TRUE
-
-        counter_accept <- counter_accept +1
-
-        #for Phi counter: remember old Phi for hd calculation
-        for (i in 1:k){
-          old_Phi[[i]] <- Topology[[i]]$adj
-        }
-
-        Topology <- Topology_test
-
-        #test if new likelihood better than old
-        if ((ll_new>ll_best&penalized==FALSE) |
-            (ll_new<ll_best&penalized==TRUE)) {
-
-          ll_best <- ll_new
-          ll_best_vector <- append(ll_best_vector, ll_new)
-          ll_best_timer <- append(ll_best_timer, counter)
-
-          #remember best Phi
-          for (i in 1:k){
-            Phi_best[[i]]<-Topology[[i]]$adj
-          }
-
-          probs_best <- probs_new
-        }
-
-        ll_old <- ll_new
-        mw_old <- probs_new$mw
-        probs <- probs_new$probs
-      }
-
-      #tracking of Phi's
-      if (counter>burn_in){
-
-        # if new Phi accepted, calculate NORM of topology and topology_test
-          # matrices and add new matrix to most similar old matrix
-        dimnames <- dimnames<-list(1:k,1:k)
-        hd <- matrix(0, k , k, dimnames=dimnames)
-
-        for (i in 1:k){
-          for (j in 1:k){
-            if (Phi_track[[i]][1,1]!=0){
-              hd[i,j] <- norm((Phi_track[[i]]/Phi_track[[i]][1,1])-
-                                  transitive.closure(Topology[[j]]$adj),
-                              type = "2")
-            } else{
-              hd[i,j] <- norm(Phi_track[[i]]-transitive.closure(
-                  Topology[[j]]$adj), type = "2")
+            Topology[[i]] <- list()
+            dimnames<-list(1:n,1:n)
+            if (Initialize == 'networks'){
+                tmp <- matrix(sample(0:1, n*n, replace=TRUE), n, n)
+                rownames(tmp) <- colnames(tmp) <- sample(seq_len(n), n)
+                tmp[lower.tri(tmp)] <- 0
+                tmp <- tmp[naturalorder(rownames(tmp)),
+                           naturalorder(rownames(tmp))]
+                Topology[[i]]$adj <- tmp
+            } else if (Initialize == 'empty') {
+                Topology[[i]]$adj <- matrix(0, n , n, dimnames=dimnames)
+            } else if (Initialize == 'prior') {
+                Topology[[i]]$adj <- phi[[s]][[i]]
             }
-          }
+            data1 <- t(t(data)*getAffinity(probs, mw = mw_old,
+                                           complete = FALSE)[i,])
+            P <- cbind(0,data1%*%t(getRho(data1))%*%transitive.closure(
+                Topology[[i]]$adj))
+            Topology[[i]]$subtopo <- max.col(P)-1
         }
-
-        #choose which new phi is added to which old phi -> only accept
-        #if unambigous
-
-        hd <- as.data.frame(hd)
-        minHd <- apply( hd, 1, which.min)
-
-        if (sum(duplicated(minHd))==FALSE){
-          #keep track of component switches
-          if (sum(accept_min!=minHd)!=FALSE) {
-            switch_counter<-append(switch_counter, counter)
-            accept_min <- minHd
-          }
+        probs <- getProbs(probs, k=k, data=data, mw=mw_old, res=Topology,
+                          complete = FALSE, marginal = marginal)
+        ll_old <- ll_best <- probs$ll
+        probs <- probs_best <- probs$probs
+        #penalized ll
+        if (penalized==TRUE){
+            s <- 0
+            for (i in 1:k){
+                theta <- theta2theta(Topology[[i]]$subtopo,Topology[[i]]$adj)
+                s <- s+sum(Topology[[i]]$adj)+sum(theta)+k-1
+            }
+            ll_old <- ll_best <- (log(n)*s)-2*(getLL(probs, mw=mw_old,
+                                                     logtype=2))
         }
-
-        #add up matrices
+        #initialize Phi
+        Phi_best <- list()
+        old_Phi <- list()
+        norm_post <- list()
         for (i in 1:k){
-          Phi_track[[i]] <- Phi_track[[i]] + transitive.closure(
-              Topology[[accept_min[i]]]$adj)
+            Phi_best[[i]] <- matrix(0, n , n, dimnames=dimnames)
         }
-        if (counter_accept%%10==0){
-          for (i in 1:k){
-            Phi_track_10[[i]] <- Phi_track_10[[i]] + transitive.closure(
-                Topology[[accept_min[i]]]$adj)
-          }
+        #initialize Phi edge frequency trackers
+        Phi_track <- Phi_track_N <- Phi_best
+        #start MCMC
+        while (!stop){
+            accept <- FALSE
+            #sample component to change
+            which_k <- sample(1:k,1) # different distribution?
+            #change Phi in component by edge reversal/ adding/ removing or node
+            #switching
+            Phi_new <- Topology[[which_k]]$adj
+            #prevent cycle by calculating transitively closed of old matrix and
+            #its inverse and omit them from edge sampling
+            closed_Phi <- transitive.closure(Phi_new)
+            closed_trans_Phi <- closed_Phi + t(closed_Phi)
+            closed_trans_Phi[which(closed_trans_Phi != 0)] <- 1
+            omit_edge <- which(closed_trans_Phi != Phi_new)
+            omit_length <- length(Phi_new)-length(omit_edge)
+            prob_vector <- rep(1/omit_length, length(Phi_new))
+            prob_vector[omit_edge] <- 0
+            #calulate move probabilities
+            node_switch <- choose(n, 2)
+            prob_switch <- node_switch/(node_switch + omit_length)
+            action <- c("node","edge")
+            do <- sample(action, size=1, prob=c(prob_switch, 1-prob_switch))
+            #node switching
+            if (do=="node" && NodeSwitching==TRUE){
+                prob <- rep(1/node_switch, n)
+                nodes <- seq(1, n, 1)
+                do <- sample(nodes, size=2, prob=prob)
+                Phi_new[c(do[1],do[2]),]  <- Phi_new[c(do[2],do[1]),]
+                Phi_new[,c(do[1],do[2])]  <- Phi_new[,c(do[2],do[1])]
+            }
+            #edge sampling: sample edge w/o the omitted ones
+            else{
+                Phi_sample <- Phi_new
+                names(Phi_sample) <- seq_along(Phi_sample)
+                edge <- as.numeric(names(sample(x=Phi_sample, size=1,
+                                                prob=prob_vector)))
+                ##check for existing edge
+                curr_edge <- Topology[[which_k]]$adj[edge]
+                ##change respective edge in Phi
+                if (curr_edge==0){
+                    Phi_new[edge]<-1
+                } else{
+                    action<-sample(1:2,1)
+                    if (action==1){
+                        Phi_new[edge]<-0
+                    } else{
+                        Phi_new[edge]<-0
+                        Phi_new<-t(Phi_new)
+                        Phi_new[edge]<-1
+                        Phi_new<-t(Phi_new)
+                    }
+                }
+            }
+            #calculate Hastings ratio if desired
+            if (Hastings){
+                if (NodeSwitching==FALSE) { node_switch <- 0 }
+                hastings_X_Y <- 1/(omit_length+node_switch)
+                closed_Phi <- transitive.closure(Phi_new)
+                closed_trans_Phi <- closed_Phi + t(closed_Phi)
+                closed_trans_Phi[which(closed_trans_Phi != 0)] <- 1
+                omit_edge <- which(closed_trans_Phi != Phi_new)
+                omit_length <- length(Phi_new)-length(omit_edge)
+                hastings_Y_X <- 1/(omit_length+node_switch)
+            }
+            #insert Phi into new test list
+            Topology_test <- Topology
+            Topology_test[[which_k]]$adj <- Phi_new
+            #Calculate MAP for Theta
+            Theta<-list()
+            for (i in 1:k){
+                data1 <- t(t(data)*getAffinity(probs, mw = mw_old,
+                                               complete = FALSE)[i,]) # daten R_k
+                P <- cbind(0,data1%*%t(getRho(data1))%*%transitive.closure(
+                    Topology_test[[i]]$adj))
+                Theta[[i]] <- max.col(P)-1
+                Topology_test[[i]]$subtopo <- Theta[[i]]
+            }
+            #Calculate new probabilities based on new Phi and Theta in test list
+            probs_new <- getProbs(probs, k=k, data=data, res=Topology_test,
+                                  mw = mw_old, complete = FALSE, marginal = marginal)
+            #extract new mixture likelihood
+            if (penalized==TRUE){
+                s <- 0
+                for (i in 1:k){
+                    theta <- theta2theta(
+                        Topology_test[[i]]$subtopo,Topology_test[[i]]$adj)
+                    s<-s+sum(Topology_test[[i]]$adj)+sum(theta)+k-1
+                }
+                ll_new <- (log(n)*s)-2*(getLL(probs_new$probs, mw=mw_old, logtype=2))
+            } else {
+                ll_new <- probs_new$ll
+            }
+            #calculate metropolis ratio of mixture likelihood's
+            Metr_ratio <- logtype^(ll_new-ll_old)
+            if (Hastings){
+                Hastings_ratio <- hastings_X_Y/hastings_Y_X
+            } else{
+                Hastings_ratio <- 1
+            }
+            #Set acceptance probability of new mixture
+            Acceptance_prob <- min(Metr_ratio*Hastings_ratio, 1)
+            #for penalized likelihood: (what is going on here?)
+            if (penalized==TRUE){
+                if (ll_new>0){
+                    Acceptance_prob <- 0
+                }
+            }
+            if (Acceptance_prob > (runif(1))){
+                accept <- TRUE
+                counter_accept <- counter_accept +1
+                Topology <- Topology_test
+                #test if new likelihood better than old
+                if ((ll_new>ll_best&penalized==FALSE) |
+                    (ll_new<ll_best&penalized==TRUE)) {
+                    ll_best <- ll_new
+                    ll_best_vector <- append(ll_best_vector, ll_new)
+                    ll_best_timer <- append(ll_best_timer, counter)
+                    #remember best Phi
+                    for (i in 1:k){
+                        Phi_best[[i]] <- Topology[[i]]$adj
+                        old_Phi[[i]] <- Topology[[i]]$adj
+                    }
+                    probs_best <- probs_new
+                } else {
+                    #for Phi counter: remember old Phi for hd calculation
+                    for (i in 1:k){
+                        old_Phi[[i]] <- Topology[[i]]$adj
+                    }
+                }
+                ll_old <- ll_new
+                mw_old <- probs_new$mw
+                probs <- probs_new$probs
+            }
+            #tracking of Phi's
+            if (counter>burn_in){
+                # if new Phi accepted, calculate NORM of topology and topology_test
+                # matrices and add new matrix to most similar old matrix
+                dimnames <- dimnames<-list(1:k,1:k)
+                hd <- matrix(0, k , k, dimnames=dimnames)
+                for (i in 1:k){
+                    for (j in 1:k){
+                        if (i == j) { next() }
+                        if (Phi_track[[i]][1,1]!=0){
+                            hd[i,j] <- norm((Phi_track[[i]]/Phi_track[[i]][1,1])-
+                                                transitive.closure(Topology[[j]]$adj),
+                                            type = "2")
+                        } else{
+                            hd[i,j] <- norm(Phi_track[[i]]-transitive.closure(
+                                Topology[[j]]$adj), type = "2")
+                        }
+                    }
+                }
+                #choose which new phi is added to which old phi -> only accept
+                #if unambigous
+                hd <- as.data.frame(hd)
+                minHd <- apply( hd, 1, which.min)
+                if (sum(duplicated(minHd)) == FALSE){
+                    #keep track of component switches
+                    if (sum(accept_min != minHd)!=FALSE) {
+                        switch_counter <- append(switch_counter, counter)
+                        accept_min <- minHd
+                    }
+                }
+                #add up matrices
+                for (i in 1:k){
+                    Phi_track[[i]] <- Phi_track[[i]] + transitive.closure(
+                        Topology[[accept_min[i]]]$adj)
+                    if (counter_accept%%post_gaps == 0){
+                        Phi_track_N[[i]] <- Phi_track_N[[i]] + transitive.closure(
+                            Topology[[accept_min[i]]]$adj)
+                    }
+                }
+            }
+            counter <- counter+1
+            #stop MCMC
+            if (counter==stop_counter) {
+                stop <- TRUE
+            }
+            ll_tracker[[counter]] <- ll_old
+            mw_tracker[[counter]] <- mw_old[[1]]
         }
-        if (counter_accept%%100==0){
-          for (i in 1:k){
-            Phi_track_100[[i]] <- Phi_track_100[[i]] + transitive.closure(
-                Topology[[accept_min[i]]]$adj)
-          }
+        #save likelihood evolution for trace plot
+        ll_track[[run]] <- ll_tracker
+        #save data for mw_tracking
+        mw_track[[run]] <- mw_tracker
+        #save component switching
+        switch_counter_saved[[run]] <- switch_counter
+        #save ll_best from current run
+        ll_best_timer_saved[[run]]<- ll_best_timer
+        ll_best_vector_saved[[run]] <- ll_best_vector
+        max.len <- max(max.len, ll_best_timer_saved[[run]])
+        #save Phi_freq/ posterior and best_Phi
+        for (i in 1:k){
+            Phi_track_saved[[run]][[i]]<-list()
+            Phi_track_saved[[run]][[i]]$all <- Phi_track[[i]]
+            Phi_track_saved[[run]][[i]]$N <- Phi_track_N[[i]]
+            Phi_best_saved[[run]][[i]] <- Phi_best[[i]]
+            #choose Phi frequency matrix (1, 10, 100)
+            #choose which posterior to use (gap size of saved Phi's)
+            norm_post[[i]] <- Phi_track_N[[i]]/(Phi_track_N[[1]][1,1])
+            bin_post <- norm_post
+            bin_post[[i]][bin_post[[i]] <= 0.5] <- 0
+            bin_post[[i]][bin_post[[i]] > 0.5] <- 1
         }
-
-      }
-
-      counter <- counter+1
-
-      #stop MCMC
-      if (counter==stop_counter) {
-        stop <- TRUE
-      }
-
-
-      ll_tracker[[counter]] <- ll_old
-      mw_tracker[[counter]] <- mw_old[[1]]
-
     }
-
-    ##evaluation/ save stats
-    #plot s-gene connection
-    # for (i in 1:k){
-    #   plotDnf(Phi_best[[i]], bordercol = i+1)
-    # }
-
-    #save likelihood evolution for trace plot
-    ll_track[[run]] <- ll_tracker
-
-    #save data for mw_tracking
-    mw_track[[run]] <- mw_tracker
-
-    #save component switching
-    switch_counter_saved[[run]] <- switch_counter
-
-    #save ll_best from current run
-    ll_best_timer_saved[[run]]<- ll_best_timer
-    ll_best_vector_saved[[run]] <- ll_best_vector
-    max.len <- max(max.len, ll_best_timer_saved[[run]])
-
-    #save Phi_freq/ posterior and best_Phi
-    for (i in 1:k){
-      Phi_track_saved[[run]][[i]]<-list()
-      Phi_track_saved[[run]][[i]]$one <- Phi_track[[i]]
-      Phi_track_saved[[run]][[i]]$ten <- Phi_track_10[[i]]
-      Phi_track_saved[[run]][[i]]$hundred <- Phi_track_100[[i]]
-
-      Phi_best_saved[[run]][[i]] <- Phi_best[[i]]
+    #create object to return from mcmc
+    mcmc <- list()
+    mcmc$trace_time <- seq(1:stop_counter)
+    mcmc$trace <- list()
+    mcmc$trace_mw <- list()
+    mcmc$comp_switches <- list()
+    mcmc$best_ll <- list()
+    mcmc$best_ll_time <- list()
+    mcmc$posterior <- list()
+    mcmc$best_phi <- list()
+    for (i in 1:starts){
+        mcmc$trace[[i]] <- ll_track[[i]]
+        mcmc$trace_mw[[i]] <- mw_track[[i]]
+        mcmc$comp_switches[[i]] <- switch_counter_saved[[i]]
+        mcmc$best_ll[[i]] <- ll_best_vector_saved[[i]]
+        mcmc$best_ll_time[[i]] <- ll_best_timer_saved[[i]]
+        mcmc$best_ll_length <- max.len
+        mcmc$posterior[[i]] <- Phi_track_saved[[i]]
+        mcmc$best_phi[[i]] <- Phi_best_saved[[i]]
     }
-
-   #choose Phi frequency matrix (1, 10, 100)
-    for (i in 1:k){
-
-      #choose which posterior to use (gap size of saved Phi's)
-      if (post_gaps==100){
-        norm_post[[i]] <- Phi_track_100[[i]]/(Phi_track_100[[1]][1,1])
-      } else if(post_gaps==10){
-        norm_post[[i]] <- Phi_track_10[[i]]/(Phi_track_10[[1]][1,1])
-      } else{
-        norm_post[[i]] <- Phi_track[[i]]/(Phi_track[[1]][1,1])
-      }
-
-      bin_post <- norm_post
-      bin_post[[i]][bin_post[[i]]<=0.5]<-0
-      bin_post[[i]][bin_post[[i]]>0.5]<-1
-    }
-
-  }
-
-  #run EM and NEM for likelihood comparison
-  if (EM_NEM==TRUE){
-    result_em <- mnem(data, k = k, starts = 10, complete=0)
-    result_nem <- mnem(data, k = 1, starts = 10, complete=0)
-  }
-
-  #create object to return from mcmc
-  mcmc <- list()
-
-  mcmc$trace_time <- seq(1:stop_counter)
-  mcmc$trace <- list()
-  mcmc$trace_mw <- list()
-  mcmc$comp_switches <- list()
-
-  mcmc$best_ll <- list()
-  mcmc$best_ll_time <- list()
-
-  mcmc$posterior <- list()
-  mcmc$best_phi <- list()
-
-  for (i in 1:starts){
-
-    mcmc$trace[[i]] <- ll_track[[i]]
-    mcmc$trace_mw[[i]] <- mw_track[[i]]
-    mcmc$comp_switches[[i]] <- switch_counter_saved[[i]]
-
-    mcmc$best_ll[[i]] <- ll_best_vector_saved[[i]]
-    mcmc$best_ll_time[[i]] <- ll_best_timer_saved[[i]]
-    mcmc$best_ll_length <- max.len
-
-    mcmc$posterior[[i]] <- Phi_track_saved[[i]]
-    mcmc$best_phi[[i]] <- Phi_best_saved[[i]]
-
-  }
-
-  mcmc$EM <- result_em
-  mcmc$NEM <- result_nem
-
-  return(mcmc)
+    return(mcmc)
 }
 
