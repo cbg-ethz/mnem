@@ -3123,6 +3123,7 @@ plot.mnem_sim <- function(x, data = NULL, logtype = 2, fuzzypars = list(), ...) 
 #' @param logtype logarithm type of the data
 #' @param complete if TRUE, complete data log likelihood is considered (for
 #' very large data sets, e.g. 1000 cells and 1000 E-genes)
+#' @param marginal logical to compute the marginal likelihood (TRUE)
 #' @param ... additional parameters for the function getAffinity
 #' @author Martin Pirkl
 #' @return list with cell log odds mixture weights and log likelihood
@@ -3133,7 +3134,8 @@ plot.mnem_sim <- function(x, data = NULL, logtype = 2, fuzzypars = list(), ...) 
 #' data[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 1)
 #' data[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 1)
 #' fuzzy <- fuzzyindex(sim, data)
-fuzzyindex <- function(x, data, logtype = 2, complete = FALSE, ...) {
+fuzzyindex <- function(x, data, logtype = 2, complete = FALSE,
+                       marginal = FALSE, ...) {
     data <- modData(data)
     k <- length(x$Nem)
     res <- list()

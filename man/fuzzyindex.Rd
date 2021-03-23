@@ -4,7 +4,7 @@
 \alias{fuzzyindex}
 \title{Calculate fuzzy ground truth.}
 \usage{
-fuzzyindex(x, data, logtype = 2, complete = FALSE, ...)
+fuzzyindex(x, data, logtype = 2, complete = FALSE, marginal = FALSE, ...)
 }
 \arguments{
 \item{x}{mnem_sim object}
@@ -15,6 +15,8 @@ fuzzyindex(x, data, logtype = 2, complete = FALSE, ...)
 
 \item{complete}{if TRUE, complete data log likelihood is considered (for
 very large data sets, e.g. 1000 cells and 1000 E-genes)}
+
+\item{marginal}{logical to compute the marginal likelihood (TRUE)}
 
 \item{...}{additional parameters for the function getAffinity}
 }
