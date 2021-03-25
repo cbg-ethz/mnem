@@ -1784,8 +1784,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                           Rho = Rho, complete = complete, nullcomp = nullcomp,
                           marginal = marginal)
         subtopoX <- probs$subtopoX
-        limits[[1]]$ll <- probs$ll
-        limits[[1]]$probs <- probs$probs
+        limits[[1]]$lls <- limits[[1]]$ll <- probs$ll
+        limits[[1]]$probs <- probs
         limits[[1]]$mw <- 1
     } else {
         if (inference %in% "em") {
@@ -2064,7 +2064,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                 limits <- list()
                 limits$probs <- bestprobs
                 limits$res <- bestres
-                limits$ll <- lls
+                limits$lls <- lls
+                limits$ll <- max(lls)
                 limits$k <- k
                 limits$subtopo <- subtopoX
                 limits$mw <- bestmw
