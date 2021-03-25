@@ -693,22 +693,22 @@ plotConvergence.mnem <- function(x, col = NULL, type = "b",
     maxllcount <- 0
     minlen <- 0
     for (i in seq_len(runs)) {
-        if (max(x$limits[[i]]$ll) - maxll > convergence) {
-            maxll <- max(x$limits[[i]]$ll)
+        if (max(x$limits[[i]]$lls) - maxll > convergence) {
+            maxll <- max(x$limits[[i]]$lls)
             maxllcount <- 0
         }
-        if (abs(max(x$limits[[i]]$ll) - maxll) <= convergence) {
+        if (abs(max(x$limits[[i]]$lls) - maxll) <= convergence) {
             maxllcount <- maxllcount + 1
         }
-        if (length(x$limits[[i]]$ll) == 2) {
+        if (length(x$limits[[i]]$lls) == 2) {
             minlen <- minlen + 1
         }
-        ymin <- min(c(ymin, x$limits[[i]]$ll))
-        xmax <- max(c(xmax, length(x$limits[[i]]$ll)))
+        ymin <- min(c(ymin, x$limits[[i]]$lls))
+        xmax <- max(c(xmax, length(x$limits[[i]]$lls)))
     }
     for (i in seq_len(runs)) {
         if (i == 1) {
-            plot(x$limits[[i]]$ll, col = col[i], ylim = c(ymin, max(x$lls)),
+            plot(x$limits[[i]]$lls, col = col[i], ylim = c(ymin, max(x$lls)),
                  xlim = c(1, xmax), xlab = "EM iterations", ylab = "log odds",
                  type = type,
                  main = paste0(maxllcount,
@@ -720,7 +720,7 @@ plotConvergence.mnem <- function(x, col = NULL, type = "b",
                                "%) run(s) started in local optimum"),
                  ...)
         } else {
-            lines(x$limits[[i]]$ll, col = col[i], type = type, ...)
+            lines(x$limits[[i]]$lls, col = col[i], type = type, ...)
         }
     }
     if (!is.null(x$limits[[1]]$phievo)) {
