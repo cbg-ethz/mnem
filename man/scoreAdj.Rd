@@ -31,6 +31,8 @@ scoreAdj(
 \item{method}{either llr if D consists of log odds or disc,
 if D is binary}
 
+\item{marginal}{logical to compute the marginal likelihood (TRUE)}
+
 \item{logtype}{log base of the log odds}
 
 \item{weights}{a numeric vector of weights for the columns of D}

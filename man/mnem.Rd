@@ -152,6 +152,9 @@ correlation distance or any method accepted by the function 'dist'}
 
 \item{nullcomp}{if TRUE, adds a null component (k+1)}
 
+\item{burnin}{number of iterations to be discarded prior to
+analyzing the posterior distribution of the mcmc}
+
 \item{hastings}{if set to TRUE, the Hastings ratio is calculated}
 
 \item{nodeswitch}{if set to TRUE, node switching is allowed as a
@@ -165,9 +168,6 @@ tracker in the mcmc}
 used for the mcmc.
 Per default this is FALSE, since no component learning is involved and
 sparcity is hence not enforced}
-
-\item{burn_in}{number of iterations to be discarded prior to
-analyzing the posterior distribution of the mcmc}
 }
 \value{
 object of class mnem

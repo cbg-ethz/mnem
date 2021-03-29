@@ -335,6 +335,7 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
 #' @param adj adjacency matrix of the network phi
 #' @param method either llr if D consists of log odds or disc,
 #' if D is binary
+#' @param marginal logical to compute the marginal likelihood (TRUE)
 #' @param logtype log base of the log odds
 #' @param weights a numeric vector of weights for the columns of D
 #' @param trans.close if TRUE uses the transitive closure of adj
@@ -1565,7 +1566,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' "silhouette", "BIC" or "AIC"; the third value is either "cor" for
 #' correlation distance or any method accepted by the function 'dist'
 #' @param nullcomp if TRUE, adds a null component (k+1)
-#' @param burn_in number of iterations to be discarded prior to
+#' @param burnin number of iterations to be discarded prior to
 #' analyzing the posterior distribution of the mcmc
 #' @param hastings if set to TRUE, the Hastings ratio is calculated
 #' @param nodeswitch if set to TRUE, node switching is allowed as a
