@@ -45,7 +45,8 @@ mnem(
   hastings = TRUE,
   nodeswitch = TRUE,
   postgaps = 10,
-  penalized = FALSE
+  penalized = FALSE,
+  accept_range = 1
 )
 }
 \arguments{
@@ -168,6 +169,9 @@ tracker in the mcmc}
 used for the mcmc.
 Per default this is FALSE, since no component learning is involved and
 sparcity is hence not enforced}
+
+\item{accept_range}{the random probability the acceptance probability
+is compared to (default: 1)}
 }
 \value{
 object of class mnem

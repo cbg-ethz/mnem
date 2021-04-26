@@ -1,3 +1,15 @@
+#' @noRd
+llfree <- function(D, phi, theta) {
+    Dnorm <- D
+    Dnorm[D > 0] <- 1
+    Dnorm[D <= 0] <- -1
+    phi <- mytc(phi)
+    phi <- phi[colnames(D), ]
+    Fmat <- phi%*%theta
+    Fmat[Fmat == 0] <- -1
+    notlh <- 1 - sum(abs(D - t(Fmat)))/sum(abs(D + Dnorm))
+    return(notlh)
+}
 #' Originally imported from the package 'nem'.
 #' @noRd
 #' @importFrom e1071 bincombinations
@@ -1340,13 +1352,19 @@ addgrid <- function(x = c(0,1,0.1), y = c(0,1,0.1), lty = 2,
 #'  Per default this is FALSE, since no component learning is involved and
 #'   sparcity is hence not enforced
 #' @param logtype log base of the data
+#' @param marginal logical to compute the marginal likelihood (TRUE)
+#' @param complete if TRUE, complete data log likelihood is considered (for
+#' very large data sets, e.g. 1000 cells and 1000 E-genes)
+#' @param accept_range the random probability the acceptance probability
+#' is compared to (default: 1)
 #' @author Viktoria Brunner
 #' @noRd
 #' @return object of class mcmc
 MCMC <- function(Nems=2, Sgenes=5, data, stop_counter=30000, burn_in=10000,
                  probs=NULL, starts=3, Hastings=TRUE, Initialize="random",
                  phi = NULL, NodeSwitching=TRUE, EM_NEM=TRUE, post_gaps=10,
-                 penalized=FALSE, logtype = 2, marginal = FALSE){
+                 penalized=FALSE, logtype = 2, marginal = FALSE,
+                 complete = FALSE, accept_range = 1){
     if (burn_in >= stop_counter) {
         burn_in <- floor(0.1*stop_counter)
     }
@@ -1413,9 +1431,10 @@ MCMC <- function(Nems=2, Sgenes=5, data, stop_counter=30000, burn_in=10000,
             P <- cbind(0,data1%*%t(getRho(data1))%*%transitive.closure(
                 Topology[[i]]$adj))
             Topology[[i]]$subtopo <- max.col(P)-1
+            thetarand <- TRUE
         }
         probs <- getProbs(probs, k=k, data=data, mw=mw_old, res=Topology,
-                          complete = FALSE, marginal = marginal)
+                          complete = complete, marginal = marginal)
         ll_old <- ll_best <- probs$ll
         probs <- probs_best <- probs$probs
         #penalized ll
@@ -1426,7 +1445,8 @@ MCMC <- function(Nems=2, Sgenes=5, data, stop_counter=30000, burn_in=10000,
                 s <- s+sum(Topology[[i]]$adj)+sum(theta)+k-1
             }
             ll_old <- ll_best <- (log(n)*s)-2*(getLL(probs, mw=mw_old,
-                                                     logtype=2))
+                                                     logtype=2,
+                                                     complete = complete))
         }
         #initialize Phi
         Phi_best <- list()
@@ -1508,7 +1528,7 @@ MCMC <- function(Nems=2, Sgenes=5, data, stop_counter=30000, burn_in=10000,
             Theta<-list()
             for (i in 1:k){
                 data1 <- t(t(data)*getAffinity(probs, mw = mw_old,
-                                               complete = FALSE)[i,]) # daten R_k
+                                               complete = complete)[i,]) # daten R_k
                 P <- cbind(0,data1%*%t(getRho(data1))%*%transitive.closure(
                     Topology_test[[i]]$adj))
                 Theta[[i]] <- max.col(P)-1
@@ -1516,7 +1536,7 @@ MCMC <- function(Nems=2, Sgenes=5, data, stop_counter=30000, burn_in=10000,
             }
             #Calculate new probabilities based on new Phi and Theta in test list
             probs_new <- getProbs(probs, k=k, data=data, res=Topology_test,
-                                  mw = mw_old, complete = FALSE, marginal = marginal)
+                                  mw = mw_old, complete = complete, marginal = marginal)
             #extract new mixture likelihood
             if (penalized==TRUE){
                 s <- 0
@@ -1525,12 +1545,14 @@ MCMC <- function(Nems=2, Sgenes=5, data, stop_counter=30000, burn_in=10000,
                         Topology_test[[i]]$subtopo,Topology_test[[i]]$adj)
                     s<-s+sum(Topology_test[[i]]$adj)+sum(theta)+k-1
                 }
-                ll_new <- (log(n)*s)-2*(getLL(probs_new$probs, mw=mw_old, logtype=2))
+                ll_new <- (log(n)*s)-2*(getLL(probs_new$probs, mw=mw_old,
+                                              logtype=logtype,
+                                              complete = complete))
             } else {
                 ll_new <- probs_new$ll
             }
             #calculate metropolis ratio of mixture likelihood's
-            Metr_ratio <- logtype^(ll_new-ll_old)
+            Metr_ratio <- logtype^(ll_new - ll_old)
             if (Hastings){
                 Hastings_ratio <- hastings_X_Y/hastings_Y_X
             } else{
@@ -1544,7 +1566,7 @@ MCMC <- function(Nems=2, Sgenes=5, data, stop_counter=30000, burn_in=10000,
                     Acceptance_prob <- 0
                 }
             }
-            if (Acceptance_prob > (runif(1))){
+            if (Acceptance_prob > (runif(1, 0, accept_range))){
                 accept <- TRUE
                 counter_accept <- counter_accept +1
                 Topology <- Topology_test

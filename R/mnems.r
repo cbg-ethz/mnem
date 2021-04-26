@@ -1578,6 +1578,8 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' used for the mcmc.
 #' Per default this is FALSE, since no component learning is involved and
 #' sparcity is hence not enforced
+#' @param accept_range the random probability the acceptance probability
+#' is compared to (default: 1)
 #' @author Martin Pirkl
 #' @return object of class mnem
 #' \item{comp}{list of the component with each component being
@@ -1618,7 +1620,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  nullcomp = FALSE, burnin=10,
                  hastings=TRUE,
                  nodeswitch=TRUE, postgaps=10,
-                 penalized=FALSE) {
+                 penalized=FALSE,
+                 accept_range = 1) {
     if (length(grep("_", colnames(D))) > 0 & is.null(Rho)) {
         Rho <- getRho(D)
     }
@@ -2093,7 +2096,9 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                         post_gaps=postgaps,
                         penalized=penalized,
                         logtype = logtype,
-                        marginal = marginal)
+                        marginal = marginal,
+                        complete = complete,
+                        accept_range = accept_range)
             class(res) <- "mnem_mcmc"
         }
         ## if (inference %in% "greedy") {
@@ -2224,7 +2229,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
           }
       }
       res <- list(limits = limits, comp = comp, data = D.backup, mw = lambda0,
-                  probs = probs, lls = best$ll, phievo = best$phievo,
+                  probs = probs, lls = best$lls, phievo = best$phievo,
                   thetaevo = best$thetaevo, mwevo = best$mwevo,
                   ll = best$ll, complete = complete, Rho = Rho,
                   nullcomp = nullcomp)
