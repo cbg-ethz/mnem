@@ -12,7 +12,14 @@
 Install:
 --------
 
-Open R and input:
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("mnem")
+```
+
+Most recent (devel) version:
 
 ```{r}
 install.packages("devtools")
@@ -34,9 +41,11 @@ result <- mnem(data, k = 2, starts = 10)
 plot(result)
 ```
 
+For the reproduction of the publication see the scripts in the other directory.
+
 ## References:
 
-Martin Pirkl, Niko Beerenwinkel (2018)  
-Single cell network analysis with a mixture of Nested Effects Models  
-bioRxiv 258202; doi: https://doi.org/10.1101/258202  
-url: https://www.biorxiv.org/content/early/2018/02/02/258202
+Pirkl, M., Beerenwinkel, N.; Single cell network analysis with a mixture
+of Nested Effects Models, Bioinformatics, Volume 34, Issue 17, 1 September
+2018,
+Pages i964-i971, https://doi.org/10.1093/bioinformatics/bty602.
