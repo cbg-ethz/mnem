@@ -368,6 +368,27 @@ scoreAdj <- function(D, adj, method = "llr", marginal = FALSE,
                      prior = NULL, ratio = TRUE, fpfn = c(0.1, 0.1),
                      Rho = NULL, dotopo = FALSE,
                      P = NULL, oldadj = NULL, modified = TRUE) {
+    harrysci <- function(x, y, c=NULL, ctype = 0) {
+        x <- as.vector(SparseM::as.matrix(x))
+        y <- as.vector(SparseM::as.matrix(y))
+        if (is.null(c)) { c <- rep(1,length(x)) }
+        cc <- 0
+        dc <- 0
+        for (i in 1:(length(x)-1)) {
+            xi <- x[c((length(x)-i+1):length(x),1:(length(x)-i))]
+            yi <- y[c((length(y)-i+1):length(y),1:(length(y)-i))]
+            ci <- c[c((length(c)-i+1):length(c),1:(length(c)-i))]
+            cc <- cc + sum((x > xi & y > yi & c == 1 - ctype & ci == 1 - ctype) |
+                               (x < xi & y < yi & c == 1 - ctype & ci == 1 - ctype) |
+                               (x > xi & y > yi & c == ctype - 0 & ci == 1 - ctype) |
+                               (x < xi & y < yi & c == 1 - ctype & ci == ctype - 0))
+            dc <- dc + sum((x > xi & y < yi & c == 1 - ctype & ci == 1 - ctype) |
+                               (x < xi & y > yi & c == 1 - ctype & ci == 1 - ctype) |
+                               (x > xi & y < yi & c == ctype - 0 & ci == 1 - ctype) |
+                               (x < xi & y > yi & c == 1 - ctype & ci == ctype - 0))
+        }
+        return(list(ci=cc/(cc+dc),cc=cc/2,dc=dc/2))
+    }
     if (!modified) { D <- modData(D) }
     if (method %in% "disc") {
         D[which(D == 1)] <- log((1 - fpfn[2])/fpfn[1])/log(logtype)
@@ -393,18 +414,47 @@ scoreAdj <- function(D, adj, method = "llr", marginal = FALSE,
             score[, changeidx] <- llrScore(D, adj1[, changeidx],
                                            weights = weights, ratio = ratio)
         }
-    }
-    if (is.null(subtopo) & dotopo) {
-        subtopo <- maxCol_row(cbind(0, score))
-        subtopo <- subtopo - 1
-    }
-    subweights <- score
-    score <- cbind(0, score)
-    if (!marginal) {
-        score <- sum(matrixStats::rowMaxs(score))
-    } else {
-        pscore <- logtype^score
-        score <- sum(log(rowSums(pscore))/log(logtype))
+        if (is.null(subtopo) & dotopo) {
+            subtopo <- maxCol_row(cbind(0, score))
+            subtopo <- subtopo - 1
+        }
+        subweights <- score
+        score <- cbind(0, score)
+        if (!marginal) {
+            score <- sum(matrixStats::rowMaxs(score))
+        } else {
+            pscore <- logtype^score
+            score <- sum(log(rowSums(pscore))/log(logtype))
+        }
+    } else if (method %in% "cor") {
+        isConstant <- function(x) {
+            mu <- mean(x)
+            sigma <- sd(x)
+            p <- dnorm(x,mu,sigma)
+            p <- mean(p)
+            return(p)
+        }
+        if (is.null(subtopo)) {
+            theta <- abs(cor(adj,t(data)))
+            naCors <- which(is.na(theta),arr.ind=TRUE)
+            theta[naCors] <- apply(data[naCors[,2],],1,isConstant)
+            subweights <- t(theta)
+            theta2 <- theta2theta(theta)
+            theta <- theta*0
+            theta[cbind(theta2,1:ncol(theta))] <- 1
+        } else {
+            theta <- theta2theta(subtopo,adj)
+        }
+        Fmat <- adj%*%theta
+        Fcor <- cor(t(data),Fmat)
+        naCors <- which(is.na(Fcor),arr.ind=TRUE)
+        Fcor[naCors] <- 1/apply(data[naCors[,2],],1,isConstant)
+        score <- log(abs(Fcor))/log(logtype)
+        score <- sum(diag(score),na.rm=TRUE)
+        if (is.null(subtopo) & dotopo) {
+            subtopo <- theta2
+        }
+    } else if (method %in% "lm") {
     }
     if (!is.null(prior)) {
         prior <- transitive.reduction(prior)
