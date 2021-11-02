@@ -368,27 +368,6 @@ scoreAdj <- function(D, adj, method = "llr", marginal = FALSE,
                      prior = NULL, ratio = TRUE, fpfn = c(0.1, 0.1),
                      Rho = NULL, dotopo = FALSE,
                      P = NULL, oldadj = NULL, modified = TRUE) {
-    harrysci <- function(x, y, c=NULL, ctype = 0) {
-        x <- as.vector(SparseM::as.matrix(x))
-        y <- as.vector(SparseM::as.matrix(y))
-        if (is.null(c)) { c <- rep(1,length(x)) }
-        cc <- 0
-        dc <- 0
-        for (i in 1:(length(x)-1)) {
-            xi <- x[c((length(x)-i+1):length(x),1:(length(x)-i))]
-            yi <- y[c((length(y)-i+1):length(y),1:(length(y)-i))]
-            ci <- c[c((length(c)-i+1):length(c),1:(length(c)-i))]
-            cc <- cc + sum((x > xi & y > yi & c == 1 - ctype & ci == 1 - ctype) |
-                               (x < xi & y < yi & c == 1 - ctype & ci == 1 - ctype) |
-                               (x > xi & y > yi & c == ctype - 0 & ci == 1 - ctype) |
-                               (x < xi & y < yi & c == 1 - ctype & ci == ctype - 0))
-            dc <- dc + sum((x > xi & y < yi & c == 1 - ctype & ci == 1 - ctype) |
-                               (x < xi & y > yi & c == 1 - ctype & ci == 1 - ctype) |
-                               (x > xi & y < yi & c == ctype - 0 & ci == 1 - ctype) |
-                               (x < xi & y > yi & c == 1 - ctype & ci == ctype - 0))
-        }
-        return(list(ci=cc/(cc+dc),cc=cc/2,dc=dc/2))
-    }
     if (!modified) { D <- modData(D) }
     if (method %in% "disc") {
         D[which(D == 1)] <- log((1 - fpfn[2])/fpfn[1])/log(logtype)
