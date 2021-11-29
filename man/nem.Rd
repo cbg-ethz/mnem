@@ -26,6 +26,9 @@ nem(
   Rho = NULL,
   logtype = 2,
   modified = FALSE,
+  tree = FALSE,
+  learnRates = FALSE,
+  stepSize = 0.01,
   ...
 )
 }
@@ -81,6 +84,12 @@ false negative rates}
 \item{logtype}{log base of the log odds}
 
 \item{modified}{if TRUE, assumes a prepocessed data matrix}
+
+\item{tree}{if TRUE forces tree; does not allow converging edges}
+
+\item{learnRates}{if TRUE learns rates for false positives/negatices}
+
+\item{stepSize}{numerical step size for learning rates}
 
 \item{...}{optional parameters for future search methods}
 }

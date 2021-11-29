@@ -32,6 +32,9 @@
 #' @param Rho optional perturbation matrix
 #' @param logtype log base of the log odds
 #' @param modified if TRUE, assumes a prepocessed data matrix
+#' @param tree if TRUE forces tree; does not allow converging edges
+#' @param learnRates if TRUE learns rates for false positives/negatices
+#' @param stepSize numerical step size for learning rates
 #' @param ... optional parameters for future search methods
 #' @return transitively closed matrix or graphNEL
 #' @author Martin Pirkl
@@ -53,10 +56,12 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
                 trans.close = TRUE, subtopo = NULL, prior = NULL,
                 ratio = TRUE, domean = TRUE, modulesize = 5,
                 fpfn = c(0.1, 0.1), Rho = NULL, logtype = 2,
-                modified = FALSE, ...) {
+                modified = FALSE, tree = FALSE, learnRates = FALSE,
+                stepSize = 0.01, ...) {
     if (method %in% "disc") {
-        D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
-        D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
+        Ddisc <- D
+        D[which(Ddisc == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
+        D[which(Ddisc == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
         method <- "llr"
     }
     get.insertions <- get.ins.fast
@@ -210,9 +215,14 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
                     score <- score$score
                     return(list(score, P))
                 }
-                models <- unique(c(get.insertions(better),
-                                   get.reversions(better),
-                                   get.deletions(better)))
+                if (tree) {
+                    models <- unique(c(get.insertions(better,tree=TRUE),
+                                       get.deletions(better)))
+                } else {
+                    models <- unique(c(get.insertions(better),
+                                       get.reversions(better),
+                                       get.deletions(better)))
+                }
                 if (is.null(parallel)) {
                     scores <- unlist(lapply((seq_len(length(models))),
                                             doScores), recursive = FALSE)
@@ -225,6 +235,42 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
                 scores[is.na(scores)] <- 0
                 bestidx <- which.max(scores)
                 best <- models[[bestidx]]
+                changeRates <- FALSE
+                if (learnRates) {
+                    rateScore <- numeric(4)
+                    for (i in seq(4)) {
+                        fpfnNew <- fpfn
+                        imod <- i %% 2 + 1
+                        if (i > 2) {
+                            fpfnNew[imod] <- fpfn[imod]+stepSize
+                        } else {
+                            fpfnNew[imod] <- fpfn[imod]-stepSize
+                        }
+                        Dtmp <- D
+                        Dtmp[D>0] <- log((1-fpfnNew[2])/fpfnNew[1])/log(logtype)
+                        Dtmp[D<0] <- log(fpfnNew[2]/(1-fpfnNew[1]))/log(logtype)
+                        rateScore[i] <- scoreAdj(Dtmp, new, method = method,
+                                          marginal = marginal,
+                                          weights = weights,
+                                          subtopo = subtopo, prior = prior,
+                                          ratio = ratio, fpfn = fpfn,
+                                          Rho = Rho, P = P, oldadj = oldadj,
+                                          trans.close = FALSE)$score
+                    }
+                    if (max(rateScores) > max(scores, na.rm = TRUE)) {
+                        best <- better
+                        imod <- which.max(rateScores) %% 2 + 1
+                        if (which.max(rateScores) > 2) {
+                            fpfn[imod] <- fpfn[imode]+stepSize
+                        } else {
+                            fpfn[imod] <- fpfn[imode]-stepSize
+                        }
+                        scores[which(scores==max(scores, na.rm=TRUE))[1]] <-
+                            rateScore[which.max(rateScores)]
+                        D[D>0] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
+                        D[D<0] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
+                    }
+                }
                 if ((max(scores, na.rm = TRUE) > oldscore |
                     ((max(scores, na.rm = TRUE) == oldscore &
                      sum(better == 1) > sum(best == 1))))

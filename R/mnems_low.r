@@ -983,7 +983,7 @@ get.rev.tc <-function (Phi) {
     models
 }
 #' @noRd
-get.ins.fast <- function (Phi, trans.close = TRUE) {
+get.ins.fast <- function (Phi, trans.close = TRUE, tree = FALSE) {
     idx = which(Phi == 0)
     models = list()
     nn <- dim(Phi)
@@ -995,7 +995,11 @@ get.ins.fast <- function (Phi, trans.close = TRUE) {
             if (trans.close) {
                 Phinew = mytc(Phinew, uv[1], uv[2])
             }
-            models[[i]] <- Phinew
+            if (!tree | all(colSums(Phinew)<=2)) {
+                models[[i]] <- Phinew
+            } else {
+                models[[i]] <- Phi
+            }
         }
     }
     models
