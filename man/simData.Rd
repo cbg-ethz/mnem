@@ -20,6 +20,7 @@ simData(
   scalefree = FALSE,
   badCells = 0,
   exactProb = TRUE,
+  tree = FALSE,
   ...
 )
 }
@@ -59,6 +60,8 @@ to the ground truth network}
 
 \item{exactProb}{logical; if TRUE generates random network with exact
 fraction of edges provided by edgeprob}
+
+\item{tree}{if TRUE, restricts dag to a tree}
 
 \item{...}{additional parameters for the scale free network
 sampler (see 'nem' package)}

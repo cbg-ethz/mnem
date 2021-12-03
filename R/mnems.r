@@ -242,31 +242,36 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
                         fpfnNew <- fpfn
                         imod <- i %% 2 + 1
                         if (i > 2) {
-                            fpfnNew[imod] <- fpfn[imod]+stepSize
+                            fpfnNew[imod] <- min(fpfn[imod]+stepSize,
+                                                 1-stepSize)
                         } else {
-                            fpfnNew[imod] <- fpfn[imod]-stepSize
+                            fpfnNew[imod] <- max(fpfn[imod]-stepSize,
+                                                 stepSize)
                         }
                         Dtmp <- D
-                        Dtmp[D>0] <- log((1-fpfnNew[2])/fpfnNew[1])/log(logtype)
-                        Dtmp[D<0] <- log(fpfnNew[2]/(1-fpfnNew[1]))/log(logtype)
-                        rateScore[i] <- scoreAdj(Dtmp, new, method = method,
+                        Dtmp[D>0] <- log((1-fpfnNew[2])/fpfnNew[1])/
+                            log(logtype)
+                        Dtmp[D<0] <- log(fpfnNew[2]/(1-fpfnNew[1]))/
+                            log(logtype)
+                        rateScore[i] <- scoreAdj(Dtmp, better, method = method,
                                           marginal = marginal,
                                           weights = weights,
                                           subtopo = subtopo, prior = prior,
-                                          ratio = ratio, fpfn = fpfn,
-                                          Rho = Rho, P = P, oldadj = oldadj,
-                                          trans.close = FALSE)$score
+                                          ratio = ratio, fpfn = fpfnNew,
+                                          Rho = Rho)$score
                     }
-                    if (max(rateScores) > max(scores, na.rm = TRUE)) {
+                    if (max(rateScore) > max(scores, na.rm = TRUE)) {
                         best <- better
-                        imod <- which.max(rateScores) %% 2 + 1
-                        if (which.max(rateScores) > 2) {
-                            fpfn[imod] <- fpfn[imode]+stepSize
+                        imod <- which.max(rateScore) %% 2 + 1
+                        if (which.max(rateScore) > 2) {
+                            fpfn[imod] <- min(fpfn[imod]+stepSize,
+                                              1-stepSize)
                         } else {
-                            fpfn[imod] <- fpfn[imode]-stepSize
+                            fpfn[imod] <- max(fpfn[imod]-stepSize,
+                                              stepSize)
                         }
                         scores[which(scores==max(scores, na.rm=TRUE))[1]] <-
-                            rateScore[which.max(rateScores)]
+                            rateScore[which.max(rateScore)]
                         D[D>0] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
                         D[D<0] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
                     }
@@ -371,7 +376,7 @@ nem <- function(D, search = "greedy", start = NULL, method = "llr",
                      order(as.numeric(colnames(better)))]
     nem <- list(adj = better, score = oldscore, scores = allscores,
                 redSpace = redSpace, subtopo = subtopo, D = D.backup,
-                subweights = subweights)
+                subweights = subweights, fpfn = fpfn)
     return(nem)
 }
 #' Network score
@@ -2956,6 +2961,7 @@ clustNEM <- function(data, k = 2:10, cluster = NULL, starts = 1, logtype = 2,
 #' to the ground truth network
 #' @param exactProb logical; if TRUE generates random network with exact
 #' fraction of edges provided by edgeprob
+#' @param tree if TRUE, restricts dag to a tree
 #' @param ... additional parameters for the scale free network
 #' sampler (see 'nem' package)
 #' @author Martin Pirkl
@@ -2979,7 +2985,8 @@ simData <- function(Sgenes = 5, Egenes = 1,
                     Nems = 2, reps = NULL, mw = NULL, evolution = FALSE,
                     nCells = 1000, uninform = 0, unitheta = FALSE,
                     edgeprob = c(0,1), multi = FALSE, subsample = 1,
-                    scalefree = FALSE, badCells = 0, exactProb = TRUE, ...) {
+                    scalefree = FALSE, badCells = 0, exactProb = TRUE,
+                    tree = FALSE, ...) {
     if (!is.null(mw) & Nems != length(mw)) {
         print(paste0("Vector of mixture weights 'mw' must be the length of the",
                      " number of komponents 'Nems'. Input 'Nems=", Nems,
@@ -3052,7 +3059,16 @@ simData <- function(Sgenes = 5, Egenes = 1,
             adj[child, parent] <- 1
             adj <- adj
         }
-        Nem[[i]] <- transitive.reduction(adj)
+        adj <- transitive.reduction(adj)
+        if (tree) {
+            for (i in 1:ncol(adj)) {
+                if (sum(adj[,i]==1)>0) {
+                    idx <- sample(which(adj[,i]==1),1)
+                    adj[-idx,i] <- 0
+                }
+            }
+        }
+        Nem[[i]] <-
     }
     for (i in seq_len(Nems)) {
         if (is.null(reps)) {

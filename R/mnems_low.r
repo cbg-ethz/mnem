@@ -995,7 +995,7 @@ get.ins.fast <- function (Phi, trans.close = TRUE, tree = FALSE) {
             if (trans.close) {
                 Phinew = mytc(Phinew, uv[1], uv[2])
             }
-            if (!tree | all(colSums(Phinew)<=2)) {
+            if (!tree | all(colSums(transitive.reduction(Phinew))<=1)) {
                 models[[i]] <- Phinew
             } else {
                 models[[i]] <- Phi
