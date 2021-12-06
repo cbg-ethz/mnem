@@ -3068,7 +3068,7 @@ simData <- function(Sgenes = 5, Egenes = 1,
                 }
             }
         }
-        Nem[[i]] <-
+        Nem[[i]] <- transitive.reduction(adj)
     }
     for (i in seq_len(Nems)) {
         if (is.null(reps)) {
