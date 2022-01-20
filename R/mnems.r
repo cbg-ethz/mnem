@@ -3405,7 +3405,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         if (all(dnf == 0)) {
             diag(dnf) <- 1
         }
-        edgelwd <- edgelabel <- dnf[which(dnf != 0)]
+        edgelwd <- edgelabel <- t(dnf)[which(t(dnf) != 0)]
         edgelabel <- round(edgelabel, 3)
         edgelwd <- edgelwd - min(edgelwd) + 1
         dnf[which(dnf != 0)] <- 1

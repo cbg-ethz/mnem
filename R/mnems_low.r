@@ -673,7 +673,7 @@ nemEst <- function(data, maxiter = 100, start = "null",
                    method = "llr",
                    weights = NULL, fpfn = c(0.1, 0.1), Rho = NULL,
                    close = TRUE, domean = TRUE, modified = FALSE,
-                   hierarchy = "totaleffect", ...) {
+                   hierarchy = "totaleffect", tree = TRUE, ...) {
     if (method %in% "disc") {
         D <- data
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
@@ -1266,17 +1266,18 @@ simulateDnf <- function(dnf, stimuli = NULL, inhibitors = NULL) {
 myboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
                       polygon = TRUE, sd = 0.2, dcol = NULL,
                       scol = NULL, dlty = 1,
-                      dlwd = 1, spch = 1, xaxt = "y", ...) {
+                      dlwd = 1, spch = 1, ...) {
     paras <- list(...)
     n <- ncol(x)
     if (box) {
-        boxplot(x, xaxt = "n", ...)
+        boxplot(x, ...)
     }
     if (dens) {
         if (is.null(dcol) & !is.null(paras$col)) {
             dcol <- paras$col
-        } else {
-            dcol <- rgb(0,0,0,0.5)
+        }
+        if (is.null(dcol)) {
+            dcol <- rep(rgb(0,0,0,0.5),n)
         }
         if (!box) {
             if (is.null(paras$ylim)) {
@@ -1284,11 +1285,10 @@ myboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
                     d <- density(y, na.rm = TRUE)
                     return(d$x)
                 })
-                plot(0, 0, xlim = c(0.5, n+0.5), ylim = c(min(yrange),
-                                                          max(yrange)),
-                     xaxt = "n", ...)
+                plot(0, 0, xlim = c(0.5, n+0.5),
+                     ylim = c(min(yrange), max(yrange)), ...)
             } else {
-                plot(0, 0, xlim = c(0.5, n+0.5), xaxt = "n", ...)
+                plot(0, 0, xlim = c(0.5, n+0.5), ...)
             }
         }
         if (length(dcol) == 1) { dcol <- rep(dcol, n) }
@@ -1309,15 +1309,13 @@ myboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
     if ("random" %in% scatter) {
         if (is.null(scol) & !is.null(paras$col)) {
             scol <- paras$col
-        } else {
+        }
+        if (is.null(scol)) {
             scol <- rgb(0,0,0,0.5)
         }
         lines(rep(seq_len(n), each = nrow(x))+rnorm(nrow(x)*n, 0, sd),
               as.vector(x), type = "p",
               pch = spch, col = rep(scol, each = nrow(x)))
-    }
-    if (xaxt != "n") {
-        axis(1, seq_len(n), seq_len(n))
     }
 }
 #' @noRd
