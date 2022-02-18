@@ -1266,7 +1266,9 @@ simulateDnf <- function(dnf, stimuli = NULL, inhibitors = NULL) {
 myboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
                       polygon = TRUE, sd = 0.2, dcol = NULL,
                       scol = NULL, dlty = 1,
-                      dlwd = 1, spch = 1, ...) {
+                      dlwd = 1, spch = 1, gcol = rgb(0,0,0,0.5),
+                      glty = 2, glen = 10, gmin = NA, gmax = NA,
+                      ...) {
     paras <- list(...)
     n <- ncol(x)
     if (box) {
@@ -1298,10 +1300,13 @@ myboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
                 dy <- d$y
                 dx <- d$x
                 dy <- dy/max(dy)*0.5
+                dx[dx>max(x,na.rm=TRUE)] <- max(x,na.rm=TRUE)
+                dx[dx<min(x,na.rm=TRUE)] <- min(x,na.rm=TRUE)
                 lines(c(dy+i,-dy+i), rep(dx, 2), lty = dlty, lwd = dlwd,
                       col = dcol[i])
                 if (polygon) {
-                    polygon(c(dy+i,-dy+i), rep(dx, 2), col = dcol[i])
+                    polygon(c(dy+i,-dy+i), rep(dx, 2), col = dcol[i],
+                            border="transparent")
                 }
             }
         }
@@ -1317,6 +1322,19 @@ myboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
               as.vector(x), type = "p",
               pch = spch, col = rep(scol, each = nrow(x)))
     }
+    abline(h=seq(min(c(x,gmin),na.rm=TRUE),max(c(x,gmax),na.rm=TRUE),
+                 length.out=glen),col=gcol,lty=glty)
+}
+#' @noRd
+dnf2adj <- function(dnf) {
+    nodes <- unique(sort(unlist(strsplit(dnf,"="))))
+    adj <- matrix(0,length(nodes),length(nodes))
+    rownames(adj) <- colnames(adj) <- nodes
+    for (i in dnf) {
+        nodes <- unlist(strsplit(i,"="))
+        adj[nodes[1],nodes[2]] <- adj[nodes[1],nodes[2]] + 1
+    }
+    return(adj)
 }
 #' @noRd
 #' @importFrom graphics abline
