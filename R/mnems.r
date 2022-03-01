@@ -3061,10 +3061,10 @@ simData <- function(Sgenes = 5, Egenes = 1,
         }
         adj <- transitive.reduction(adj)
         if (tree) {
-            for (i in 1:ncol(adj)) {
-                if (sum(adj[,i]==1)>0) {
-                    idx <- sample(which(adj[,i]==1),1)
-                    adj[-idx,i] <- 0
+            for (j in 1:ncol(adj)) {
+                if (sum(adj[,j]==1)>0) {
+                    idx <- sample(which(adj[,j]==1),1)
+                    adj[-idx,j] <- 0
                 }
             }
         }
