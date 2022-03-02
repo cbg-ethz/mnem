@@ -668,12 +668,74 @@ annotAdj <- function(adj, data) {
     return(adj)
 }
 #' @noRd
-nemEst <- function(data, maxiter = 100, start = "null",
+nemEst2 <- function(data, maxiter = 100, start = "null",
                    cut = 0, monoton = TRUE, logtype = 2,
                    method = "llr",
                    weights = NULL, fpfn = c(0.1, 0.1), Rho = NULL,
                    close = TRUE, domean = TRUE, modified = FALSE,
-                   hierarchy = "totaleffect", tree = TRUE, ...) {
+                   hierarchy = "totaleffect", tree = TRUE, cutlen = 100,
+                   ...) {
+    if (method %in% "disc") {
+        D <- data
+        D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
+        D[which(D == 0)] <- log(fpfn[2]/(1-fpfn[1]))/log(logtype)
+        method <- "llr"
+        data <- D
+    }
+    if (!modified) {
+        data <- modData(data)
+    }
+    if (sum(duplicated(colnames(data)) == TRUE) > 0 &
+        method %in% "llr" & domean) {
+        if (!is.null(weights)) {
+            D <- data
+            data <- data*rep(weights, rep(nrow(data), ncol(data)))
+        }
+        data2 <- doMean(data, weights = weights, Rho = Rho, logtype = logtype)
+        data <- D
+    } else {
+        data2 <- data
+    }
+    if (is.null(weights)) { weights <- rep(1, ncol(data2)) }
+    R <- data2[, naturalsort(colnames(data2))]
+    Rho <- diag(ncol(R))
+    Sgenes <- getSgenes(R)
+    phi <- matrix(0, n, n)
+    rownames(phi) <- colnames(phi) <- Sgenes
+    R2 <- t(R)%*%R
+    R2 <- R2 + diag(R2)
+    E <- apply(R, 2, sum)
+    E <- phi[order(E, decreasing=TRUE), order(E, decreasing=TRUE)]
+    E[upper.tri(E)] <- 1
+    E <- E[naturalsort(rownames(E)), naturalsort(colnames(E))]
+    llmax <- -Inf
+    lls <- NULL
+    for (cut in c(0,seq(min(R2),max(R2),length.out=cutlen))) {
+        phi[R2 > cut] <- 1
+        phi[R2 <= cut] <- 0
+        ll <- scoreAdj(R, phi, weights = weights, dotopo = TRUE,
+                       trans.close = close, Rho = Rho)
+        theta <- theta2theta(ll$subtopo, phi)
+        lls <- c(lls,ll)
+        if (ll > llmax) {
+            phibest <- phi
+            thetabest <- theta
+            llmax <- ll
+        }
+    }
+    nem <- list(phi = phibest, theta = thetabest, iter = cutlen,
+                ll = llbest, lls = lls, num = which.max(lls),
+                O = E, E = E, phintc = phi)
+    class(nem) <- "nemEst"
+    return(nem)
+}
+#' @noRd
+nemEst <- function(data, maxiter = 100, start = "null",
+                    cut = 0, monoton = TRUE, logtype = 2,
+                    method = "llr",
+                    weights = NULL, fpfn = c(0.1, 0.1), Rho = NULL,
+                    close = TRUE, domean = TRUE, modified = FALSE,
+                    hierarchy = "totaleffect", tree = TRUE, ...) {
     if (method %in% "disc") {
         D <- data
         D[which(D == 1)] <- log((1-fpfn[2])/fpfn[1])/log(logtype)
