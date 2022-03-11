@@ -1357,7 +1357,7 @@ myboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
         }
         if (length(dcol) == 1) { dcol <- rep(dcol, n) }
         for (i in seq_len(n)) {
-            if (any(x[, i] != x[1, i])) {
+            if (any(x[, i] != max(x[, i],na.rm = TRUE),na.rm = TRUE)) {
                 d <- density(x[, i], na.rm = TRUE)
                 dy <- d$y
                 dx <- d$x
