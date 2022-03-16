@@ -3315,7 +3315,9 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 }
 #' Plot disjunctive normal form.
 #'
-#' This function visualizes a graph encoded as a disjunctive nromal form.
+#' This function visualizes a graph encoded as a disjunctive nromal form. See
+#' the graphviz documentation for possible input arguments, like edgehead/tail:
+#' https://graphviz.org/docs/attr-types/arrowType/
 #' @param dnf Hyper-graph in disjunctive normal form,
 #' e.g. c("A=B", "A=C+D", "E=!B") with the child on the left and the parents
 #' on the right of the equation with "A=C+D" for A = C AND D. Alternatively,
@@ -3333,8 +3335,8 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 #' @param fontsize Vertice label size.
 #' @param labelsize Edge label size.
 #' @param type Different plot types. 2 for Rgraphviz and 1 for graph.
-#' @param lwd Line width.
-#' @param edgelwd Edgeline width.
+#' @param lwd Line width of nodeborder.
+#' @param edgelwd Global edgeline width.
 #' @param legend 0 shows no legend. 1 shows legend as a graph. 2 shows legend
 #' in a standard box.
 #' @param x x coordinate of box legend.
@@ -3366,7 +3368,7 @@ hamSim <- function(a, b, diag = 1, symmetric = TRUE) {
 #' @param edgestyle set the edge style like dashed, can be numerical
 #' @param nodeheight List of vertices with height as input.
 #' @param nodewidth List of vertices with width as input.
-#' @param edgewidth Vector with edge widths.
+#' @param edgewidth Vector with edge widths for individual edges.
 #' @param lty Vector with edge styles (line, dotted,...).
 #' @param hierarchy List with the hierarchy of the vertices.
 #' E.g. list(top = c("A", "B"), bottom = c("C", "D")).
@@ -3414,6 +3416,8 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
         if (length(dnf) == 0) {
             dnf <- dnf2
         }
+        edgewidth <- edgelwd
+        edgelwd <- NULL
     }
 
     if (!bool & length(grep("\\+", dnf)) > 0) {

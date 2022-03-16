@@ -1334,7 +1334,11 @@ myboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
     paras <- list(...)
     n <- ncol(x)
     if (box) {
-        boxplot(x, ...)
+        if (dens) {
+            boxplot(x, col = "transparent", ...)
+        } else {
+            boxplot(x, ...)
+        }
     }
     if (dens) {
         if (is.null(dcol) & !is.null(paras$col)) {
