@@ -86,9 +86,9 @@ signals. See package CellNOptR.}
 
 \item{type}{Different plot types. 2 for Rgraphviz and 1 for graph.}
 
-\item{lwd}{Line width.}
+\item{lwd}{Line width of nodeborder.}
 
-\item{edgelwd}{Edgeline width.}
+\item{edgelwd}{Global edgeline width.}
 
 \item{legend}{0 shows no legend. 1 shows legend as a graph. 2 shows legend
 in a standard box.}
@@ -148,7 +148,7 @@ E.g. labels = list(A="test", B="label for B").}
 
 \item{nodewidth}{List of vertices with width as input.}
 
-\item{edgewidth}{Vector with edge widths.}
+\item{edgewidth}{Vector with edge widths for individual edges.}
 
 \item{lty}{Vector with edge styles (line, dotted,...).}
 
@@ -173,7 +173,9 @@ E.g. list(top = c("A", "B"), bottom = c("C", "D")).}
 Rgraphviz object
 }
 \description{
-This function visualizes a graph encoded as a disjunctive nromal form.
+This function visualizes a graph encoded as a disjunctive nromal form. See
+the graphviz documentation for possible input arguments, like edgehead/tail:
+https://graphviz.org/docs/attr-types/arrowType/
 }
 \examples{
 g <- c("!A+B+C=G", "C=G", "!D=G")

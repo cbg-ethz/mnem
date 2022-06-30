@@ -4775,3 +4775,106 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
     }
     return(g)
 }
+#' Boxplot with scatter and density options
+#'
+#' Plots a boxplots plus x-axis randomised scatter and mirrored densities
+#' to visualise a distribution.
+#' @param x list, matrix or data.frame
+#' @param box if TRUE, draws boxes
+#' @param dens if TRUE, draws densities
+#' @param scatter if set to "random", draws x-axis randomised scatter points
+#' @param polygon if TRUE, filles the densities
+#' @param sd standard deviation of the scatter
+#' @param dcol color of the densities
+#' @param scol color of the scatter points
+#' @param dlty line type of the densities
+#' @param dlwd line width of the densities
+#' @param spch type of scatter points
+#' @param gcol color of the grid
+#' @param glty line type of the grid
+#' @param glen length of the grid
+#' @param gmin minimal point of the grid
+#' @param gmax maximal point of the grid
+#' @param ... optional parameters for boxplot or plot
+#' @return transitively closed matrix or graphNEL
+#' @author Martin Pirkl
+#' @export
+#' @importFrom graphics boxplot axis
+#' @examples
+#' D <- matrix(rnorm(100*3), 100, 3)
+#' moreboxplot(D)
+moreboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
+                      polygon = TRUE, sd = 0.2, dcol = NULL,
+                      scol = NULL, dlty = 1,
+                      dlwd = 1, spch = 1, gcol = rgb(0,0,0,0.5),
+                      glty = 2, glen = 10, gmin = NA, gmax = NA,
+                      ...) {
+  paras <- list(...)
+  if (is.list(x)) {
+    n <- length(x)
+  } else {
+    n <- ncol(x)
+    y <- list()
+    for (i in 1:ncol(x)) {
+      y[[i]] <- x[,i]
+    }
+    x <- y
+  }
+  if (box) {
+    if (dens) {
+      boxplot(x, col = "transparent", ...)
+    } else {
+      boxplot(x, ...)
+    }
+  }
+  if (dens) {
+    if (is.null(dcol) & !is.null(paras$col)) {
+      dcol <- paras$col
+    }
+    if (is.null(dcol)) {
+      dcol <- rep(rgb(0,0,0,0.5),n)
+    }
+    if (!box) {
+      if (is.null(paras$ylim)) {
+        yrange <- unlist(lapply(x, function(y) {
+          d <- density(y, na.rm = TRUE)
+          return(d$x)
+        }))
+        plot(0, 0, xlim = c(0.5, n+0.5),
+             ylim = c(min(yrange), max(yrange)), ...)
+      } else {
+        plot(0, 0, xlim = c(0.5, n+0.5), ...)
+      }
+    }
+    if (length(dcol) == 1) { dcol <- rep(dcol, n) }
+    for (i in seq_len(n)) {
+      if (any(x[[i]] != max(x[[i]],na.rm = TRUE),na.rm = TRUE)) {
+        d <- density(x[[i]], na.rm = TRUE)
+        dy <- d$y
+        dx <- d$x
+        dy <- dy/max(dy)*0.5
+        dx[dx>max(unlist(x),na.rm=TRUE)] <- max(unlist(x),na.rm=TRUE)
+        dx[dx<min(unlist(x),na.rm=TRUE)] <- min(unlist(x),na.rm=TRUE)
+        lines(c(dy+i,-dy+i), rep(dx, 2), lty = dlty, lwd = dlwd,
+              col = dcol[i])
+        if (polygon) {
+          polygon(c(dy+i,-dy+i), rep(dx, 2), col = dcol[i],
+                  border="transparent")
+        }
+      }
+    }
+  }
+  if ("random" %in% scatter) {
+    if (is.null(scol) & !is.null(paras$col)) {
+      scol <- paras$col
+    }
+    if (is.null(scol)) {
+      scol <- rgb(0,0,0,0.5)
+    }
+    lines(rep(seq_len(n), each = unlist(lapply(x,length)))+rnorm(unlist(lapply(x,length))*n, 0, sd),
+          as.vector(unlist(x)), type = "p",
+          pch = spch, col = rep(scol, each = unlist(lapply(x,length))))
+  }
+  abline(h=seq(min(c(unlist(x),gmin),na.rm=TRUE),max(c(unlist(x),gmax),na.rm=TRUE),
+               length.out=glen),col=gcol,lty=glty)
+}
