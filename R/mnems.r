@@ -4804,7 +4804,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
 #' D <- matrix(rnorm(100*3), 100, 3)
 #' moreboxplot(D)
 moreboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
-                      polygon = TRUE, sd = 0.2, dcol = NULL,
+                      polygon = TRUE, sd = 0.1, dcol = NULL,
                       scol = NULL, dlty = 1,
                       dlwd = 1, spch = 1, gcol = rgb(0,0,0,0.5),
                       glty = 2, glen = 10, gmin = NA, gmax = NA,
@@ -4869,11 +4869,11 @@ moreboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
       scol <- paras$col
     }
     if (is.null(scol)) {
-      scol <- rgb(0,0,0,0.5)
+      scol <- rep(rgb(0,0,0,0.5),n)
     }
-    lines(rep(seq_len(n), each = unlist(lapply(x,length)))+rnorm(unlist(lapply(x,length))*n, 0, sd),
+    lines(rep(seq_len(n), unlist(lapply(x,length)))+rnorm(length(unlist(x)), 0, sd),
           as.vector(unlist(x)), type = "p",
-          pch = spch, col = rep(scol, each = unlist(lapply(x,length))))
+          pch = spch, col = rep(scol, unlist(lapply(x,length))))
   }
   abline(h=seq(min(c(unlist(x),gmin),na.rm=TRUE),max(c(unlist(x),gmax),na.rm=TRUE),
                length.out=glen),col=gcol,lty=glty)
