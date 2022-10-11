@@ -10,7 +10,7 @@ moreboxplot(
   dens = TRUE,
   scatter = "no",
   polygon = TRUE,
-  sd = 0.2,
+  sd = 0.1,
   dcol = NULL,
   scol = NULL,
   dlty = 1,
