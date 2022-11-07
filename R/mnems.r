@@ -1646,6 +1646,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' "silhouette", "BIC" or "AIC"; the third value is either "cor" for
 #' correlation distance or any method accepted by the function 'dist'
 #' @param nullcomp if TRUE, adds a null component (k+1)
+#' @param tree if TRUE, restrict inference on trees (MCMC not included)
 #' @param burnin number of iterations to be discarded prior to
 #' analyzing the posterior distribution of the mcmc
 #' @param hastings if set to TRUE, the Hastings ratio is calculated
@@ -1697,7 +1698,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  domean = TRUE, modulesize = 5, compress = FALSE,
                  increase = TRUE, fpfn = c(0.1, 0.1), Rho = NULL,
                  ksel = c("kmeans", "silhouette", "cor"),
-                 nullcomp = FALSE, burnin=10,
+                 nullcomp = FALSE, tree = false, burnin=10,
                  hastings=TRUE,
                  nodeswitch=TRUE, postgaps=10,
                  penalized=FALSE,
@@ -1733,7 +1734,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                         subtopo = subtopoX, ratio = ratio, domean = FALSE,
                         modulesize = modulesize, logtype = logtype,
                         modified = TRUE, Sgenes = Sgenes, Rho = Rho,
-                        marginal = marginal)$redSpace
+                        marginal = marginal, tree = tree)$redSpace
     }
     if (!is.null(parallel)) { if (parallel == 1) { parallel <- NULL } }
     D.backup <- D
@@ -1779,7 +1780,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                           ratio = ratio, domean = domean,
                           modulesize = modulesize, Rho = Rho,
                           logtype = logtype, modified = TRUE, Sgenes = Sgenes,
-                          marginal = marginal)
+                          marginal = marginal, tree = tree)
             if (type %in% "networks2") {
                 linets <- TRUE
             } else {
@@ -1801,7 +1802,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                  parallel = parallel,
                                  runs = runs, verbose = verbose, ratio = ratio,
                                  domean = domean, modulesize = modulesize,
-                                 Rho = Rho, logtype = logtype, modified = TRUE)
+                                 Rho = Rho, logtype = logtype, modified = TRUE,
+                                 tree = tree)
                 if (type %in% "cluster2") {
                     mw <- init$mw
                     init <- list(A = unlist(init$comp, recursive = FALSE))
@@ -1854,7 +1856,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                     modulesize = modulesize, Rho = Rho,
                                     logtype = logtype, modified = TRUE,
                                     Sgenes = Sgenes, subtopo = subtopoX,
-                                    marginal = marginal)
+                                    marginal = marginal, tree = tree)
         limits[[1]]$res[[1]]$D <- NULL
         res <- list()
         res[[1]] <- list()
@@ -2027,7 +2029,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                           modified = TRUE,
                                                           Sgenes = Sgenes,
                                                           subtopo = thetaX,
-                                                          marginal = marginal)
+                                                          marginal = marginal,
+                                                          tree = tree)
                                       } else {
                                           test01 <- list()
                                           test01scores <- numeric(2)
@@ -2060,7 +2063,8 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                       modified = TRUE,
                                                       Sgenes = Sgenes,
                                                       subtopo = thetaX,
-                                                      marginal = marginal)
+                                                      marginal = marginal,
+                                                      tree = tree)
                                               test01scores[j] <-
                                                   max(test01[[j]]$scores)
                                           }

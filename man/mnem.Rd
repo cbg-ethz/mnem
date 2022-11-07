@@ -41,6 +41,7 @@ mnem(
   Rho = NULL,
   ksel = c("kmeans", "silhouette", "cor"),
   nullcomp = FALSE,
+  tree = false,
   burnin = 10,
   hastings = TRUE,
   nodeswitch = TRUE,
@@ -152,6 +153,8 @@ as the first two vlues "hc" (hierarchical clustering) or "kmeans" with
 correlation distance or any method accepted by the function 'dist'}
 
 \item{nullcomp}{if TRUE, adds a null component (k+1)}
+
+\item{tree}{if TRUE, restrict inference on trees (MCMC not included)}
 
 \item{burnin}{number of iterations to be discarded prior to
 analyzing the posterior distribution of the mcmc}
