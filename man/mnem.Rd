@@ -41,7 +41,7 @@ mnem(
   Rho = NULL,
   ksel = c("kmeans", "silhouette", "cor"),
   nullcomp = FALSE,
-  tree = false,
+  tree = FALSE,
   burnin = 10,
   hastings = TRUE,
   nodeswitch = TRUE,
