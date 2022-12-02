@@ -1,6 +1,6 @@
 #' Implementation of the original NEM
 #'
-#' Infers a signalling pathway from peerturbation experiments.
+#' Infers a signalling pathway from perturbation experiments.
 #' @param D data matrix with observed genes as rows and knock-down
 #' experiments as columns
 #' @param search either "greedy", "modules" or "exhaustive" (not
@@ -31,9 +31,9 @@
 #' false negative rates
 #' @param Rho optional perturbation matrix
 #' @param logtype log base of the log odds
-#' @param modified if TRUE, assumes a prepocessed data matrix
+#' @param modified if TRUE, assumes a preprocessed data matrix
 #' @param tree if TRUE forces tree; does not allow converging edges
-#' @param learnRates if TRUE learns rates for false positives/negatices
+#' @param learnRates if TRUE learns rates for false positives/negatives
 #' @param stepSize numerical step size for learning rates
 #' @param ... optional parameters for future search methods
 #' @return transitively closed matrix or graphNEL
@@ -1702,7 +1702,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  hastings=TRUE,
                  nodeswitch=TRUE, postgaps=10,
                  penalized=FALSE,
-                 accept_range = 1) {
+                 accept_range = 1,...) {
     if (length(grep("_", colnames(D))) > 0 & is.null(Rho)) {
         Rho <- getRho(D)
     }
@@ -1734,7 +1734,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                         subtopo = subtopoX, ratio = ratio, domean = FALSE,
                         modulesize = modulesize, logtype = logtype,
                         modified = TRUE, Sgenes = Sgenes, Rho = Rho,
-                        marginal = marginal, tree = tree)$redSpace
+                        marginal = marginal, tree = tree,...)$redSpace
     }
     if (!is.null(parallel)) { if (parallel == 1) { parallel <- NULL } }
     D.backup <- D
@@ -1780,7 +1780,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                           ratio = ratio, domean = domean,
                           modulesize = modulesize, Rho = Rho,
                           logtype = logtype, modified = TRUE, Sgenes = Sgenes,
-                          marginal = marginal, tree = tree)
+                          marginal = marginal, tree = tree, ...)
             if (type %in% "networks2") {
                 linets <- TRUE
             } else {
@@ -1856,7 +1856,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                     modulesize = modulesize, Rho = Rho,
                                     logtype = logtype, modified = TRUE,
                                     Sgenes = Sgenes, subtopo = subtopoX,
-                                    marginal = marginal, tree = tree)
+                                    marginal = marginal, tree = tree, ...)
         limits[[1]]$res[[1]]$D <- NULL
         res <- list()
         res[[1]] <- list()
@@ -2030,7 +2030,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                           Sgenes = Sgenes,
                                                           subtopo = thetaX,
                                                           marginal = marginal,
-                                                          tree = tree)
+                                                          tree = tree, ...)
                                       } else {
                                           test01 <- list()
                                           test01scores <- numeric(2)
@@ -2064,7 +2064,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                                                       Sgenes = Sgenes,
                                                       subtopo = thetaX,
                                                       marginal = marginal,
-                                                      tree = tree)
+                                                      tree = tree, ...)
                                               test01scores[j] <-
                                                   max(test01[[j]]$scores)
                                           }

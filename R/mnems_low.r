@@ -1108,10 +1108,10 @@ adj2dnf <- function(A) {
 
     for (i in seq_len(ncol(A))) {
         for (j in seq_len(nrow(A))) {
-            if (A[i, j] == 1) {
+            if (A[i, j] > 0) {
                 dnf <- c(dnf, paste(colnames(A)[i], rownames(A)[j], sep = "="))
             }
-            if (A[i, j] == -1) {
+            if (A[i, j] < 0) {
                 dnf <- c(dnf, paste("!", colnames(A)[i], "=",
                                     rownames(A)[j], sep = ""))
             }
