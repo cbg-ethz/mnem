@@ -83,11 +83,11 @@ false negative rates}
 
 \item{logtype}{log base of the log odds}
 
-\item{modified}{if TRUE, assumes a prepocessed data matrix}
+\item{modified}{if TRUE, assumes a preprocessed data matrix}
 
 \item{tree}{if TRUE forces tree; does not allow converging edges}
 
-\item{learnRates}{if TRUE learns rates for false positives/negatices}
+\item{learnRates}{if TRUE learns rates for false positives/negatives}
 
 \item{stepSize}{numerical step size for learning rates}
 
@@ -97,7 +97,7 @@ false negative rates}
 transitively closed matrix or graphNEL
 }
 \description{
-Infers a signalling pathway from peerturbation experiments.
+Infers a signalling pathway from perturbation experiments.
 }
 \examples{
 D <- matrix(rnorm(100*3), 100, 3)

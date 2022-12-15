@@ -47,7 +47,8 @@ mnem(
   nodeswitch = TRUE,
   postgaps = 10,
   penalized = FALSE,
-  accept_range = 1
+  accept_range = 1,
+  ...
 )
 }
 \arguments{
