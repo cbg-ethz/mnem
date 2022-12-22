@@ -176,6 +176,8 @@ sparcity is hence not enforced}
 
 \item{accept_range}{the random probability the acceptance probability
 is compared to (default: 1)}
+
+\item{...}{arguments to function nem}
 }
 \value{
 object of class mnem

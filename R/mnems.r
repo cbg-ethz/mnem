@@ -1661,6 +1661,7 @@ mnemk <- function(D, ks = seq_len(5), man = FALSE, degree = 4, logtype = 2,
 #' sparcity is hence not enforced
 #' @param accept_range the random probability the acceptance probability
 #' is compared to (default: 1)
+#' @param ... arguments to function nem
 #' @author Martin Pirkl
 #' @return object of class mnem
 #' \item{comp}{list of the component with each component being
@@ -1702,7 +1703,7 @@ mnem <- function(D, inference = "em", search = "greedy", phi = NULL,
                  hastings=TRUE,
                  nodeswitch=TRUE, postgaps=10,
                  penalized=FALSE,
-                 accept_range = 1,...) {
+                 accept_range = 1, ...) {
     if (length(grep("_", colnames(D))) > 0 & is.null(Rho)) {
         Rho <- getRho(D)
     }
