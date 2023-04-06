@@ -13,7 +13,7 @@ RoxygenNote: 7.2.1
 Imports: cluster, graph, Rgraphviz, flexclust, lattice, naturalsort, snowfall, stats4, tsne, methods, graphics, stats, utils, Linnorm, data.table, Rcpp, RcppEigen, matrixStats, grDevices, e1071, ggplot2, wesanderson
 LinkingTo: Rcpp, RcppEigen
 VignetteBuilder: knitr
-Suggests: knitr, devtools, rmarkdown, BiocGenerics, RUnit, epiNEM
+Suggests: knitr, devtools, rmarkdown, BiocGenerics, RUnit, epiNEM, BiocStyle
 NeedsCompilation: yes
 BugReports: https://github.com/cbg-ethz/mnem/issues
 URL: https://github.com/cbg-ethz/mnem/
