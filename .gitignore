@@ -1,1 +1,4 @@
 *.DS_Store
+/src/RcppExports.o
+/src/mm.o
+/src/mnem.dll
