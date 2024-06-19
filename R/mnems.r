@@ -4812,7 +4812,7 @@ moreboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
                       polygon = TRUE, sd = 0.1, dcol = NULL,
                       scol = NULL, dlty = 1,
                       dlwd = 1, spch = 1, gcol = rgb(0,0,0,0.5),
-                      glty = 2, glen = 10, gmin = NA, gmax = NA,
+                      glty = 2, glen = 2001, gmin = -100, gmax = 100,
                       ...) {
   paras <- list(...)
   if (is.list(x)) {
