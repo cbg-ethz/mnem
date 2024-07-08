@@ -18,9 +18,9 @@ moreboxplot(
   spch = 1,
   gcol = rgb(0, 0, 0, 0.5),
   glty = 2,
-  glen = 10,
-  gmin = NA,
-  gmax = NA,
+  glen = 2001,
+  gmin = -100,
+  gmax = 100,
   ...
 )
 }
