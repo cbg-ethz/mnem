@@ -3813,17 +3813,21 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                         length(unlist(strsplit(gsub("=.*", "",
                                                     dnf[k2]), "\\+"))) + 1
                 }
-                if (k2 == 1) {
-                    edgecolindex <- inputN2
-                } else {
-                    if (length(grep("\\+", graph[seq_len(k2-1)])) == 0) {
-                        edgecolindex <- length(graph[seq_len(k2-1)]) + inputN2
+                if (lenght(k2)!=0) {
+                    if (k2 == 1) {
+                        edgecolindex <- inputN2
                     } else {
-                        edgecolindex <-
-                            length(unlist(strsplit(dnf[seq_len(k2-1)],
-                                                   "\\+"))) +
-                            length(grep("\\+", dnf[seq_len(k2-1)])) + inputN2
+                        if (length(grep("\\+", graph[seq_len(k2-1)])) == 0) {
+                            edgecolindex <- length(graph[seq_len(k2-1)]) + inputN2
+                        } else {
+                            edgecolindex <-
+                                length(unlist(strsplit(dnf[seq_len(k2-1)],
+                                                       "\\+"))) +
+                                length(grep("\\+", dnf[seq_len(k2-1)])) + inputN2
+                        }
                     }
+                } else {
+                    edgecolindex <- inputN2
                 }
                 ## end
                 inputN2 <- grep(tmp[1],
@@ -3916,17 +3920,21 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                     k2 <- grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""),
                                dnf)
                 }
-                if (k2 == 1) {
-                    edgecolindex <- k2
-                } else {
-                    if (length(grep("\\+", dnf[seq_len(k2-1)])) == 0) {
+                if (length(k1)!=0) {
+                    if (k2 == 1) {
                         edgecolindex <- k2
                     } else {
-                        edgecolindex <-
-                            length(unlist(strsplit(dnf[seq_len(k2-1)],
-                                                   "\\+"))) +
-                            length(grep("\\+", dnf[seq_len(k2-1)])) + 1
+                        if (length(grep("\\+", dnf[seq_len(k2-1)])) == 0) {
+                            edgecolindex <- k2
+                        } else {
+                            edgecolindex <-
+                                length(unlist(strsplit(dnf[seq_len(k2-1)],
+                                                       "\\+"))) +
+                                length(grep("\\+", dnf[seq_len(k2-1)])) + 1
+                        }
                     }
+                } else  {
+                    edgecolindex <- NULL
                 }
                 ## end
                 if (length(grep("!", names(edgesneg)[i])) > 0) {
