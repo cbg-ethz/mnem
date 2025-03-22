@@ -3920,7 +3920,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                     k2 <- grep(paste("^!", tmp[1], "=", tmp[2], "$", sep = ""),
                                dnf)
                 }
-                if (length(k1)!=0) {
+                if (length(k2)!=0) {
                     if (k2 == 1) {
                         edgecolindex <- k2
                     } else {
