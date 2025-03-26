@@ -3813,7 +3813,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                         length(unlist(strsplit(gsub("=.*", "",
                                                     dnf[k2]), "\\+"))) + 1
                 }
-                if (lenght(k2)!=0) {
+                if (length(k2)!=0) {
                     if (k2 == 1) {
                         edgecolindex <- inputN2
                     } else {
@@ -3827,7 +3827,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                         }
                     }
                 } else {
-                    edgecolindex <- inputN2
+                    edgecolindex <- 1
                 }
                 ## end
                 inputN2 <- grep(tmp[1],
@@ -3934,7 +3934,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
                         }
                     }
                 } else  {
-                    edgecolindex <- NULL
+                    edgecolindex <- 1
                 }
                 ## end
                 if (length(grep("!", names(edgesneg)[i])) > 0) {
