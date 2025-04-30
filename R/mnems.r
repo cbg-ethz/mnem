@@ -4808,6 +4808,14 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
 #' @param glen length of the grid
 #' @param gmin minimal point of the grid
 #' @param gmax maximal point of the grid
+#' @param sig matrix of n rows and 2 columns, each row is for a pair of
+#' box/violin plots to compare; uses standard wilcox.test
+#' @param sigtest function of the form f(x,y) with x and y as numerical vectors
+#' and returns a list with one entry "p.value", which is a scalar between 0 and
+#' 1
+#' @param sigpars list of paramters for drawing significance levels; standard
+#' drawing parameters except for "add", which is a number or "auto" stating how
+#' far above or below (negative number) of the largest entry the line is drawn
 #' @param ... optional parameters for boxplot or plot
 #' @return transitively closed matrix or graphNEL
 #' @author Martin Pirkl
@@ -4820,7 +4828,9 @@ moreboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
                       polygon = TRUE, sd = 0.1, dcol = NULL,
                       scol = NULL, dlty = 1,
                       dlwd = 1, spch = 1, gcol = rgb(0,0,0,0.5),
-                      glty = 2, glen = 2001, gmin = -100, gmax = 100,
+                      glty = 2, glen = 2001, gmin = -100, gmax = 100, sig = NULL,
+                      sigfun = wilcox.test,
+                      sigpars = list(col = 1, lwd = 1, cex = 1, add = "auto"),
                       ...) {
   paras <- list(...)
   if (is.list(x)) {
@@ -4890,4 +4900,35 @@ moreboxplot <- function(x, box = TRUE, dens = TRUE, scatter = "no",
   }
   abline(h=seq(min(c(unlist(x),gmin),na.rm=TRUE),max(c(unlist(x),gmax),na.rm=TRUE),
                length.out=glen),col=gcol,lty=glty)
+  if (!is.null(sig)) {
+      if (is.matrix(sig)) {
+          par(xpd=NA)
+          range <- c(max(unlist(x)),min(unlist(x)))
+          if (sigpars$add=="auto") {
+              add <- abs(diff(range))*0.1
+          } else {
+              add <- sigpars$add
+          }
+          for (i in 1:nrow(sig)) {
+              left <- min(sig[i,])
+              right <- max(sig[i,])
+              maxy <- max(max(x[[left]]),max(x[[right]]))
+              segments(left+0.1,maxy+add,right-0.1,maxy+add,col=sigpars$col,
+                       lwd=sigpars$lwd)
+              segments(left+0.1,maxy+add,left+0.1,maxy,col=sigpars$col,
+                       lwd=sigpars$lwd)
+              segments(right-0.1,maxy+add,right-0.1,maxy,col=sigpars$col,
+                       lwd=sigpars$lwd)
+              test <- sigfun(x[[left]],x[[right]])
+              lvl <- "n.s."
+              if (test$p.value<0.1) lvl <- "."
+              if (test$p.value<0.05) lvl <- "*"
+              if (test$p.value<0.01) lvl <- "**"
+              if (test$p.value<0.001) lvl <- "***"
+              text(left+(abs(sig[i,2]-left))/2,maxy+add*(1+sigpars$lwd/10+0.1),labels=lvl,
+                   cex=sigpars$cex,adj=c(0.5,0))
+          }
+          par(xpd=FALSE)
+      }
+  }
 }

@@ -21,6 +21,9 @@ moreboxplot(
   glen = 2001,
   gmin = -100,
   gmax = 100,
+  sig = NULL,
+  sigfun = wilcox.test,
+  sigpars = list(col = 1, lwd = 1, cex = 1, add = "auto"),
   ...
 )
 }
@@ -57,7 +60,18 @@ moreboxplot(
 
 \item{gmax}{maximal point of the grid}
 
+\item{sig}{matrix of n rows and 2 columns, each row is for a pair of
+box/violin plots to compare; uses standard wilcox.test}
+
+\item{sigpars}{list of paramters for drawing significance levels; standard
+drawing parameters except for "add", which is a number or "auto" stating how
+far above or below (negative number) of the largest entry the line is drawn}
+
 \item{...}{optional parameters for boxplot or plot}
+
+\item{sigtest}{function of the form f(x,y) with x and y as numerical vectors
+and returns a list with one entry "p.value", which is a scalar between 0 and
+1}
 }
 \value{
 transitively closed matrix or graphNEL
