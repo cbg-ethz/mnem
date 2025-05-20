@@ -4810,7 +4810,7 @@ plotDnf <- function(dnf = NULL, freq = NULL, stimuli = c(), signals = c(),
 #' @param gmax maximal point of the grid
 #' @param sig matrix of n rows and 2 columns, each row is for a pair of
 #' box/violin plots to compare; uses standard wilcox.test
-#' @param sigtest function of the form f(x,y) with x and y as numerical vectors
+#' @param sigfun function of the form f(x,y) with x and y as numerical vectors
 #' and returns a list with one entry "p.value", which is a scalar between 0 and
 #' 1
 #' @param sigpars list of paramters for drawing significance levels; standard
